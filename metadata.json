@@ -1,0 +1,6 @@
+{
+  "name": "Brighton HUB Cibubur — Operations & Advisor Portal",
+  "description": "Operational information hub, property advisor directory, integrated WhatsApp dispatch tools, consultation room booking, and transaction calculators for Brighton HUB Cibubur.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
