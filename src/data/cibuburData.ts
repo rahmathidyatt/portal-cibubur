@@ -6,59 +6,14 @@ export interface MorningQuote {
   dailyFocus: string;
 }
 
-export type StaffDivision = 'Operasional' | 'Keuangan' | 'Kurir & Dokumen';
-
-export type StaffAvailabilityStatus = 'Online' | 'Sibuk' | 'Di Luar Kantor';
-
-export interface StaffStatusLegendItem {
-  status: StaffAvailabilityStatus;
-  englishLabel: string;
-  colorName: string;
-  dotClass: string;
-  textClass: string;
-  meaning: string;
-}
-
-export const STAFF_STATUS_LEGEND: StaffStatusLegendItem[] = [
-  {
-    status: 'Online',
-    englishLabel: 'Online',
-    colorName: 'Hijau',
-    dotClass: 'bg-emerald-600 ring-2 ring-emerald-600/25',
-    textClass: 'text-emerald-800',
-    meaning: 'Staf berada di meja kantor dan siap merespons langsung.'
-  },
-  {
-    status: 'Sibuk',
-    englishLabel: 'Busy',
-    colorName: 'Kuning / Amber',
-    dotClass: 'bg-amber-600 ring-2 ring-amber-600/25',
-    textClass: 'text-amber-800',
-    meaning: 'Sedang verifikasi berkas atau melayani tamu (estimasi respons ~10 menit).'
-  },
-  {
-    status: 'Di Luar Kantor',
-    englishLabel: 'Out of Office',
-    colorName: 'Abu-abu',
-    dotClass: 'bg-slate-400 ring-2 ring-slate-400/25',
-    textClass: 'text-slate-700',
-    meaning: 'Sedang tugas lapangan / rute dokumen, pesan WhatsApp tetap diterima.'
-  }
-];
+export type StaffDivision = 'OPERASIONAL' | 'FINANCE' | 'MESSENGER';
 
 export interface OfficeStaffContact {
   id: string;
-  index: string;
   division: StaffDivision;
-  roleTitle: string;
   staffName: string;
-  availabilityStatus: StaffAvailabilityStatus;
-  availabilityDetail: string;
-  operationalHours: string;
   phoneDisplay: string;
   whatsappNumber: string;
-  description: string;
-  commonTasks: string[];
   defaultMessage: string;
 }
 
@@ -205,66 +160,30 @@ export const MORNING_INSPIRATIONS: MorningQuote[] = [
 export const OFFICE_STAFF_CONTACTS: OfficeStaffContact[] = [
   {
     id: 'staff-ops',
-    index: '01',
-    division: 'Operasional',
-    roleTitle: 'Admin Operasional, Fasilitas Ruang & Jadwal Jaga',
+    division: 'OPERASIONAL',
     staffName: 'Rahmat Hidayat (Amat)',
-    availabilityStatus: 'Online',
-    availabilityDetail: 'Siap melayani di meja operasional kantor',
-    operationalHours: 'Senin – Jumat 08:00 – 17:00 · Sabtu 08:00 – 15:00',
     phoneDisplay: '+62 821-2496-2159',
     whatsappNumber: '6282124962159',
-    description:
-      'Melayani peminjaman ruang diskusi klien, penjadwalan jaga harian agen, penitipan kunci properti (Titip Kunci), dan fasilitas kantor Brighton HUB Cibubur.',
-    commonTasks: [
-      'Reservasi Ruang Konsultasi Klien',
-      'Penjadwalan Giliran Jaga Kantor',
-      'Titip Kunci & Banner Listing'
-    ],
     defaultMessage:
-      'Halo Mas Amat (Operasional Brighton HUB Cibubur), saya ingin berkoordinasi mengenai layanan operasional dan fasilitas ruang kantor.'
+      'Halo Mas Amat (Operasional Brighton HUB Cibubur), saya ingin berkoordinasi mengenai layanan operasional kantor.'
   },
   {
     id: 'staff-finance',
-    index: '02',
-    division: 'Keuangan',
-    roleTitle: 'Staf Keuangan, Komisi & Invoicing',
+    division: 'FINANCE',
     staffName: 'Hania Sari (Hania)',
-    availabilityStatus: 'Sibuk',
-    availabilityDetail: 'Sedang verifikasi komisi · Respon ~10 mnt',
-    operationalHours: 'Senin – Jumat 08:00 – 17:00 · Sabtu 08:00 – 15:00',
     phoneDisplay: '+62 877-8486-5791',
     whatsappNumber: '6287784865791',
-    description:
-      'Melayani pencairan komisi agen, pembuatan invoice klien, konfirmasi pembayaran tanda jadi (booking fee), serta perhitungan pajak transaksi (PPh & BPHTB).',
-    commonTasks: [
-      'Klaim & Pencairan Komisi',
-      'Konfirmasi Tanda Jadi / Invoice',
-      'Perhitungan Pajak Transaksi'
-    ],
     defaultMessage:
-      'Halo Mbak Hania (Keuangan Brighton HUB Cibubur), saya ingin melakukan konfirmasi terkait administrasi keuangan / dokumen komisi transaksi.'
+      'Halo Mbak Hania (Finance Brighton HUB Cibubur), saya ingin melakukan konfirmasi terkait administrasi keuangan.'
   },
   {
     id: 'staff-courier',
-    index: '03',
-    division: 'Kurir & Dokumen',
-    roleTitle: 'Layanan Messenger, Kurir & Antar-Jemput Berkas',
+    division: 'MESSENGER',
     staffName: 'Apriansyah Ilyas (Apry)',
-    availabilityStatus: 'Di Luar Kantor',
-    availabilityDetail: 'Rute antar berkas Notaris · Chat tetap aktif',
-    operationalHours: 'Senin – Jumat 08:00 – 17:00 · Sabtu 08:00 – 15:00',
     phoneDisplay: '+62 895-3911-96166',
     whatsappNumber: '62895391196166',
-    description:
-      'Melayani pengiriman dan penjemputan dokumen penting (PPJB, berkas KPR Bank, kuitansi asli, dan kunci unit) di area Kota Wisata, CitraGran, Legenda Wisata, dan kantor Notaris/PPAT.',
-    commonTasks: [
-      'Antar-Jemput Dokumen Notaris/PPAT',
-      'Pengiriman Berkas KPR ke Bank',
-      'Pengantaran Kunci & Spanduk Area Cibubur'
-    ],
     defaultMessage:
-      'Halo Mas Apry (Messenger Brighton HUB Cibubur), saya ingin menjadwalkan pengiriman / penjemputan dokumen properti hari ini.'
+      'Halo Mas Apry (Messenger Brighton HUB Cibubur), saya ingin menjadwalkan pengiriman / penjemputan dokumen.'
   }
 ];
 

@@ -6,7 +6,7 @@ Fitur:
 
 - **Hari ini**: sapaan, status kantor buka/tutup (WIB), agenda Dealing Room dan floortime hari ini, pengumuman, inspirasi pagi.
 - **Reservasi**: Dealing Room 1 & 2 per tanggal dan jam, pendaftaran floortime (kuota 3 advisor per sesi). Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
-- **Kontak staf**: chat WhatsApp dengan pesan terisi otomatis, status staf yang diperbarui admin.
+- **Kontak staf**: OPERASIONAL, FINANCE, MESSENGER — nama, nomor telepon, dan tombol chat WhatsApp.
 - **Kalkulator**: cicilan KPR, BPHTB & PPh final, pembagian komisi (perkiraan).
 - **Dokumen & formulir**: tautan SOP, template, dan formulir yang dikelola admin.
 - **Jam & lokasi**: jadwal mingguan, alamat, tautan Google Maps, telepon kantor.
@@ -31,7 +31,7 @@ npm run dev        # http://localhost:3000
 
 ## Mode data
 
-**Tanpa konfigurasi (mode demo)** — semua data (reservasi, pengumuman, dokumen, status staf)
+**Tanpa konfigurasi (mode demo)** — semua data (reservasi, pengumuman, dokumen)
 disimpan di `localStorage` browser masing-masing. Login admin memakai akun demo
 `admin@demo.local` / `admin123`, yang hanya berlaku di mode ini.
 
@@ -54,7 +54,7 @@ Aturan yang ditegakkan (di aplikasi dan di database):
 - Satu slot ruang hanya bisa dipesan sekali per tanggal.
 - Floortime maksimal 3 advisor per sesi per tanggal, tanpa nama ganda; Sesi Sore hanya Senin–Jumat.
 - Kode pembatalan reservasi tidak pernah dikirim ke pengunjung lain.
-- Hanya admin yang bisa mengubah status staf, pengumuman, dan dokumen.
+- Hanya admin yang bisa mengubah pengumuman dan dokumen.
 
 ## Struktur
 

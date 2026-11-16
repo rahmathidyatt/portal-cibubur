@@ -1,11 +1,4 @@
-import {
-  MorningQuote,
-  OfficeStaffContact,
-  StaffDivision,
-  StaffAvailabilityStatus,
-  DealingRoom,
-  FloortimeSlot
-} from '../data/cibuburData';
+import type { MorningQuote, DealingRoom, FloortimeSlot } from '../data/cibuburData';
 
 export function buildWhatsAppChatUrl(
   whatsappNumber: string,
@@ -14,50 +7,6 @@ export function buildWhatsAppChatUrl(
   const cleanDigits = whatsappNumber.replace(/[^0-9]/g, '');
   const encodedText = encodeURIComponent(messageText.trim());
   return `https://wa.me/${cleanDigits}?text=${encodedText}`;
-}
-
-export function buildCustomStaffWhatsAppMessage(
-  contact: OfficeStaffContact,
-  selectedTopic?: string,
-  senderName?: string
-): string {
-  const cleanSender = senderName?.trim();
-  const intro = cleanSender
-    ? `Halo ${contact.division} Brighton HUB Cibubur (${contact.staffName}), saya ${cleanSender}.`
-    : `Halo ${contact.division} Brighton HUB Cibubur (${contact.staffName}).`;
-
-  if (selectedTopic && selectedTopic.trim().length > 0) {
-    return `${intro} Saya ingin menghubungi terkait keperluan: ${selectedTopic.trim()}. Terima kasih.`;
-  }
-
-  return contact.defaultMessage;
-}
-
-export function filterStaffByDivision(
-  contacts: OfficeStaffContact[],
-  division: 'Semua' | StaffDivision,
-  searchQuery: string = ''
-): OfficeStaffContact[] {
-  const q = searchQuery.trim().toLowerCase();
-
-  return contacts.filter((c) => {
-    if (division !== 'Semua' && c.division !== division) {
-      return false;
-    }
-    if (q.length > 0) {
-      const haystack = [
-        c.division,
-        c.roleTitle,
-        c.staffName,
-        c.description,
-        ...c.commonTasks
-      ]
-        .join(' ')
-        .toLowerCase();
-      return haystack.includes(q);
-    }
-    return true;
-  });
 }
 
 export function getNextMorningInspiration(
@@ -71,29 +20,6 @@ export function getNextMorningInspiration(
   return {
     nextIndex,
     quote: quotes[nextIndex]
-  };
-}
-
-const AVAILABILITY_ORDER: StaffAvailabilityStatus[] = [
-  'Online',
-  'Sibuk',
-  'Di Luar Kantor'
-];
-
-export function cycleStaffAvailability(
-  current: StaffAvailabilityStatus
-): { status: StaffAvailabilityStatus; detail: string } {
-  const idx = AVAILABILITY_ORDER.indexOf(current);
-  const next = AVAILABILITY_ORDER[(idx + 1) % AVAILABILITY_ORDER.length];
-  if (next === 'Online') {
-    return { status: 'Online', detail: 'Siap melayani di meja kantor' };
-  }
-  if (next === 'Sibuk') {
-    return { status: 'Sibuk', detail: 'Sedang melayani · Respon ~10 mnt' };
-  }
-  return {
-    status: 'Di Luar Kantor',
-    detail: 'Tugas luar / rute lapangan · Chat aktif'
   };
 }
 

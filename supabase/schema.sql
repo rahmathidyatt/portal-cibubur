@@ -78,12 +78,6 @@ create table if not exists public.office_documents (
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.staff_status (
-  staff_id   text primary key check (staff_id in ('staff-ops', 'staff-finance', 'staff-courier')),
-  status     text not null check (status in ('Online', 'Sibuk', 'Di Luar Kantor')),
-  detail     text not null default '' check (char_length(detail) <= 80),
-  updated_at timestamptz not null default now()
-);
 
 -- ===================================================================
 -- Fungsi untuk pengunjung (dijalankan sebagai pemilik tabel)
@@ -157,9 +151,9 @@ grant select (id, shift_id, booking_date, advisor_name, corridor_focus, created_
   on public.floortime_registrations to anon, authenticated;
 grant delete on public.room_bookings, public.floortime_registrations to authenticated;
 
-revoke all on public.announcements, public.office_documents, public.staff_status from anon, authenticated;
-grant select on public.announcements, public.office_documents, public.staff_status to anon, authenticated;
-grant insert, update, delete on public.announcements, public.office_documents, public.staff_status to authenticated;
+revoke all on public.announcements, public.office_documents from anon, authenticated;
+grant select on public.announcements, public.office_documents to anon, authenticated;
+grant insert, update, delete on public.announcements, public.office_documents to authenticated;
 
 -- ===================================================================
 -- Row Level Security
@@ -168,7 +162,6 @@ alter table public.room_bookings enable row level security;
 alter table public.floortime_registrations enable row level security;
 alter table public.announcements enable row level security;
 alter table public.office_documents enable row level security;
-alter table public.staff_status enable row level security;
 
 -- Hapus kebijakan lama dari versi skema sebelumnya.
 drop policy if exists "anon read room_bookings" on public.room_bookings;
@@ -193,7 +186,7 @@ create policy "admin delete floortime" on public.floortime_registrations
 do $$
 declare t text;
 begin
-  foreach t in array array['announcements', 'office_documents', 'staff_status'] loop
+  foreach t in array array['announcements', 'office_documents'] loop
     execute format('drop policy if exists "read %1$s" on public.%1$I', t);
     execute format('create policy "read %1$s" on public.%1$I for select to anon, authenticated using (true)', t);
     execute format('drop policy if exists "admin write %1$s" on public.%1$I', t);

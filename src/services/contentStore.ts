@@ -1,4 +1,3 @@
-import type { StaffAvailabilityStatus } from '../data/cibuburData';
 import type { AdminAuth } from './bookingStore';
 import {
   getSupabaseConfig,
@@ -9,20 +8,13 @@ import {
   type SupabaseConfig
 } from './supabaseClient';
 
-/** Konten yang dikelola admin: pengumuman kantor dan status ketersediaan staf. */
+/** Konten yang dikelola admin: pengumuman dan dokumen kantor. */
 
 export interface Announcement {
   id: string;
   title: string;
   body: string;
   createdAt: string; // ISO
-}
-
-export interface StaffStatus {
-  staffId: string;
-  status: StaffAvailabilityStatus;
-  detail: string;
-  updatedAt: string; // ISO
 }
 
 export interface OfficeDocument {
@@ -42,11 +34,6 @@ export interface ContentStore {
   listAnnouncements(): Promise<Announcement[]>;
   addAnnouncement(input: { title: string; body: string }, auth: AdminAuth): Promise<void>;
   deleteAnnouncement(id: string, auth: AdminAuth): Promise<void>;
-  listStaffStatuses(): Promise<StaffStatus[]>;
-  setStaffStatus(
-    input: { staffId: string; status: StaffAvailabilityStatus; detail: string },
-    auth: AdminAuth
-  ): Promise<void>;
 }
 
 function requireAdmin(auth: AdminAuth): void {
@@ -76,7 +63,6 @@ export function validateDocument(input: { title: string; url: string }): string 
 const DOCUMENT_KEY = 'portal-cibubur:documents';
 
 const ANNOUNCEMENT_KEY = 'portal-cibubur:announcements';
-const STAFF_STATUS_KEY = 'portal-cibubur:staff-status';
 
 function createLocalContentStore(): ContentStore {
   return {
@@ -129,18 +115,6 @@ function createLocalContentStore(): ContentStore {
         ANNOUNCEMENT_KEY,
         (Array.isArray(list) ? list : []).filter((a) => a.id !== id)
       );
-    },
-    async listStaffStatuses() {
-      const map = readLocal<Record<string, StaffStatus>>(STAFF_STATUS_KEY, {});
-      return Object.values(map && typeof map === 'object' ? map : {});
-    },
-    async setStaffStatus(input, auth) {
-      requireAdmin(auth);
-      const map = readLocal<Record<string, StaffStatus>>(STAFF_STATUS_KEY, {});
-      writeLocal(STAFF_STATUS_KEY, {
-        ...map,
-        [input.staffId]: { ...input, detail: input.detail.trim(), updatedAt: new Date().toISOString() }
-      });
     }
   };
 }
@@ -211,38 +185,6 @@ function createSupabaseContentStore(config: SupabaseConfig): ContentStore {
       await supabaseFetch(config, `rest/v1/announcements?id=eq.${encodeURIComponent(id)}`, {
         method: 'DELETE',
         accessToken: auth.accessToken
-      });
-    },
-    async listStaffStatuses() {
-      const res = await supabaseFetch(
-        config,
-        'rest/v1/staff_status?select=staff_id,status,detail,updated_at'
-      );
-      const rows = (await res.json()) as {
-        staff_id: string;
-        status: StaffAvailabilityStatus;
-        detail: string;
-        updated_at: string;
-      }[];
-      return rows.map((r) => ({
-        staffId: r.staff_id,
-        status: r.status,
-        detail: r.detail,
-        updatedAt: r.updated_at
-      }));
-    },
-    async setStaffStatus(input, auth) {
-      requireAdmin(auth);
-      await supabaseFetch(config, 'rest/v1/staff_status?on_conflict=staff_id', {
-        method: 'POST',
-        accessToken: auth.accessToken,
-        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify({
-          staff_id: input.staffId,
-          status: input.status,
-          detail: input.detail.trim(),
-          updated_at: new Date().toISOString()
-        })
       });
     }
   };
