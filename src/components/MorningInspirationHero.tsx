@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { RefreshCw, Copy, Check, ArrowDown, Building2, Sun, Phone, MapPin } from 'lucide-react';
-import { MorningQuote, HERO_OFFICE_IMAGE, OFFICE_IDENTITY } from '../data/cibuburData';
+import { MorningQuote, OFFICE_IDENTITY } from '../data/cibuburData';
+// Di-import (bukan string path) agar Vite menyalin & meng-hash gambar saat `npm run build`.
+import heroOfficeImage from '../assets/images/hero-cibubur-office.webp';
 import { getNextMorningInspiration } from '../utils/hubLogic';
+
+const formatTwoDigits = (n: number) => String(n).padStart(2, '0');
 
 interface MorningInspirationHeroProps {
   quotes: MorningQuote[];
@@ -15,6 +19,10 @@ export const MorningInspirationHero: React.FC<MorningInspirationHeroProps> = ({
   const [imgFailed, setImgFailed] = useState<boolean>(false);
 
   const currentQuote = quotes[activeIndex] || quotes[0];
+
+  if (!currentQuote) {
+    return null;
+  }
 
   const handleNextInspiration = () => {
     const { nextIndex } = getNextMorningInspiration(quotes, activeIndex);
@@ -48,7 +56,7 @@ export const MorningInspirationHero: React.FC<MorningInspirationHeroProps> = ({
                 <span className="font-bold">{currentQuote.title}</span>
                 <span aria-hidden="true">·</span>
                 <span className="font-mono font-semibold text-amber-800">
-                  Kutipan 0{activeIndex + 1} / 0{quotes.length}
+                  Kutipan {formatTwoDigits(activeIndex + 1)} / {formatTwoDigits(quotes.length)}
                 </span>
               </div>
 
@@ -116,7 +124,10 @@ export const MorningInspirationHero: React.FC<MorningInspirationHeroProps> = ({
             <div className="relative h-full min-h-[290px] sm:min-h-[340px] rounded-2xl overflow-hidden border-2 border-amber-300 bg-slate-950 shadow-sm">
               {!imgFailed ? (
                 <img
-                  src={HERO_OFFICE_IMAGE}
+                  src={heroOfficeImage}
+                  width={1376}
+                  height={768}
+                  decoding="async"
                   alt="Ruang resepsionis dan area diskusi Brighton HUB Cibubur di Kota Wisata"
                   referrerPolicy="no-referrer"
                   onError={() => setImgFailed(true)}

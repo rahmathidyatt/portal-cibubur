@@ -71,9 +71,11 @@ export interface OfficeDaySchedule {
   note: string;
 }
 
+export type RoomSlotStatus = 'Tersedia' | 'Terisi' | 'Di Luar Jam';
+
 export interface RoomTimeSlot {
   time: string;
-  status: 'Tersedia' | 'Terisi';
+  status: RoomSlotStatus;
   bookedBy?: string;
   agenda?: string;
 }
@@ -93,6 +95,8 @@ export interface FloortimeSlot {
   dayLabel: string;
   shiftName: string;
   timeWindow: string;
+  /** Hari aktif sesi: 0 = Minggu, 1 = Senin, ..., 6 = Sabtu */
+  activeDays: number[];
   quotaMax: number;
   registeredAdvisors: {
     advisorName: string;
@@ -100,14 +104,11 @@ export interface FloortimeSlot {
   }[];
 }
 
-export const HERO_OFFICE_IMAGE = '/src/assets/images/hero_cibubur_office_1794295049336.jpg';
-
 export const OFFICE_IDENTITY = {
   name: 'Brighton HUB Cibubur',
   address: 'Jl. Canadian Broadway Blok CBB 30–31, Kota Wisata Cibubur',
   phoneDisplay: '021 3873 9073',
-  phoneHref: 'tel:02138739073',
-  hoursSummary: 'Senin – Jumat: 08:00 – 17:00 WIB · Sabtu: 08:00 – 15:00 WIB · Minggu: Tutup'
+  phoneHref: 'tel:02138739073'
 };
 
 export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
@@ -271,20 +272,10 @@ export const INITIAL_DEALING_ROOMS: DealingRoom[] = [
     capacityPax: 6,
     facilities: 'Layar Smart TV 65" · Wi-Fi Cepat · Meja Presentasi KPR',
     slots: [
-      {
-        time: '08:00 - 10:00',
-        status: 'Terisi',
-        bookedBy: 'Hendra Wijaya',
-        agenda: 'Review PPJB Cluster Monaco'
-      },
+      { time: '08:00 - 10:00', status: 'Tersedia' },
       { time: '10:00 - 12:00', status: 'Tersedia' },
       { time: '13:00 - 15:00', status: 'Tersedia' },
-      {
-        time: '15:00 - 17:00',
-        status: 'Terisi',
-        bookedBy: 'Reza Darmawan',
-        agenda: 'Negosiasi Sewa Ruko CitraGran'
-      }
+      { time: '15:00 - 17:00', status: 'Tersedia' }
     ]
   },
   {
@@ -296,12 +287,7 @@ export const INITIAL_DEALING_ROOMS: DealingRoom[] = [
     facilities: 'Proyektor Ganda · Papan Tulis Kaca · Meja Akad PPAT',
     slots: [
       { time: '08:00 - 10:00', status: 'Tersedia' },
-      {
-        time: '10:00 - 12:00',
-        status: 'Terisi',
-        bookedBy: 'Dimas Prasetyo',
-        agenda: 'Penandatanganan AJB dengan Rekanan PPAT'
-      },
+      { time: '10:00 - 12:00', status: 'Tersedia' },
       { time: '13:00 - 15:00', status: 'Tersedia' },
       { time: '15:00 - 17:00', status: 'Tersedia' }
     ]
@@ -312,32 +298,28 @@ export const INITIAL_FLOORTIME_SHIFTS: FloortimeSlot[] = [
   {
     id: 'ft-pagi',
     dayLabel: 'Senin – Sabtu',
+    activeDays: [1, 2, 3, 4, 5, 6],
     shiftName: 'Floortime Sesi Pagi',
     timeWindow: '08:00 - 11:30 WIB',
     quotaMax: 3,
-    registeredAdvisors: [
-      { advisorName: 'Hendra Wijaya', corridorFocus: 'Kota Wisata' },
-      { advisorName: 'Nadia Pramesti', corridorFocus: 'Legenda Wisata' }
-    ]
+    registeredAdvisors: []
   },
   {
     id: 'ft-siang',
     dayLabel: 'Senin – Sabtu',
+    activeDays: [1, 2, 3, 4, 5, 6],
     shiftName: 'Floortime Sesi Siang',
     timeWindow: '11:30 - 14:30 WIB',
     quotaMax: 3,
-    registeredAdvisors: [
-      { advisorName: 'Reza Darmawan', corridorFocus: 'CitraGran & Ruko' }
-    ]
+    registeredAdvisors: []
   },
   {
     id: 'ft-sore',
     dayLabel: 'Senin – Jumat',
+    activeDays: [1, 2, 3, 4, 5],
     shiftName: 'Floortime Sesi Sore',
     timeWindow: '14:30 - 17:00 WIB',
     quotaMax: 3,
-    registeredAdvisors: [
-      { advisorName: 'Dimas Prasetyo', corridorFocus: 'Komersial & Kavling' }
-    ]
+    registeredAdvisors: []
   }
 ];

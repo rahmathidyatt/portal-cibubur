@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Calendar,
   Clock,
@@ -26,6 +26,17 @@ import {
   bookFloortimeShift,
   buildWhatsAppChatUrl
 } from '../utils/hubLogic';
+import {
+  buildRoomsForDate,
+  buildShiftsForDate,
+  getScheduleForDate,
+  isShiftActiveOnDate,
+  todayInJakarta,
+  validateBookingDate,
+  type FloortimeRegistration,
+  type RoomBooking
+} from '../utils/schedule';
+import { BookingConflictError, getBookingStore } from '../services/bookingStore';
 
 export type BookingPortalTab = 'dealing-room-1' | 'dealing-room-2' | 'floortime';
 
@@ -52,13 +63,19 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
   onClosePortal,
   onChangeTab
 }) => {
-  const [rooms, setRooms] = useState<DealingRoom[]>(initialRooms);
-  const [shifts, setShifts] = useState<FloortimeSlot[]>(initialShifts);
-  const [bookingDate, setBookingDate] = useState<string>('2026-11-10');
+  const store = getBookingStore();
+  const today = todayInJakarta();
+
+  const [bookingDate, setBookingDate] = useState<string>(today);
+  const [roomBookings, setRoomBookings] = useState<RoomBooking[]>([]);
+  const [registrations, setRegistrations] = useState<FloortimeRegistration[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [copiedOfficePhone, setCopiedOfficePhone] = useState<boolean>(false);
 
   // Room booking form state
-  const [selectedSlotTime, setSelectedSlotTime] = useState<string>('10:00 - 12:00');
+  const [selectedSlotTime, setSelectedSlotTime] = useState<string>('');
   const [roomAdvisorName, setRoomAdvisorName] = useState<string>('');
   const [roomAgenda, setRoomAgenda] = useState<string>('');
   const [roomFeedback, setRoomFeedback] = useState<{
@@ -79,10 +96,87 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
     waUrl?: string;
   } | null>(null);
 
+  const dateError = validateBookingDate(bookingDate, today, weeklyHours);
+  const daySchedule = getScheduleForDate(bookingDate, weeklyHours);
+
+  const loadBookings = useCallback(
+    async (date: string) => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const [roomList, ftList] = await Promise.all([
+          store.listRoomBookings(date),
+          store.listFloortimeRegistrations(date)
+        ]);
+        setRoomBookings(roomList);
+        setRegistrations(ftList);
+      } catch (err) {
+        setLoadError(
+          err instanceof Error ? err.message : 'Gagal memuat data reservasi.'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [store]
+  );
+
+  useEffect(() => {
+    void loadBookings(bookingDate);
+  }, [bookingDate, loadBookings]);
+
+  const rooms = useMemo(
+    () => buildRoomsForDate(initialRooms, roomBookings, bookingDate, weeklyHours),
+    [initialRooms, roomBookings, bookingDate, weeklyHours]
+  );
+  const shifts = useMemo(
+    () => buildShiftsForDate(initialShifts, registrations, bookingDate),
+    [initialShifts, registrations, bookingDate]
+  );
+
   const activeRoomId: 'dealing-room-1' | 'dealing-room-2' =
     activeTab === 'dealing-room-2' ? 'dealing-room-2' : 'dealing-room-1';
   const currentRoom =
     rooms.find((r) => r.id === activeRoomId) || rooms[0];
+
+  // Pastikan slot yang dipilih selalu slot yang masih tersedia
+  // (misalnya setelah pindah tab ruang, ganti tanggal, atau slot baru saja dipesan).
+  useEffect(() => {
+    if (!currentRoom) return;
+    const stillAvailable = currentRoom.slots.some(
+      (s) => s.time === selectedSlotTime && s.status === 'Tersedia'
+    );
+    if (!stillAvailable) {
+      const firstOpen = currentRoom.slots.find((s) => s.status === 'Tersedia');
+      setSelectedSlotTime(firstOpen ? firstOpen.time : '');
+    }
+  }, [currentRoom, selectedSlotTime]);
+
+  // Jika sesi floortime terpilih tidak berlaku di tanggal ini (mis. Sesi Sore di hari Sabtu),
+  // pindahkan pilihan ke sesi pertama yang berlaku.
+  useEffect(() => {
+    const selected = shifts.find((s) => s.id === selectedShiftId);
+    if (selected && isShiftActiveOnDate(selected, bookingDate)) return;
+    const firstActive = shifts.find((s) => isShiftActiveOnDate(s, bookingDate));
+    if (firstActive && firstActive.id !== selectedShiftId) {
+      setSelectedShiftId(firstActive.id);
+    }
+  }, [shifts, selectedShiftId, bookingDate]);
+
+  // Tutup panel dengan tombol Esc dan kunci scroll halaman di belakang modal.
+  useEffect(() => {
+    if (!isPortalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClosePortal();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPortalOpen, onClosePortal]);
 
   const handleCopyOfficePhone = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -97,8 +191,33 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
     setRoomFeedback(null);
   };
 
-  const handleBookRoom = (e: React.FormEvent) => {
+  const handleChangeDate = (value: string) => {
+    setBookingDate(value);
+    setRoomFeedback(null);
+    setFtFeedback(null);
+  };
+
+  const describeSaveError = (err: unknown, fallback: string): string => {
+    if (err instanceof BookingConflictError) return err.message;
+    if (err instanceof Error) return `${fallback} ${err.message}`;
+    return fallback;
+  };
+
+  const handleBookRoom = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+    if (dateError) {
+      setRoomFeedback({ type: 'error', text: dateError });
+      return;
+    }
+    if (!selectedSlotTime) {
+      setRoomFeedback({
+        type: 'error',
+        text: 'Tidak ada jam sesi yang tersedia pada tanggal ini. Silakan pilih tanggal lain.'
+      });
+      return;
+    }
+
     const result = bookConsultationRoomSlot(
       rooms,
       activeRoomId,
@@ -115,21 +234,60 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
       return;
     }
 
-    setRooms(result.updatedRooms);
     const roomName = currentRoom?.tabLabel || 'Dealing Room';
-    const waText = `Halo Mas Amat (${opsContact.staffName}), saya ${roomAdvisorName.trim()} telah melakukan reservasi ${roomName} pada tanggal ${bookingDate} jam ${selectedSlotTime} WIB untuk keperluan: ${roomAgenda.trim()}. Mohon konfirmasinya, terima kasih.`;
+    const advisor = roomAdvisorName.trim();
+    const agenda = roomAgenda.trim();
+    const slotTime = selectedSlotTime;
+
+    setIsSaving(true);
+    try {
+      await store.addRoomBooking({
+        roomId: activeRoomId,
+        date: bookingDate,
+        slotTime,
+        bookedBy: advisor,
+        agenda
+      });
+    } catch (err) {
+      setRoomFeedback({
+        type: 'error',
+        text: describeSaveError(err, 'Reservasi gagal disimpan.')
+      });
+      await loadBookings(bookingDate);
+      setIsSaving(false);
+      return;
+    }
+    await loadBookings(bookingDate);
+    setIsSaving(false);
+
+    const waText = `Halo Mas Amat (${opsContact.staffName}), saya ${advisor} telah melakukan reservasi ${roomName} pada tanggal ${bookingDate} jam ${slotTime} WIB untuk keperluan: ${agenda}. Mohon konfirmasinya, terima kasih.`;
     const waUrl = buildWhatsAppChatUrl(opsContact.whatsappNumber, waText);
 
     setRoomFeedback({
       type: 'success',
-      text: `Terjadwal: ${roomName} (${selectedSlotTime} WIB) berhasil dipesan atas nama ${roomAdvisorName.trim()}.`,
+      text: `Terjadwal: ${roomName} (${bookingDate}, ${slotTime} WIB) berhasil dipesan atas nama ${advisor}.`,
       waUrl
     });
     setRoomAgenda('');
   };
 
-  const handleBookFloortime = (e: React.FormEvent) => {
+  const handleBookFloortime = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
+    if (dateError) {
+      setFtFeedback({ type: 'error', text: dateError });
+      return;
+    }
+
+    const shiftObj = shifts.find((s) => s.id === selectedShiftId);
+    if (shiftObj && !isShiftActiveOnDate(shiftObj, bookingDate)) {
+      setFtFeedback({
+        type: 'error',
+        text: `${shiftObj.shiftName} hanya tersedia ${shiftObj.dayLabel}. Silakan pilih sesi atau tanggal lain.`
+      });
+      return;
+    }
+
     const result = bookFloortimeShift(
       shifts,
       selectedShiftId,
@@ -145,26 +303,49 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
       return;
     }
 
-    setShifts(result.updatedShifts);
-    const shiftObj = shifts.find((s) => s.id === selectedShiftId);
+    const advisor = ftAdvisorName.trim();
+    const corridor = ftCorridor.trim();
     const shiftTitle = shiftObj
       ? `${shiftObj.shiftName} (${shiftObj.timeWindow})`
       : 'Floortime Request';
-    const waText = `Halo Mas Amat (${opsContact.staffName}), saya ${ftAdvisorName.trim()} mengajukan Floortime Request untuk ${shiftTitle} tanggal ${bookingDate} dengan fokus koridor ${ftCorridor.trim()}. Terima kasih.`;
+
+    setIsSaving(true);
+    try {
+      await store.addFloortimeRegistration({
+        shiftId: selectedShiftId,
+        date: bookingDate,
+        advisorName: advisor,
+        corridorFocus: corridor
+      });
+    } catch (err) {
+      setFtFeedback({
+        type: 'error',
+        text: describeSaveError(err, 'Pendaftaran floortime gagal disimpan.')
+      });
+      await loadBookings(bookingDate);
+      setIsSaving(false);
+      return;
+    }
+    await loadBookings(bookingDate);
+    setIsSaving(false);
+
+    const waText = `Halo Mas Amat (${opsContact.staffName}), saya ${advisor} mengajukan Floortime Request untuk ${shiftTitle} tanggal ${bookingDate} dengan fokus koridor ${corridor}. Terima kasih.`;
     const waUrl = buildWhatsAppChatUrl(opsContact.whatsappNumber, waText);
 
     setFtFeedback({
       type: 'success',
-      text: `Terdaftar: ${ftAdvisorName.trim()} (${ftCorridor.trim()}) masuk dalam daftar ${shiftTitle}.`,
+      text: `Terdaftar: ${advisor} (${corridor}) masuk dalam daftar ${shiftTitle} tanggal ${bookingDate}.`,
       waUrl
     });
     setFtAdvisorName('');
   };
 
-  const totalOpenRoomSlots = rooms.reduce(
-    (sum, r) => sum + r.slots.filter((s) => s.status === 'Tersedia').length,
-    0
-  );
+  const totalOpenRoomSlots = dateError
+    ? 0
+    : rooms.reduce(
+        (sum, r) => sum + r.slots.filter((s) => s.status === 'Tersedia').length,
+        0
+      );
 
   return (
     <>
@@ -332,7 +513,10 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
               <div className="bg-gradient-to-br from-[#FEF08A] via-[#FEF9C3] to-white border-2 border-amber-400 rounded-2xl p-6 shadow-2xs">
                 <div className="flex items-center justify-between gap-2 text-xs font-mono font-bold text-amber-950 mb-2">
                   <span>PORTAL FASILITAS INTERNAL</span>
-                  <span>{totalOpenRoomSlots} SLOT TERSEDIA</span>
+                  <span>
+                    {totalOpenRoomSlots} SLOT TERSEDIA ·{' '}
+                    {bookingDate === today ? 'HARI INI' : bookingDate}
+                  </span>
                 </div>
                 <h3 className="text-lg font-bold text-slate-950">
                   Reservasi Ruang Diskusi & Jadwal Jaga Advisor
@@ -384,7 +568,8 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
               <button
                 type="button"
                 onClick={onClosePortal}
-                aria-label="Tutup panel reservasi"
+                autoFocus
+                aria-label="Tutup panel reservasi (Esc)"
                 className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-white hover:bg-amber-100 border border-amber-300 rounded-xl transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -461,7 +646,8 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                   id="booking-date-picker"
                   type="date"
                   value={bookingDate}
-                  onChange={(e) => setBookingDate(e.target.value)}
+                  min={today}
+                  onChange={(e) => handleChangeDate(e.target.value)}
                   className="text-xs font-mono font-bold text-slate-900 bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
@@ -469,6 +655,39 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
 
             {/* Modal Body */}
             <div className="p-6 max-h-[75vh] overflow-y-auto">
+              {(dateError || loadError || isLoading || store.mode === 'local') && (
+                <div className="mb-5 space-y-2" aria-live="polite">
+                  {dateError && (
+                    <p className="p-3 rounded-xl border border-red-300 bg-red-50 text-xs font-bold text-red-800">
+                      {dateError}
+                    </p>
+                  )}
+                  {loadError && (
+                    <p className="p-3 rounded-xl border border-red-300 bg-red-50 text-xs font-bold text-red-800">
+                      Gagal memuat data reservasi: {loadError}{' '}
+                      <button
+                        type="button"
+                        onClick={() => void loadBookings(bookingDate)}
+                        className="underline cursor-pointer"
+                      >
+                        Coba lagi
+                      </button>
+                    </p>
+                  )}
+                  {isLoading && !loadError && (
+                    <p className="text-xs font-semibold text-slate-600">
+                      Memuat jadwal tanggal {bookingDate}…
+                    </p>
+                  )}
+                  {store.mode === 'local' && !dateError && (
+                    <p className="p-3 rounded-xl border border-amber-300 bg-[#FEFCE8] text-[11px] text-amber-950">
+                      Mode lokal: reservasi tersimpan di browser ini saja. Hubungkan Supabase
+                      (lihat README) agar jadwal terlihat sama oleh semua advisor.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {activeTab === 'dealing-room-1' || activeTab === 'dealing-room-2' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   {/* Room Schedule Slots */}
@@ -490,14 +709,16 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {currentRoom.slots.map((slot) => {
                         const isBooked = slot.status === 'Terisi';
+                        const isUnavailable =
+                          slot.status !== 'Tersedia' || Boolean(dateError);
                         const isSelected =
-                          selectedSlotTime === slot.time && !isBooked;
+                          selectedSlotTime === slot.time && !isUnavailable;
 
                         return (
                           <div
                             key={slot.time}
                             className={`p-3.5 rounded-xl border-2 text-xs transition-colors ${
-                              isBooked
+                              isUnavailable
                                 ? 'bg-slate-50 border-slate-200 text-slate-500'
                                 : isSelected
                                 ? 'bg-[#FEF08A] border-amber-500 text-slate-950'
@@ -506,8 +727,12 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-mono font-bold">{slot.time} WIB</span>
-                              {isBooked ? (
-                                <span className="text-slate-500 font-semibold">Terisi</span>
+                              {isUnavailable ? (
+                                <span className="text-slate-500 font-semibold">
+                                  {dateError && slot.status === 'Tersedia'
+                                    ? 'Tutup'
+                                    : slot.status}
+                                </span>
                               ) : (
                                 <button
                                   type="button"
@@ -521,6 +746,12 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                             {isBooked ? (
                               <p className="mt-1.5 text-[11px] text-slate-600 truncate">
                                 {slot.bookedBy} — {slot.agenda}
+                              </p>
+                            ) : isUnavailable ? (
+                              <p className="mt-1.5 text-[11px] text-slate-500">
+                                {daySchedule && !daySchedule.isClosed && !dateError
+                                  ? `Kantor buka ${daySchedule.hours} WIB pada hari ${daySchedule.dayNameId}`
+                                  : 'Tidak dapat dipesan pada tanggal ini'}
                               </p>
                             ) : (
                               <p className="mt-1.5 text-[11px] text-emerald-800 font-semibold">
@@ -557,9 +788,16 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         onChange={(e) => setSelectedSlotTime(e.target.value)}
                         className="w-full px-3 py-2 text-xs font-mono bg-white border border-amber-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
+                        {!selectedSlotTime && (
+                          <option value="">Tidak ada jam tersedia</option>
+                        )}
                         {currentRoom.slots.map((s) => (
-                          <option key={s.time} value={s.time}>
-                            {s.time} WIB ({s.status})
+                          <option
+                            key={s.time}
+                            value={s.time}
+                            disabled={s.status !== 'Tersedia'}
+                          >
+                            {`${s.time} WIB (${s.status})`}
                           </option>
                         ))}
                       </select>
@@ -631,9 +869,10 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
 
                     <button
                       type="submit"
-                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] border border-amber-400 rounded-xl transition-colors cursor-pointer"
+                      disabled={isSaving || isLoading || Boolean(dateError)}
+                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] border border-amber-400 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Simpan Reservasi {currentRoom.tabLabel}
+                      {isSaving ? 'Menyimpan…' : `Simpan Reservasi ${currentRoom.tabLabel}`}
                     </button>
                   </form>
                 </div>
@@ -644,6 +883,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                     {shifts.map((shift) => {
                       const count = shift.registeredAdvisors.length;
                       const isFull = count >= shift.quotaMax;
+                      const isActiveDay = isShiftActiveOnDate(shift, bookingDate);
                       const isSelected = selectedShiftId === shift.id;
 
                       return (
@@ -670,9 +910,11 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                                   isFull ? 'text-amber-900' : 'text-emerald-800'
                                 }`}
                               >
-                                Kuota {count}/{shift.quotaMax} Advisor
+                                {isActiveDay
+                                  ? `Kuota ${count}/${shift.quotaMax} Advisor`
+                                  : 'Tidak ada sesi di tanggal ini'}
                               </span>
-                              {!isFull && (
+                              {!isFull && isActiveDay && !dateError && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -691,6 +933,9 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                             <p className="text-[11px] font-bold text-slate-700">
                               Advisor Terdaftar:
                             </p>
+                            {shift.registeredAdvisors.length === 0 && (
+                              <p className="text-xs text-slate-500">Belum ada advisor terdaftar.</p>
+                            )}
                             {shift.registeredAdvisors.map((adv, idx) => (
                               <div
                                 key={`${shift.id}-${idx}`}
@@ -733,8 +978,16 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         className="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                       >
                         {shifts.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.shiftName} ({s.timeWindow}) — Terisi {s.registeredAdvisors.length}/{s.quotaMax}
+                          <option
+                            key={s.id}
+                            value={s.id}
+                            disabled={!isShiftActiveOnDate(s, bookingDate)}
+                          >
+                            {`${s.shiftName} (${s.timeWindow}) — ${
+                              isShiftActiveOnDate(s, bookingDate)
+                                ? `Terisi ${s.registeredAdvisors.length}/${s.quotaMax}`
+                                : 'tidak tersedia di tanggal ini'
+                            }`}
                           </option>
                         ))}
                       </select>
@@ -809,9 +1062,10 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
 
                     <button
                       type="submit"
-                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] border border-amber-400 rounded-xl transition-colors cursor-pointer"
+                      disabled={isSaving || isLoading || Boolean(dateError)}
+                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] border border-amber-400 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Kirim Floortime Request
+                      {isSaving ? 'Menyimpan…' : 'Kirim Floortime Request'}
                     </button>
                   </form>
                 </div>

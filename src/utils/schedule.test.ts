@@ -1,0 +1,78 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  todayInJakarta,
+  dayIndexOfIsoDate,
+  validateBookingDate,
+  isWithinOfficeHours,
+  getScheduleForDate,
+  buildRoomsForDate,
+  buildShiftsForDate,
+  isShiftActiveOnDate,
+  buildHoursSummary
+} from './schedule';
+import {
+  WEEKLY_OFFICE_HOURS,
+  INITIAL_DEALING_ROOMS,
+  INITIAL_FLOORTIME_SHIFTS
+} from '../data/cibuburData';
+
+// 2026-11-16 = Senin, 2026-11-21 = Sabtu, 2026-11-22 = Minggu
+const MONDAY = '2026-11-16';
+const SATURDAY = '2026-11-21';
+const SUNDAY = '2026-11-22';
+
+test('todayInJakarta uses WIB, not the browser timezone', () => {
+  // 2026-11-16 18:30 UTC = 2026-11-17 01:30 WIB
+  assert.equal(todayInJakarta(new Date('2026-11-16T18:30:00Z')), '2026-11-17');
+  assert.equal(dayIndexOfIsoDate(MONDAY), 1);
+  assert.equal(dayIndexOfIsoDate(SUNDAY), 0);
+});
+
+test('validateBookingDate blocks past dates, Sundays and invalid input', () => {
+  assert.equal(validateBookingDate(MONDAY, MONDAY, WEEKLY_OFFICE_HOURS), null);
+  assert.match(validateBookingDate('2026-11-10', MONDAY, WEEKLY_OFFICE_HOURS) ?? '', /lewat/);
+  assert.match(validateBookingDate(SUNDAY, MONDAY, WEEKLY_OFFICE_HOURS) ?? '', /tutup/);
+  assert.match(validateBookingDate('', MONDAY, WEEKLY_OFFICE_HOURS) ?? '', /tidak valid/);
+});
+
+test('isWithinOfficeHours respects Saturday closing at 15:00', () => {
+  const sat = getScheduleForDate(SATURDAY, WEEKLY_OFFICE_HOURS);
+  assert.equal(isWithinOfficeHours('13:00 - 15:00', sat), true);
+  assert.equal(isWithinOfficeHours('15:00 - 17:00', sat), false);
+});
+
+test('buildRoomsForDate marks bookings per date and out-of-hours slots', () => {
+  const bookings = [
+    { roomId: 'dealing-room-1' as const, date: MONDAY, slotTime: '08:00 - 10:00', bookedBy: 'Hendra', agenda: 'Review PPJB' }
+  ];
+  const monday = buildRoomsForDate(INITIAL_DEALING_ROOMS, bookings, MONDAY, WEEKLY_OFFICE_HOURS);
+  assert.equal(monday[0].slots[0].status, 'Terisi');
+  assert.equal(monday[0].slots[0].bookedBy, 'Hendra');
+  assert.equal(monday[1].slots[0].status, 'Tersedia');
+
+  // Booking hari Senin tidak ikut membuat slot hari lain terisi.
+  const saturday = buildRoomsForDate(INITIAL_DEALING_ROOMS, bookings, SATURDAY, WEEKLY_OFFICE_HOURS);
+  assert.equal(saturday[0].slots[0].status, 'Tersedia');
+  assert.equal(saturday[0].slots[3].status, 'Di Luar Jam');
+});
+
+test('floortime shifts follow active days and per-date registrations', () => {
+  const sore = INITIAL_FLOORTIME_SHIFTS.find((s) => s.id === 'ft-sore')!;
+  assert.equal(isShiftActiveOnDate(sore, MONDAY), true);
+  assert.equal(isShiftActiveOnDate(sore, SATURDAY), false);
+
+  const regs = [
+    { shiftId: 'ft-pagi', date: MONDAY, advisorName: 'Nadia', corridorFocus: 'Legenda Wisata' },
+    { shiftId: 'ft-pagi', date: SATURDAY, advisorName: 'Reza', corridorFocus: 'Ruko' }
+  ];
+  const shifts = buildShiftsForDate(INITIAL_FLOORTIME_SHIFTS, regs, MONDAY);
+  assert.deepEqual(shifts[0].registeredAdvisors, [{ advisorName: 'Nadia', corridorFocus: 'Legenda Wisata' }]);
+});
+
+test('buildHoursSummary groups days with the same hours', () => {
+  assert.equal(
+    buildHoursSummary(WEEKLY_OFFICE_HOURS),
+    'Senin – Jumat: 08:00 – 17:00 WIB · Sabtu: 08:00 – 15:00 WIB · Minggu: Tutup'
+  );
+});

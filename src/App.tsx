@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { MessageCircle, Menu, X, Phone } from 'lucide-react';
 import {
   MORNING_INSPIRATIONS,
@@ -20,6 +20,9 @@ import {
   BookingPortalTab
 } from './components/RoomAndFloortimeBooking';
 import { buildWhatsAppChatUrl } from './utils/hubLogic';
+import { buildHoursSummary } from './utils/schedule';
+
+const HOURS_SUMMARY = buildHoursSummary(WEEKLY_OFFICE_HOURS);
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
@@ -33,11 +36,15 @@ export default function App() {
     opsStaff.defaultMessage
   );
 
-  const handleOpenPortal = (tab: BookingPortalTab = 'dealing-room-1') => {
-    setActivePortalTab(tab);
-    setIsPortalOpen(true);
-    setMobileMenuOpen(false);
-  };
+  const handleOpenPortal = useCallback(
+    (tab: BookingPortalTab = 'dealing-room-1') => {
+      setActivePortalTab(tab);
+      setIsPortalOpen(true);
+      setMobileMenuOpen(false);
+    },
+    []
+  );
+  const handleClosePortal = useCallback(() => setIsPortalOpen(false), []);
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-slate-900">
@@ -155,7 +162,7 @@ export default function App() {
           isPortalOpen={isPortalOpen}
           activeTab={activePortalTab}
           onOpenPortal={handleOpenPortal}
-          onClosePortal={() => setIsPortalOpen(false)}
+          onClosePortal={handleClosePortal}
           onChangeTab={setActivePortalTab}
         />
       </main>
@@ -174,7 +181,7 @@ export default function App() {
                 Telepon: {OFFICE_IDENTITY.phoneDisplay}
               </span>
             </p>
-            <p className="mt-1 text-slate-600">{OFFICE_IDENTITY.hoursSummary}</p>
+            <p className="mt-1 text-slate-600">{HOURS_SUMMARY}</p>
           </div>
           <div className="flex flex-wrap items-center gap-5 font-bold text-slate-900">
             <a href="#inspirasi" className="hover:text-amber-900">

@@ -121,6 +121,7 @@ export function bookConsultationRoomSlot(
 
   let slotFound = false;
   let alreadyBooked = false;
+  let outsideHours = false;
 
   const updatedRooms = rooms.map((room) => {
     if (room.id !== roomId) return room;
@@ -131,6 +132,10 @@ export function bookConsultationRoomSlot(
         slotFound = true;
         if (slot.status === 'Terisi') {
           alreadyBooked = true;
+          return slot;
+        }
+        if (slot.status === 'Di Luar Jam') {
+          outsideHours = true;
           return slot;
         }
         return {
@@ -155,6 +160,14 @@ export function bookConsultationRoomSlot(
       updatedRooms: rooms,
       success: false,
       error: 'Slot waktu ini sudah terisi. Silakan pilih jam lain yang tersedia.'
+    };
+  }
+
+  if (outsideHours) {
+    return {
+      updatedRooms: rooms,
+      success: false,
+      error: 'Jam sesi ini berada di luar jam operasional kantor pada tanggal tersebut.'
     };
   }
 

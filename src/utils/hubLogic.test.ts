@@ -98,13 +98,34 @@ test('bookConsultationRoomSlot books Dealing Room 1 and Dealing Room 2 accuratel
   assert.equal(updatedSlot?.bookedBy, 'Clarissa Tanoto');
 });
 
+test('bookConsultationRoomSlot rejects booked and out-of-hours slots', () => {
+  const rooms = INITIAL_DEALING_ROOMS.map((r) => ({
+    ...r,
+    slots: r.slots.map((slot) =>
+      slot.time === '15:00 - 17:00' ? { ...slot, status: 'Di Luar Jam' as const } : slot
+    )
+  }));
+  const outside = bookConsultationRoomSlot(rooms, 'dealing-room-1', '15:00 - 17:00', 'Clarissa', 'Diskusi KPR');
+  assert.equal(outside.success, false);
+
+  const first = bookConsultationRoomSlot(rooms, 'dealing-room-1', '08:00 - 10:00', 'Clarissa', 'Diskusi KPR');
+  const second = bookConsultationRoomSlot(first.updatedRooms, 'dealing-room-1', '08:00 - 10:00', 'Hendra', 'Review PPJB');
+  assert.equal(second.success, false);
+  assert.match(second.error ?? '', /sudah terisi/);
+});
+
 test('bookFloortimeShift registers advisor up to quotaMax and prevents duplicates', () => {
-  const res1 = bookFloortimeShift(
-    INITIAL_FLOORTIME_SHIFTS,
-    'ft-pagi',
-    'Clarissa Tanoto',
-    'Kota Wisata'
-  );
+  const res1 = bookFloortimeShift(INITIAL_FLOORTIME_SHIFTS, 'ft-pagi', 'Clarissa Tanoto', 'Kota Wisata');
   assert.equal(res1.success, true);
-  assert.equal(res1.updatedShifts[0].registeredAdvisors.length, 3);
+  assert.equal(res1.updatedShifts[0].registeredAdvisors.length, 1);
+
+  const dup = bookFloortimeShift(res1.updatedShifts, 'ft-pagi', 'clarissa tanoto', 'Kota Wisata');
+  assert.equal(dup.success, false);
+
+  const r2 = bookFloortimeShift(res1.updatedShifts, 'ft-pagi', 'Hendra', 'Legenda Wisata');
+  const r3 = bookFloortimeShift(r2.updatedShifts, 'ft-pagi', 'Nadia', 'CitraGran');
+  const full = bookFloortimeShift(r3.updatedShifts, 'ft-pagi', 'Reza', 'Ruko');
+  assert.equal(r3.updatedShifts[0].registeredAdvisors.length, 3);
+  assert.equal(full.success, false);
+  assert.match(full.error ?? '', /penuh/);
 });
