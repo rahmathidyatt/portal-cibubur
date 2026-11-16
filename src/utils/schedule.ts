@@ -176,3 +176,88 @@ export function buildHoursSummary(weeklyHours: OfficeDaySchedule[]): string {
     })
     .join(' · ');
 }
+
+/** Jam & menit saat ini di WIB (menit sejak 00:00). */
+export function minutesNowInJakarta(now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).formatToParts(now);
+  const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+  const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+  return h * 60 + m;
+}
+
+export function greetingForMinutes(minutes: number): string {
+  if (minutes < 11 * 60) return 'Selamat pagi';
+  if (minutes < 15 * 60) return 'Selamat siang';
+  if (minutes < 18 * 60) return 'Selamat sore';
+  return 'Selamat malam';
+}
+
+/** Contoh: "Selasa, 17 November 2026" */
+export function formatLongDateId(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(new Date(Date.UTC(y, m - 1, d)));
+}
+
+function addDays(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+function formatMinutes(total: number): string {
+  const h = String(Math.floor(total / 60)).padStart(2, '0');
+  const m = String(total % 60).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+export interface OfficeStatus {
+  isOpen: boolean;
+  /** Contoh: "Buka · tutup pukul 17:00" atau "Tutup · buka besok pukul 08:00" */
+  label: string;
+}
+
+/** Status buka/tutup kantor saat ini berdasarkan jam WIB. */
+export function getOfficeStatus(
+  weeklyHours: OfficeDaySchedule[],
+  now: Date = new Date()
+): OfficeStatus {
+  const today = todayInJakarta(now);
+  const minutes = minutesNowInJakarta(now);
+  const todaySchedule = getScheduleForDate(today, weeklyHours);
+  const todayRange =
+    todaySchedule && !todaySchedule.isClosed ? parseTimeRange(todaySchedule.hours) : null;
+
+  if (todayRange && minutes >= todayRange.start && minutes < todayRange.end) {
+    return { isOpen: true, label: `Buka · tutup pukul ${formatMinutes(todayRange.end)}` };
+  }
+  if (todayRange && minutes < todayRange.start) {
+    return {
+      isOpen: false,
+      label: `Tutup · buka hari ini pukul ${formatMinutes(todayRange.start)}`
+    };
+  }
+
+  for (let offset = 1; offset <= 7; offset++) {
+    const date = addDays(today, offset);
+    const schedule = getScheduleForDate(date, weeklyHours);
+    const range = schedule && !schedule.isClosed ? parseTimeRange(schedule.hours) : null;
+    if (schedule && range) {
+      const when = offset === 1 ? 'besok' : `hari ${schedule.dayNameId}`;
+      return {
+        isOpen: false,
+        label: `Tutup · buka ${when} pukul ${formatMinutes(range.start)}`
+      };
+    }
+  }
+  return { isOpen: false, label: 'Tutup' };
+}

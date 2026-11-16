@@ -40,26 +40,27 @@ import { BookingConflictError, getBookingStore } from '../services/bookingStore'
 
 export type BookingPortalTab = 'dealing-room-1' | 'dealing-room-2' | 'floortime';
 
-interface RoomAndFloortimeBookingProps {
+interface BookingPortalModalProps {
   initialRooms: DealingRoom[];
   initialShifts: FloortimeSlot[];
   weeklyHours: OfficeDaySchedule[];
   opsContact: OfficeStaffContact;
   isPortalOpen: boolean;
   activeTab: BookingPortalTab;
-  onOpenPortal: (tab?: BookingPortalTab) => void;
+  /** Dipanggil setelah reservasi/pendaftaran berhasil disimpan. */
+  onBookingSaved?: () => void;
   onClosePortal: () => void;
   onChangeTab: (tab: BookingPortalTab) => void;
 }
 
-export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = ({
+export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
   initialRooms,
   initialShifts,
   weeklyHours,
   opsContact,
   isPortalOpen,
   activeTab,
-  onOpenPortal,
+  onBookingSaved,
   onClosePortal,
   onChangeTab
 }) => {
@@ -72,7 +73,6 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [copiedOfficePhone, setCopiedOfficePhone] = useState<boolean>(false);
 
   // Room booking form state
   const [selectedSlotTime, setSelectedSlotTime] = useState<string>('');
@@ -178,14 +178,6 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
     };
   }, [isPortalOpen, onClosePortal]);
 
-  const handleCopyOfficePhone = () => {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(OFFICE_IDENTITY.phoneDisplay).catch(() => {});
-    }
-    setCopiedOfficePhone(true);
-    setTimeout(() => setCopiedOfficePhone(false), 2000);
-  };
-
   const handleSelectRoomSlot = (time: string) => {
     setSelectedSlotTime(time);
     setRoomFeedback(null);
@@ -259,6 +251,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
     }
     await loadBookings(bookingDate);
     setIsSaving(false);
+    onBookingSaved?.();
 
     const waText = `Halo Mas Amat (${opsContact.staffName}), saya ${advisor} telah melakukan reservasi ${roomName} pada tanggal ${bookingDate} jam ${slotTime} WIB untuk keperluan: ${agenda}. Mohon konfirmasinya, terima kasih.`;
     const waUrl = buildWhatsAppChatUrl(opsContact.whatsappNumber, waText);
@@ -328,6 +321,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
     }
     await loadBookings(bookingDate);
     setIsSaving(false);
+    onBookingSaved?.();
 
     const waText = `Halo Mas Amat (${opsContact.staffName}), saya ${advisor} mengajukan Floortime Request untuk ${shiftTitle} tanggal ${bookingDate} dengan fokus koridor ${corridor}. Terima kasih.`;
     const waUrl = buildWhatsAppChatUrl(opsContact.whatsappNumber, waText);
@@ -340,229 +334,26 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
     setFtAdvisorName('');
   };
 
-  const totalOpenRoomSlots = dateError
-    ? 0
-    : rooms.reduce(
-        (sum, r) => sum + r.slots.filter((s) => s.status === 'Tersedia').length,
-        0
-      );
-
   return (
     <>
-      {/* Sub-Section 03 on Main Display: Weekly Operating Hours & Office Location + Phone 021 3873 9073 */}
-      <section
-        id="jam-operasional"
-        className="py-12 sm:py-16 bg-gradient-to-br from-[#FEF9C3]/85 via-[#FEFCE8] to-white border-b-2 border-amber-300 scroll-mt-20"
-      >
-        <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
-            <div>
-              <p className="text-xs font-bold text-amber-900 tracking-wide mb-1.5">
-                Sub-Bagian 03 · Jadwal Operasional Mingguan & Lokasi Kantor
-              </p>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 text-balance">
-                Jam Operasional & Informasi Kantor Brighton HUB Cibubur
-              </h2>
-              <p className="mt-2 text-base text-slate-700 max-w-2xl">
-                Jadwal pelayanan kantor hari Minggu hingga Sabtu beserta nomor telepon resmi dan alamat lengkap kantor di Kota Wisata Cibubur.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => onOpenPortal('dealing-room-1')}
-              className="inline-flex items-center gap-2 px-5 py-3 text-xs font-bold text-[#FACC15] bg-slate-950 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-sm self-start"
-            >
-              <Calendar className="w-4 h-4 text-[#FACC15]" />
-              Buka Portal Reservasi Ruang & Jadwal
-              <ArrowUpRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left 7 Columns: 7-Day Operating Schedule (Sunday - Saturday) */}
-            <div className="lg:col-span-7 bg-white border-2 border-amber-300 rounded-2xl p-6 shadow-2xs relative overflow-hidden">
-              <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-[#FACC15] via-amber-400 to-[#EAB308]" />
-              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 pb-4 border-b border-amber-200 pt-1">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-950 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-700 shrink-0" />
-                    Jam Operasional Kantor (Minggu – Sabtu)
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Waktu layanan administrasi operasional, keuangan, dan kurir dokumen kantor.
-                  </p>
-                </div>
-                <span className="text-xs font-mono font-bold text-amber-950 whitespace-nowrap shrink-0">
-                  Zona Waktu: WIB
-                </span>
-              </div>
-
-              <div className="divide-y divide-amber-200/80 mt-2">
-                {weeklyHours.map((item) => (
-                  <div
-                    key={item.dayId}
-                    className={`py-3.5 px-3 rounded-xl my-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-colors ${
-                      item.isClosed
-                        ? 'bg-slate-100/90 text-slate-600'
-                        : 'bg-[#FEFCE8]/70 hover:bg-[#FEF9C3]/80 text-slate-900'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-950">
-                          {item.dayNameId}
-                        </span>
-                        <span className="text-xs text-slate-500 font-medium">
-                          ({item.dayNameEn})
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-0.5">{item.note}</p>
-                    </div>
-
-                    <div className="sm:text-right shrink-0">
-                      {item.isClosed ? (
-                        <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-red-700 whitespace-nowrap">
-                          <span className="w-2 h-2 rounded-full bg-red-600 shrink-0" />
-                          Closed · Tutup
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 font-mono text-sm font-bold text-slate-950 whitespace-nowrap">
-                          <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
-                          {item.hours}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right 5 Columns: Office Address, Phone Number (021 3873 9073) & Off-Screen Portal Launcher */}
-            <div className="lg:col-span-5 space-y-6">
-              {/* Office Address & Phone Card */}
-              <div className="bg-white border-2 border-amber-300 rounded-2xl p-6 shadow-2xs relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-[#FACC15] to-amber-500" />
-                <div className="pt-1">
-                  <p className="text-xs font-mono font-bold text-amber-900">
-                    ALAMAT & TELEPON RESMI KANTOR
-                  </p>
-                  <h3 className="text-xl font-bold text-slate-950 mt-1 flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-amber-700 shrink-0" />
-                    {OFFICE_IDENTITY.name}
-                  </h3>
-
-                  <div className="mt-4 pt-4 border-t border-amber-200 space-y-4">
-                    <div className="flex items-start gap-3">
-                      <MapPin className="w-4 h-4 text-amber-800 shrink-0 mt-1" />
-                      <div>
-                        <p className="text-xs font-bold text-slate-600">
-                          Alamat Kantor:
-                        </p>
-                        <p className="text-sm font-semibold text-slate-950 mt-0.5 leading-snug">
-                          {OFFICE_IDENTITY.address}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-[#FEF08A] border-2 border-amber-400 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-start gap-2.5 shrink-0">
-                        <Phone className="w-4 h-4 text-slate-950 shrink-0 mt-1" />
-                        <div>
-                          <p className="text-xs font-bold text-amber-950">
-                            Nomor Telepon Kantor:
-                          </p>
-                          <p className="text-lg font-mono font-bold text-slate-950 tracking-tight whitespace-nowrap">
-                            {OFFICE_IDENTITY.phoneDisplay}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={handleCopyOfficePhone}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-950 bg-white hover:bg-amber-50 border border-amber-400 rounded-lg transition-colors cursor-pointer"
-                        >
-                          {copiedOfficePhone ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-700" />
-                              <span className="text-emerald-800">Tersalin</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Salin</span>
-                            </>
-                          )}
-                        </button>
-                        <a
-                          href={OFFICE_IDENTITY.phoneHref}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-[#FACC15] bg-slate-950 hover:bg-slate-800 rounded-lg transition-colors"
-                        >
-                          <Phone className="w-3.5 h-3.5" />
-                          Hubungi
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Secondary Drawer Launcher Card (keeps Dealing Room & Floortime tabs off main display) */}
-              <div className="bg-gradient-to-br from-[#FEF08A] via-[#FEF9C3] to-white border-2 border-amber-400 rounded-2xl p-6 shadow-2xs">
-                <div className="flex items-center justify-between gap-2 text-xs font-mono font-bold text-amber-950 mb-2">
-                  <span>PORTAL FASILITAS INTERNAL</span>
-                  <span>
-                    {totalOpenRoomSlots} SLOT TERSEDIA ·{' '}
-                    {bookingDate === today ? 'HARI INI' : bookingDate}
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-950">
-                  Reservasi Ruang Diskusi & Jadwal Jaga Advisor
-                </h3>
-                <p className="text-xs text-slate-800 mt-1.5 leading-relaxed">
-                  Untuk menjaga tampilan utama tetap ringkas, menu pemesanan ruang diskusi klien (Lantai 1 & Lantai 2) serta pendaftaran jadwal jaga harian agen ditempatkan pada panel khusus.
-                </p>
-                <div className="mt-4 pt-4 border-t border-amber-300 flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-amber-950">
-                    PIC Operasional: {opsContact.staffName}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onOpenPortal('dealing-room-1')}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] border border-amber-500 rounded-xl transition-colors cursor-pointer"
-                  >
-                    <Calendar className="w-3.5 h-3.5" />
-                    Buka Menu Reservasi
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Off-Screen Modal / Drawer containing the 2 "Dealing Room" tabs & "Floortime Request" tab */}
       {isPortalOpen && (
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="portal-reservasi-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/65 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/50 backdrop-blur-xs overflow-y-auto"
         >
-          <div className="w-full max-w-4xl bg-white border-2 border-amber-400 rounded-2xl shadow-xl overflow-hidden my-auto">
+          <div className="w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden my-auto">
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-[#FEF08A] via-[#FEF9C3] to-white px-6 py-4 border-b-2 border-amber-300 flex items-center justify-between gap-4">
+            <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-mono font-bold text-amber-900">
-                  PORTAL RESERVASI INTERNAL · BRIGHTON HUB CIBUBUR
-                </p>
+                <p className="text-xs font-semibold text-amber-700">Portal reservasi</p>
                 <h2
                   id="portal-reservasi-title"
                   className="text-lg sm:text-xl font-bold text-slate-950"
                 >
-                  Jadwal Dealing Room & Floortime Request
+                  Dealing Room & Floortime
                 </h2>
               </div>
               <button
@@ -570,19 +361,19 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                 onClick={onClosePortal}
                 autoFocus
                 aria-label="Tutup panel reservasi (Esc)"
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-white hover:bg-amber-100 border border-amber-300 rounded-xl transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
-                Tutup Panel
+                Tutup
               </button>
             </div>
 
             {/* Modal Sub-Header: 3 Tabs (Dealing Room 1, Dealing Room 2, Floortime Request) + Date Picker */}
-            <div className="px-6 py-3.5 bg-[#FEFCE8] border-b border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="px-6 py-3.5 bg-stone-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div
                 role="tablist"
                 aria-label="Pilih tab Dealing Room atau Floortime Request"
-                className="flex flex-wrap items-center gap-1.5 p-1 bg-[#FEF08A] border border-amber-300 rounded-xl"
+                className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl"
               >
                 <button
                   type="button"
@@ -594,8 +385,8 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                   }}
                   className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     activeTab === 'dealing-room-1'
-                      ? 'bg-slate-950 text-[#FACC15] shadow-2xs'
-                      : 'text-slate-900 hover:bg-white/70'
+                      ? 'bg-white text-slate-950 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-950'
                   }`}
                 >
                   Dealing Room 1
@@ -610,8 +401,8 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                   }}
                   className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     activeTab === 'dealing-room-2'
-                      ? 'bg-slate-950 text-[#FACC15] shadow-2xs'
-                      : 'text-slate-900 hover:bg-white/70'
+                      ? 'bg-white text-slate-950 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-950'
                   }`}
                 >
                   Dealing Room 2
@@ -626,8 +417,8 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                   }}
                   className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
                     activeTab === 'floortime'
-                      ? 'bg-slate-950 text-[#FACC15] shadow-2xs'
-                      : 'text-slate-900 hover:bg-white/70'
+                      ? 'bg-white text-slate-950 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-950'
                   }`}
                 >
                   Floortime Request
@@ -635,7 +426,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
               </div>
 
               <div className="flex items-center gap-2 text-xs">
-                <Calendar className="w-4 h-4 text-amber-800 shrink-0" />
+                <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
                 <label
                   htmlFor="booking-date-picker"
                   className="font-bold text-slate-800 whitespace-nowrap"
@@ -648,7 +439,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                   value={bookingDate}
                   min={today}
                   onChange={(e) => handleChangeDate(e.target.value)}
-                  className="text-xs font-mono font-bold text-slate-900 bg-white border border-amber-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="text-xs font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
             </div>
@@ -680,9 +471,9 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                     </p>
                   )}
                   {store.mode === 'local' && !dateError && (
-                    <p className="p-3 rounded-xl border border-amber-300 bg-[#FEFCE8] text-[11px] text-amber-950">
-                      Mode lokal: reservasi tersimpan di browser ini saja. Hubungkan Supabase
-                      (lihat README) agar jadwal terlihat sama oleh semua advisor.
+                    <p className="p-3 rounded-xl border border-slate-200 bg-stone-50 text-[11px] text-slate-600">
+                      Data reservasi saat ini hanya tersimpan di perangkat ini.
+                      Konfirmasikan reservasi ke Operasional lewat WhatsApp setelah menyimpan.
                     </p>
                   )}
                 </div>
@@ -692,14 +483,11 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   {/* Room Schedule Slots */}
                   <div className="lg:col-span-7 space-y-4">
-                    <div className="p-4 rounded-xl bg-[#FEF9C3]/70 border border-amber-300">
-                      <span className="text-xs font-mono font-bold text-amber-900">
-                        FASILITAS RUANG DISKUSI KLIEN
-                      </span>
-                      <h3 className="text-lg font-bold text-slate-950 mt-0.5">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-950">
                         {currentRoom.name}
                       </h3>
-                      <p className="text-xs text-slate-700 mt-1">
+                      <p className="text-xs text-slate-600 mt-1">
                         {currentRoom.floorAndLocation} · Kapasitas{' '}
                         <strong className="font-mono">{currentRoom.capacityPax}</strong> orang ·{' '}
                         {currentRoom.facilities}
@@ -717,12 +505,12 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         return (
                           <div
                             key={slot.time}
-                            className={`p-3.5 rounded-xl border-2 text-xs transition-colors ${
+                            className={`p-3.5 rounded-xl border text-xs transition-colors ${
                               isUnavailable
-                                ? 'bg-slate-50 border-slate-200 text-slate-500'
+                                ? 'bg-slate-50 border-slate-200 text-slate-400'
                                 : isSelected
-                                ? 'bg-[#FEF08A] border-amber-500 text-slate-950'
-                                : 'bg-white border-amber-200 text-slate-800'
+                                ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-400 text-slate-950'
+                                : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2">
@@ -737,7 +525,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                                 <button
                                   type="button"
                                   onClick={() => handleSelectRoomSlot(slot.time)}
-                                  className="text-amber-950 hover:text-slate-950 font-bold underline cursor-pointer"
+                                  className="text-slate-900 hover:text-amber-700 font-bold underline underline-offset-2 cursor-pointer"
                                 >
                                   {isSelected ? 'Dipilih' : 'Pilih Jam'}
                                 </button>
@@ -767,11 +555,11 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                   {/* Dealing Room Booking Form */}
                   <form
                     onSubmit={handleBookRoom}
-                    className="lg:col-span-5 p-5 rounded-xl bg-[#FEFCE8] border-2 border-amber-300 space-y-4"
+                    className="lg:col-span-5 p-5 rounded-xl bg-stone-50 border border-slate-200 space-y-4"
                     noValidate
                   >
                     <h4 className="text-sm font-bold text-slate-950 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-800" />
+                      <Clock className="w-4 h-4 text-slate-500" />
                       Formulir Reservasi {currentRoom.tabLabel}
                     </h4>
 
@@ -786,7 +574,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         id="select-room-slot"
                         value={selectedSlotTime}
                         onChange={(e) => setSelectedSlotTime(e.target.value)}
-                        className="w-full px-3 py-2 text-xs font-mono bg-white border border-amber-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
                       >
                         {!selectedSlotTime && (
                           <option value="">Tidak ada jam tersedia</option>
@@ -816,7 +604,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         value={roomAdvisorName}
                         onChange={(e) => setRoomAdvisorName(e.target.value)}
                         placeholder="Contoh: Hendra Wijaya"
-                        className="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
                       />
                     </div>
 
@@ -833,7 +621,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         value={roomAgenda}
                         onChange={(e) => setRoomAgenda(e.target.value)}
                         placeholder="Contoh: Negosiasi KPR Klien Kota Wisata"
-                        className="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
                       />
                     </div>
 
@@ -857,7 +645,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                             href={roomFeedback.waUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] rounded-lg transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg transition-colors"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
                             Kirim Konfirmasi ke WhatsApp Amat
@@ -870,7 +658,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                     <button
                       type="submit"
                       disabled={isSaving || isLoading || Boolean(dateError)}
-                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] border border-amber-400 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSaving ? 'Menyimpan…' : `Simpan Reservasi ${currentRoom.tabLabel}`}
                     </button>
@@ -889,10 +677,10 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                       return (
                         <div
                           key={shift.id}
-                          className={`p-4 rounded-xl border-2 transition-colors ${
+                          className={`p-4 rounded-xl border transition-colors ${
                             isSelected
-                              ? 'bg-[#FEF08A]/75 border-amber-500'
-                              : 'bg-white border-amber-200'
+                              ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-400'
+                              : 'bg-white border-slate-200'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -907,7 +695,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                             <div className="text-right">
                               <span
                                 className={`text-xs font-mono font-bold ${
-                                  isFull ? 'text-amber-900' : 'text-emerald-800'
+                                  isFull ? 'text-amber-700' : 'text-emerald-700'
                                 }`}
                               >
                                 {isActiveDay
@@ -921,7 +709,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                                     setSelectedShiftId(shift.id);
                                     setFtFeedback(null);
                                   }}
-                                  className="block ml-auto mt-0.5 text-xs font-bold text-amber-950 hover:text-slate-950 underline cursor-pointer"
+                                  className="block ml-auto mt-0.5 text-xs font-bold text-slate-900 hover:text-amber-700 underline underline-offset-2 cursor-pointer"
                                 >
                                   {isSelected ? 'Sesi Dipilih' : 'Pilih Sesi'}
                                 </button>
@@ -929,7 +717,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                             </div>
                           </div>
 
-                          <div className="mt-3 pt-2.5 border-t border-amber-200/80 space-y-1">
+                          <div className="mt-3 pt-2.5 border-t border-slate-200 space-y-1">
                             <p className="text-[11px] font-bold text-slate-700">
                               Advisor Terdaftar:
                             </p>
@@ -956,11 +744,11 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                   {/* Floortime Request Form */}
                   <form
                     onSubmit={handleBookFloortime}
-                    className="lg:col-span-5 p-5 rounded-xl bg-[#FEFCE8] border-2 border-amber-300 space-y-4"
+                    className="lg:col-span-5 p-5 rounded-xl bg-stone-50 border border-slate-200 space-y-4"
                     noValidate
                   >
                     <h4 className="text-sm font-bold text-slate-950 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-amber-800" />
+                      <Users className="w-4 h-4 text-slate-500" />
                       Formulir Floortime Request
                     </h4>
 
@@ -975,7 +763,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         id="select-floortime-shift"
                         value={selectedShiftId}
                         onChange={(e) => setSelectedShiftId(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
                       >
                         {shifts.map((s) => (
                           <option
@@ -1006,7 +794,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         value={ftAdvisorName}
                         onChange={(e) => setFtAdvisorName(e.target.value)}
                         placeholder="Contoh: Clarissa Tanoto"
-                        className="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
                       />
                     </div>
 
@@ -1021,7 +809,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                         id="floortime-corridor-select"
                         value={ftCorridor}
                         onChange={(e) => setFtCorridor(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
                       >
                         <option value="Kota Wisata">Kota Wisata</option>
                         <option value="CitraGran & Ruko">CitraGran & Ruko</option>
@@ -1050,7 +838,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                             href={ftFeedback.waUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] rounded-lg transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg transition-colors"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
                             Konfirmasi Floortime ke WhatsApp Amat
@@ -1063,7 +851,7 @@ export const RoomAndFloortimeBooking: React.FC<RoomAndFloortimeBookingProps> = (
                     <button
                       type="submit"
                       disabled={isSaving || isLoading || Boolean(dateError)}
-                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-[#FACC15] hover:bg-[#EAB308] border border-amber-400 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSaving ? 'Menyimpan…' : 'Kirim Floortime Request'}
                     </button>

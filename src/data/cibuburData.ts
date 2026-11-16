@@ -116,9 +116,9 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     dayId: 'sun',
     dayNameId: 'Minggu',
     dayNameEn: 'Sunday',
-    hours: 'Tutup (Closed)',
+    hours: 'Tutup',
     isClosed: true,
-    note: 'Layanan kantor tutup · Chat WhatsApp tetap dapat dikirim'
+    note: 'Pesan WhatsApp tetap bisa dikirim'
   },
   {
     dayId: 'mon',
@@ -126,7 +126,7 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     dayNameEn: 'Monday',
     hours: '08:00 - 17:00',
     isClosed: false,
-    note: 'Operasional penuh · Ruang konsultasi & layanan dokumen aktif'
+    note: ''
   },
   {
     dayId: 'tue',
@@ -134,7 +134,7 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     dayNameEn: 'Tuesday',
     hours: '08:00 - 17:00',
     isClosed: false,
-    note: 'Operasional penuh · Ruang konsultasi & layanan dokumen aktif'
+    note: ''
   },
   {
     dayId: 'wed',
@@ -142,7 +142,7 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     dayNameEn: 'Wednesday',
     hours: '08:00 - 17:00',
     isClosed: false,
-    note: 'Operasional penuh · Ruang konsultasi & layanan dokumen aktif'
+    note: ''
   },
   {
     dayId: 'thu',
@@ -150,7 +150,7 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     dayNameEn: 'Thursday',
     hours: '08:00 - 17:00',
     isClosed: false,
-    note: 'Operasional penuh · Ruang konsultasi & layanan dokumen aktif'
+    note: ''
   },
   {
     dayId: 'fri',
@@ -158,7 +158,7 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     dayNameEn: 'Friday',
     hours: '08:00 - 17:00',
     isClosed: false,
-    note: 'Operasional penuh · Batas klaim komisi pukul 15:00 WIB'
+    note: 'Batas klaim komisi pukul 15:00'
   },
   {
     dayId: 'sat',
@@ -166,7 +166,7 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     dayNameEn: 'Saturday',
     hours: '08:00 - 15:00',
     isClosed: false,
-    note: 'Operasional akhir pekan · Layanan hingga pukul 15:00 WIB'
+    note: ''
   }
 ];
 

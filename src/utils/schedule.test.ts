@@ -9,7 +9,10 @@ import {
   buildRoomsForDate,
   buildShiftsForDate,
   isShiftActiveOnDate,
-  buildHoursSummary
+  buildHoursSummary,
+  getOfficeStatus,
+  formatLongDateId,
+  greetingForMinutes
 } from './schedule';
 import {
   WEEKLY_OFFICE_HOURS,
@@ -75,4 +78,29 @@ test('buildHoursSummary groups days with the same hours', () => {
     buildHoursSummary(WEEKLY_OFFICE_HOURS),
     'Senin – Jumat: 08:00 – 17:00 WIB · Sabtu: 08:00 – 15:00 WIB · Minggu: Tutup'
   );
+});
+
+test('getOfficeStatus follows WIB office hours', () => {
+  // Senin 2026-11-16 10:00 WIB = 03:00 UTC
+  assert.deepEqual(getOfficeStatus(WEEKLY_OFFICE_HOURS, new Date('2026-11-16T03:00:00Z')), {
+    isOpen: true,
+    label: 'Buka · tutup pukul 17:00'
+  });
+  // Senin 07:00 WIB
+  assert.equal(
+    getOfficeStatus(WEEKLY_OFFICE_HOURS, new Date('2026-11-16T00:00:00Z')).label,
+    'Tutup · buka hari ini pukul 08:00'
+  );
+  // Sabtu 16:00 WIB -> Minggu tutup -> buka hari Senin
+  assert.equal(
+    getOfficeStatus(WEEKLY_OFFICE_HOURS, new Date('2026-11-21T09:00:00Z')).label,
+    'Tutup · buka hari Senin pukul 08:00'
+  );
+  // Senin 18:00 WIB -> besok
+  assert.equal(
+    getOfficeStatus(WEEKLY_OFFICE_HOURS, new Date('2026-11-16T11:00:00Z')).label,
+    'Tutup · buka besok pukul 08:00'
+  );
+  assert.equal(formatLongDateId('2026-11-17'), 'Selasa, 17 November 2026');
+  assert.equal(greetingForMinutes(7 * 60), 'Selamat pagi');
 });
