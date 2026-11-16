@@ -2,31 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildWhatsAppChatUrl,
-  filterStaffByDivision,
-  getNextMorningInspiration,
-  cycleStaffAvailability,
   bookConsultationRoomSlot,
   bookFloortimeShift
 } from './hubLogic';
 import {
-  MORNING_INSPIRATIONS,
   OFFICE_STAFF_CONTACTS,
   OFFICE_IDENTITY,
   WEEKLY_OFFICE_HOURS,
   INITIAL_DEALING_ROOMS,
-  INITIAL_FLOORTIME_SHIFTS,
-  STAFF_STATUS_LEGEND
+  INITIAL_FLOORTIME_SHIFTS
 } from '../data/cibuburData';
-
-test('staff status legend defines Online, Busy (Sibuk), and Out of Office (Di Luar Kantor) clearly', () => {
-  assert.equal(STAFF_STATUS_LEGEND.length, 3);
-  assert.equal(STAFF_STATUS_LEGEND[0].status, 'Online');
-  assert.equal(STAFF_STATUS_LEGEND[0].englishLabel, 'Online');
-  assert.equal(STAFF_STATUS_LEGEND[1].status, 'Sibuk');
-  assert.equal(STAFF_STATUS_LEGEND[1].englishLabel, 'Busy');
-  assert.equal(STAFF_STATUS_LEGEND[2].status, 'Di Luar Kantor');
-  assert.equal(STAFF_STATUS_LEGEND[2].englishLabel, 'Out of Office');
-});
 
 test('office identity and weekly hours match exact specifications', () => {
   assert.equal(OFFICE_IDENTITY.phoneDisplay, '021 3873 9073');
@@ -41,19 +26,15 @@ test('office identity and weekly hours match exact specifications', () => {
   assert.equal(saturday?.hours, '08:00 - 15:00');
 });
 
-test('staff contacts match Rahmat Hidayat (Amat), Hania Sari (Hania), and Apriansyah Ilyas (Apry)', () => {
-  const ops = OFFICE_STAFF_CONTACTS.find((c) => c.division === 'Operasional');
-  const fin = OFFICE_STAFF_CONTACTS.find((c) => c.division === 'Keuangan');
-  const msg = OFFICE_STAFF_CONTACTS.find((c) => c.division === 'Kurir & Dokumen');
-
-  assert.equal(ops?.staffName, 'Rahmat Hidayat (Amat)');
-  assert.equal(ops?.whatsappNumber, '6282124962159');
-
-  assert.equal(fin?.staffName, 'Hania Sari (Hania)');
-  assert.equal(fin?.whatsappNumber, '6287784865791');
-
-  assert.equal(msg?.staffName, 'Apriansyah Ilyas (Apry)');
-  assert.equal(msg?.whatsappNumber, '62895391196166');
+test('staff contacts show OPERASIONAL, FINANCE, MESSENGER with name and number', () => {
+  assert.deepEqual(
+    OFFICE_STAFF_CONTACTS.map((c) => [c.division, c.staffName, c.whatsappNumber]),
+    [
+      ['OPERASIONAL', 'Rahmat Hidayat (Amat)', '6282124962159'],
+      ['FINANCE', 'Hania Sari (Hania)', '6287784865791'],
+      ['MESSENGER', 'Apriansyah Ilyas (Apry)', '62895391196166']
+    ]
+  );
 });
 
 test('buildWhatsAppChatUrl strips non-digits and encodes Bahasa Indonesia message', () => {
@@ -65,18 +46,6 @@ test('buildWhatsAppChatUrl strips non-digits and encodes Bahasa Indonesia messag
     url,
     'https://wa.me/6282124962159?text=Halo%20Mas%20Amat%20Brighton%20HUB%20Cibubur'
   );
-});
-
-test('filterStaffByDivision and cycleStaffAvailability work accurately', () => {
-  const financeOnly = filterStaffByDivision(OFFICE_STAFF_CONTACTS, 'Keuangan');
-  assert.equal(financeOnly.length, 1);
-  assert.equal(financeOnly[0].staffName, 'Hania Sari (Hania)');
-
-  const step1 = getNextMorningInspiration(MORNING_INSPIRATIONS, 0);
-  assert.equal(step1.nextIndex, 1);
-
-  const toBusy = cycleStaffAvailability('Online');
-  assert.equal(toBusy.status, 'Sibuk');
 });
 
 test('bookConsultationRoomSlot books Dealing Room 1 and Dealing Room 2 accurately', () => {
@@ -98,13 +67,34 @@ test('bookConsultationRoomSlot books Dealing Room 1 and Dealing Room 2 accuratel
   assert.equal(updatedSlot?.bookedBy, 'Clarissa Tanoto');
 });
 
+test('bookConsultationRoomSlot rejects booked and out-of-hours slots', () => {
+  const rooms = INITIAL_DEALING_ROOMS.map((r) => ({
+    ...r,
+    slots: r.slots.map((slot) =>
+      slot.time === '15:00 - 17:00' ? { ...slot, status: 'Di Luar Jam' as const } : slot
+    )
+  }));
+  const outside = bookConsultationRoomSlot(rooms, 'dealing-room-1', '15:00 - 17:00', 'Clarissa', 'Diskusi KPR');
+  assert.equal(outside.success, false);
+
+  const first = bookConsultationRoomSlot(rooms, 'dealing-room-1', '08:00 - 10:00', 'Clarissa', 'Diskusi KPR');
+  const second = bookConsultationRoomSlot(first.updatedRooms, 'dealing-room-1', '08:00 - 10:00', 'Hendra', 'Review PPJB');
+  assert.equal(second.success, false);
+  assert.match(second.error ?? '', /sudah terisi/);
+});
+
 test('bookFloortimeShift registers advisor up to quotaMax and prevents duplicates', () => {
-  const res1 = bookFloortimeShift(
-    INITIAL_FLOORTIME_SHIFTS,
-    'ft-pagi',
-    'Clarissa Tanoto',
-    'Kota Wisata'
-  );
+  const res1 = bookFloortimeShift(INITIAL_FLOORTIME_SHIFTS, 'ft-pagi', 'Clarissa Tanoto', 'Kota Wisata');
   assert.equal(res1.success, true);
-  assert.equal(res1.updatedShifts[0].registeredAdvisors.length, 3);
+  assert.equal(res1.updatedShifts[0].registeredAdvisors.length, 1);
+
+  const dup = bookFloortimeShift(res1.updatedShifts, 'ft-pagi', 'clarissa tanoto', 'Kota Wisata');
+  assert.equal(dup.success, false);
+
+  const r2 = bookFloortimeShift(res1.updatedShifts, 'ft-pagi', 'Hendra', 'Legenda Wisata');
+  const r3 = bookFloortimeShift(r2.updatedShifts, 'ft-pagi', 'Nadia', 'CitraGran');
+  const full = bookFloortimeShift(r3.updatedShifts, 'ft-pagi', 'Reza', 'Ruko');
+  assert.equal(r3.updatedShifts[0].registeredAdvisors.length, 3);
+  assert.equal(full.success, false);
+  assert.match(full.error ?? '', /penuh/);
 });

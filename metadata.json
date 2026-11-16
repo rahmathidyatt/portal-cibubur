@@ -1,6 +1,4 @@
 {
   "name": "Brighton HUB Cibubur — Operations & Advisor Portal",
-  "description": "Operational information hub, property advisor directory, integrated WhatsApp dispatch tools, consultation room booking, and transaction calculators for Brighton HUB Cibubur.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "description": "Portal informasi operasional Brighton HUB Cibubur: inspirasi pagi, kontak WhatsApp staf, jam operasional, reservasi Dealing Room, dan jadwal floortime."
 }

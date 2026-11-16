@@ -3,197 +3,241 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { MessageCircle, Menu, X, Phone } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { MessageCircle, Menu, X, Phone, LogIn, LogOut, ShieldCheck } from 'lucide-react';
 import {
-  MORNING_INSPIRATIONS,
   OFFICE_STAFF_CONTACTS,
   OFFICE_IDENTITY,
   WEEKLY_OFFICE_HOURS,
   INITIAL_DEALING_ROOMS,
   INITIAL_FLOORTIME_SHIFTS
 } from './data/cibuburData';
-import { MorningInspirationHero } from './components/MorningInspirationHero';
+import { TodayOverview } from './components/TodayOverview';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
-import {
-  RoomAndFloortimeBooking,
-  BookingPortalTab
-} from './components/RoomAndFloortimeBooking';
+import { OfficeHoursLocation } from './components/OfficeHoursLocation';
+import { ReservationPage } from './components/ReservationPage';
+import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
+import { LoginDialog } from './components/LoginDialog';
+import { AdminProvider, useAdmin } from './hooks/useAdmin';
+import { useHashRoute } from './hooks/useHashRoute';
 import { buildWhatsAppChatUrl } from './utils/hubLogic';
+import { buildHoursSummary } from './utils/schedule';
+
+const HOURS_SUMMARY = buildHoursSummary(WEEKLY_OFFICE_HOURS);
+
+const NAV_LINKS = [
+  { href: '#beranda', label: 'Beranda' },
+  { href: '#kontak-staf', label: 'Kontak staf' },
+  { href: '#jam-operasional', label: 'Jam & lokasi' }
+];
 
 export default function App() {
+  return (
+    <AdminProvider>
+      <PortalApp />
+    </AdminProvider>
+  );
+}
+
+function PortalApp() {
+  const { isAdmin, session, signOut } = useAdmin();
+  const { route } = useHashRoute();
+  const [loginOpen, setLoginOpen] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [isPortalOpen, setIsPortalOpen] = useState<boolean>(false);
-  const [activePortalTab, setActivePortalTab] =
-    useState<BookingPortalTab>('dealing-room-1');
+  const handleCloseLogin = useCallback(() => setLoginOpen(false), []);
+
+  // Tutup menu HP setiap kali berpindah halaman.
+  useEffect(() => setMobileMenuOpen(false), [route]);
 
   const opsStaff = OFFICE_STAFF_CONTACTS[0];
-  const opsWhatsAppUrl = buildWhatsAppChatUrl(
-    opsStaff.whatsappNumber,
-    opsStaff.defaultMessage
-  );
-
-  const handleOpenPortal = (tab: BookingPortalTab = 'dealing-room-1') => {
-    setActivePortalTab(tab);
-    setIsPortalOpen(true);
-    setMobileMenuOpen(false);
-  };
+  const opsWhatsAppUrl = buildWhatsAppChatUrl(opsStaff.whatsappNumber, opsStaff.defaultMessage);
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-slate-900">
-      {/* Strict 3-Zone Top Bar Contract — Vibrant White & Golden-Yellow Palette */}
-      <header className="sticky top-0 z-40 bg-gradient-to-r from-[#FEF08A] via-[#FEF9C3] to-white border-b-2 border-amber-300 shadow-2xs">
-        <div className="max-w-[1140px] mx-auto flex items-center justify-between gap-8 px-4 sm:px-6 py-3.5">
-          {/* Zone 1: Single text element wordmark */}
-          <a
-            href="#"
-            className="text-base sm:text-lg font-bold tracking-tight text-slate-950 whitespace-nowrap shrink-0 font-display"
-          >
-            Brighton HUB Cibubur
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
+        <div className="max-w-[1140px] mx-auto flex items-center justify-between gap-4 px-4 sm:px-6 py-3">
+          <a href="#beranda" className="flex items-center gap-2.5 shrink-0">
+            <span
+              aria-hidden="true"
+              className="grid place-items-center w-8 h-8 rounded-lg bg-amber-400 text-sm font-bold text-slate-950 font-display"
+            >
+              B
+            </span>
+            <span className="text-base font-bold tracking-tight text-slate-950 font-display whitespace-nowrap">
+              Brighton HUB Cibubur
+            </span>
           </a>
 
-          {/* Zone 2: 3 concise single-line navigation links matching the 3 main sub-sections */}
           <nav
-            aria-label="Navigasi Utama Brighton HUB Cibubur"
-            className="hidden md:flex items-center gap-6 text-sm font-bold text-slate-900"
+            aria-label="Navigasi utama"
+            className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600"
           >
-            <a
-              href="#inspirasi"
-              className="hover:text-amber-900 hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
-            >
-              Inspirasi Pagi
+            <a href={NAV_LINKS[0].href} className="hover:text-slate-950 transition-colors">
+              {NAV_LINKS[0].label}
             </a>
-            <a
-              href="#kontak-staf"
-              className="hover:text-amber-900 hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
-            >
-              Kontak Staf
-            </a>
-            <a
-              href="#jam-operasional"
-              className="hover:text-amber-900 hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0"
-            >
-              Jam & Lokasi
-            </a>
+            <ReservationMenu route={route} />
+            {NAV_LINKS.slice(1).map((link) => (
+              <a key={link.href} href={link.href} className="hover:text-slate-950 transition-colors">
+                {link.label}
+              </a>
+            ))}
           </nav>
 
-          {/* Zone 3: 1 primary action (Direct WhatsApp to Rahmat Hidayat / Amat — Operations) */}
           <div className="flex items-center gap-2 shrink-0">
             <a
               href={opsWhatsAppUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-[#FACC15] bg-slate-950 hover:bg-slate-800 rounded-xl transition-colors whitespace-nowrap shrink-0 shadow-2xs"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
             >
-              <MessageCircle className="w-3.5 h-3.5 text-[#FACC15]" />
-              Chat Operasional (Amat)
+              <MessageCircle className="w-3.5 h-3.5" />
+              Chat Operasional
             </a>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                title={`Masuk sebagai ${session?.email ?? 'admin'}`}
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 ring-1 ring-emerald-200 rounded-lg transition-colors cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Admin · Keluar
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Masuk staf
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-expanded={mobileMenuOpen}
-              aria-label="Buka menu navigasi seluler"
-              className="md:hidden p-2 text-slate-900 hover:text-slate-950 rounded-lg hover:bg-amber-200/70 transition-colors cursor-pointer"
+              aria-label={mobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
+              className="md:hidden p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Navigation Disclosure */}
         {mobileMenuOpen && (
           <nav
-            aria-label="Navigasi Seluler"
-            className="md:hidden border-t border-amber-300 bg-[#FEF9C3] px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-bold text-slate-900"
+            aria-label="Navigasi seluler"
+            className="md:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col text-sm font-semibold text-slate-700"
           >
-            <a
-              href="#inspirasi"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 hover:text-amber-900 whitespace-nowrap"
-            >
-              Inspirasi Pagi
+            <a href="#beranda" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-950">
+              Beranda
             </a>
-            <a
-              href="#kontak-staf"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 hover:text-amber-900 whitespace-nowrap"
-            >
-              Kontak Staf
-            </a>
-            <a
-              href="#jam-operasional"
-              onClick={() => setMobileMenuOpen(false)}
-              className="py-1 hover:text-amber-900 whitespace-nowrap"
-            >
-              Jam & Lokasi
-            </a>
-            <button
-              type="button"
-              onClick={() => handleOpenPortal('dealing-room-1')}
-              className="py-1 text-amber-950 underline underline-offset-4 whitespace-nowrap cursor-pointer"
-            >
-              Buka Menu Reservasi
-            </button>
+            <p className="pt-2 pb-1 text-xs font-semibold text-slate-400">Reservasi</p>
+            {RESERVATION_LINKS.map(({ href, label, Icon }) => (
+              <a
+                key={href}
+                href={href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 pl-3 inline-flex items-center gap-2 hover:text-slate-950"
+              >
+                <Icon className="w-4 h-4 text-amber-600" />
+                {label}
+              </a>
+            ))}
+            {NAV_LINKS.slice(1).map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 hover:text-slate-950"
+              >
+                {link.label}
+              </a>
+            ))}
+            <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col">
+              <a href={opsWhatsAppUrl} target="_blank" rel="noopener noreferrer" className="py-2 hover:text-slate-950">
+                Chat Operasional (WhatsApp)
+              </a>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    void signOut();
+                  }}
+                  className="py-2 text-left text-emerald-800 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Keluar dari mode admin
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setLoginOpen(true);
+                  }}
+                  className="py-2 text-left hover:text-slate-950 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Masuk staf
+                </button>
+              )}
+            </div>
           </nav>
         )}
       </header>
 
-      {/* Main Content — 3 Focused Sub-Sections */}
       <main className="flex-1">
-        {/* Sub-Section 1: Inspirasi Pagi (Morning Inspiration) */}
-        <MorningInspirationHero quotes={MORNING_INSPIRATIONS} />
-
-        {/* Sub-Section 2: Kontak Staf Kantor (Operasional: Amat, Keuangan: Hania, Kurir: Apry) */}
-        <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
-
-        {/* Sub-Section 3: Jam Operasional & Lokasi Kantor + Off-Screen Reservation Portal */}
-        <RoomAndFloortimeBooking
-          initialRooms={INITIAL_DEALING_ROOMS}
-          initialShifts={INITIAL_FLOORTIME_SHIFTS}
-          weeklyHours={WEEKLY_OFFICE_HOURS}
-          opsContact={opsStaff}
-          isPortalOpen={isPortalOpen}
-          activeTab={activePortalTab}
-          onOpenPortal={handleOpenPortal}
-          onClosePortal={() => setIsPortalOpen(false)}
-          onChangeTab={setActivePortalTab}
-        />
+        {route === 'beranda' ? (
+          <>
+            <TodayOverview weeklyHours={WEEKLY_OFFICE_HOURS} />
+            <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
+            <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
+          </>
+        ) : (
+          <ReservationPage
+            key={route}
+            view={route}
+            initialRooms={INITIAL_DEALING_ROOMS}
+            initialShifts={INITIAL_FLOORTIME_SHIFTS}
+            weeklyHours={WEEKLY_OFFICE_HOURS}
+            opsContact={opsStaff}
+          />
+        )}
       </main>
 
-      {/* Vibrant Footer with Office Address & Phone Number 021 3873 9073 */}
-      <footer className="bg-gradient-to-r from-[#FEF9C3] via-[#FEFCE8] to-white border-t-2 border-amber-300 py-8">
-        <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs text-slate-800">
+      <LoginDialog open={loginOpen} onClose={handleCloseLogin} />
+
+      <footer className="bg-white border-t border-slate-200 py-8">
+        <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-sm text-slate-600">
           <div>
-            <p className="font-display font-bold text-slate-950 text-sm">
-              {OFFICE_IDENTITY.name} — Portal Informasi Operasional Kantor
-            </p>
-            <p className="mt-1 font-medium text-slate-800">
-              {OFFICE_IDENTITY.address} ·{' '}
-              <span className="inline-flex items-center gap-1 font-mono font-bold text-slate-950">
-                <Phone className="w-3 h-3 text-amber-800" />
-                Telepon: {OFFICE_IDENTITY.phoneDisplay}
+            <p className="font-display font-bold text-slate-950">{OFFICE_IDENTITY.name}</p>
+            <p className="mt-1">{OFFICE_IDENTITY.address}</p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="inline-flex items-center gap-1 font-mono text-slate-800">
+                <Phone className="w-3.5 h-3.5 text-slate-400" />
+                {OFFICE_IDENTITY.phoneDisplay}
               </span>
+              <span className="text-xs text-slate-500">{HOURS_SUMMARY}</span>
             </p>
-            <p className="mt-1 text-slate-600">{OFFICE_IDENTITY.hoursSummary}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-5 font-bold text-slate-900">
-            <a href="#inspirasi" className="hover:text-amber-900">
-              Inspirasi Pagi
+          <nav aria-label="Navigasi footer" className="flex flex-wrap items-center gap-5 font-semibold text-slate-700">
+            <a href="#beranda" className="hover:text-slate-950">
+              Beranda
             </a>
-            <a href="#kontak-staf" className="hover:text-amber-900">
-              Kontak WhatsApp Staf
-            </a>
-            <a href="#jam-operasional" className="hover:text-amber-900">
-              Jam Operasional & Lokasi
-            </a>
-            <button
-              type="button"
-              onClick={() => handleOpenPortal('dealing-room-1')}
-              className="text-amber-950 hover:text-slate-950 underline underline-offset-4 cursor-pointer"
-            >
-              Portal Reservasi Ruang
-            </button>
-          </div>
+            {RESERVATION_LINKS.map(({ href, label }) => (
+              <a key={href} href={href} className="hover:text-slate-950">
+                {label}
+              </a>
+            ))}
+            {NAV_LINKS.slice(1).map((link) => (
+              <a key={link.href} href={link.href} className="hover:text-slate-950">
+                {link.label}
+              </a>
+            ))}
+          </nav>
         </div>
       </footer>
     </div>
