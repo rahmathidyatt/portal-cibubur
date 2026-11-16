@@ -32,11 +32,14 @@ import {
   getScheduleForDate,
   isShiftActiveOnDate,
   todayInJakarta,
+  minutesNowInJakarta,
   validateBookingDate,
   type FloortimeRegistration,
   type RoomBooking
 } from '../utils/schedule';
-import { BookingConflictError, getBookingStore } from '../services/bookingStore';
+import { BookingConflictError, getBookingStore, isOwnBooking } from '../services/bookingStore';
+import { useAdmin } from '../hooks/useAdmin';
+import { ConfirmCancelButton } from './ConfirmCancelButton';
 
 export type BookingPortalTab = 'dealing-room-1' | 'dealing-room-2' | 'floortime';
 
@@ -65,6 +68,7 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
   onChangeTab
 }) => {
   const store = getBookingStore();
+  const { auth, isAdmin } = useAdmin();
   const today = todayInJakarta();
 
   const [bookingDate, setBookingDate] = useState<string>(today);
@@ -126,8 +130,15 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
   }, [bookingDate, loadBookings]);
 
   const rooms = useMemo(
-    () => buildRoomsForDate(initialRooms, roomBookings, bookingDate, weeklyHours),
-    [initialRooms, roomBookings, bookingDate, weeklyHours]
+    () =>
+      buildRoomsForDate(
+        initialRooms,
+        roomBookings,
+        bookingDate,
+        weeklyHours,
+        bookingDate === today ? minutesNowInJakarta() : undefined
+      ),
+    [initialRooms, roomBookings, bookingDate, weeklyHours, today]
   );
   const shifts = useMemo(
     () => buildShiftsForDate(initialShifts, registrations, bookingDate),
@@ -187,6 +198,34 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
     setBookingDate(value);
     setRoomFeedback(null);
     setFtFeedback(null);
+  };
+
+  const handleCancelRoom = async (bookingId: string, label: string) => {
+    try {
+      await store.cancelRoomBooking(bookingId, auth);
+      setRoomFeedback({ type: 'success', text: `Reservasi ${label} dibatalkan.` });
+      onBookingSaved?.();
+    } catch (err) {
+      setRoomFeedback({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Pembatalan gagal.'
+      });
+    }
+    await loadBookings(bookingDate);
+  };
+
+  const handleCancelFloortime = async (registrationId: string, label: string) => {
+    try {
+      await store.cancelFloortimeRegistration(registrationId, auth);
+      setFtFeedback({ type: 'success', text: `Pendaftaran floortime ${label} dibatalkan.` });
+      onBookingSaved?.();
+    } catch (err) {
+      setFtFeedback({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Pembatalan gagal.'
+      });
+    }
+    await loadBookings(bookingDate);
   };
 
   const describeSaveError = (err: unknown, fallback: string): string => {
@@ -532,9 +571,23 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
                               )}
                             </div>
                             {isBooked ? (
-                              <p className="mt-1.5 text-[11px] text-slate-600 truncate">
-                                {slot.bookedBy} — {slot.agenda}
-                              </p>
+                              <div className="mt-1.5 flex items-center justify-between gap-2">
+                                <p className="text-[11px] text-slate-600 truncate">
+                                  {slot.bookedBy} — {slot.agenda}
+                                </p>
+                                {slot.bookingId && (isAdmin || isOwnBooking(slot.bookingId)) && (
+                                  <ConfirmCancelButton
+                                    onConfirm={() =>
+                                      handleCancelRoom(
+                                        slot.bookingId as string,
+                                        `${currentRoom.tabLabel} ${slot.time}`
+                                      )
+                                    }
+                                  />
+                                )}
+                              </div>
+                            ) : slot.status === 'Sudah Lewat' ? (
+                              <p className="mt-1.5 text-[11px] text-slate-500">Jam sesi sudah lewat</p>
                             ) : isUnavailable ? (
                               <p className="mt-1.5 text-[11px] text-slate-500">
                                 {daySchedule && !daySchedule.isClosed && !dateError
@@ -732,7 +785,20 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
                                 <span className="font-semibold">
                                   {idx + 1}. {adv.advisorName}
                                 </span>
-                                <span className="text-slate-700">{adv.corridorFocus}</span>
+                                <span className="flex items-center gap-3">
+                                  <span className="text-slate-700">{adv.corridorFocus}</span>
+                                  {adv.registrationId &&
+                                    (isAdmin || isOwnBooking(adv.registrationId)) && (
+                                      <ConfirmCancelButton
+                                        onConfirm={() =>
+                                          handleCancelFloortime(
+                                            adv.registrationId as string,
+                                            adv.advisorName
+                                          )
+                                        }
+                                      />
+                                    )}
+                                </span>
                               </div>
                             ))}
                           </div>

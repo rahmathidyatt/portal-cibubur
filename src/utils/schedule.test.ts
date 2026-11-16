@@ -47,7 +47,7 @@ test('isWithinOfficeHours respects Saturday closing at 15:00', () => {
 
 test('buildRoomsForDate marks bookings per date and out-of-hours slots', () => {
   const bookings = [
-    { roomId: 'dealing-room-1' as const, date: MONDAY, slotTime: '08:00 - 10:00', bookedBy: 'Hendra', agenda: 'Review PPJB' }
+    { id: 'b1', roomId: 'dealing-room-1' as const, date: MONDAY, slotTime: '08:00 - 10:00', bookedBy: 'Hendra', agenda: 'Review PPJB' }
   ];
   const monday = buildRoomsForDate(INITIAL_DEALING_ROOMS, bookings, MONDAY, WEEKLY_OFFICE_HOURS);
   assert.equal(monday[0].slots[0].status, 'Terisi');
@@ -66,11 +66,13 @@ test('floortime shifts follow active days and per-date registrations', () => {
   assert.equal(isShiftActiveOnDate(sore, SATURDAY), false);
 
   const regs = [
-    { shiftId: 'ft-pagi', date: MONDAY, advisorName: 'Nadia', corridorFocus: 'Legenda Wisata' },
-    { shiftId: 'ft-pagi', date: SATURDAY, advisorName: 'Reza', corridorFocus: 'Ruko' }
+    { id: 'r1', shiftId: 'ft-pagi', date: MONDAY, advisorName: 'Nadia', corridorFocus: 'Legenda Wisata' },
+    { id: 'r2', shiftId: 'ft-pagi', date: SATURDAY, advisorName: 'Reza', corridorFocus: 'Ruko' }
   ];
   const shifts = buildShiftsForDate(INITIAL_FLOORTIME_SHIFTS, regs, MONDAY);
-  assert.deepEqual(shifts[0].registeredAdvisors, [{ advisorName: 'Nadia', corridorFocus: 'Legenda Wisata' }]);
+  assert.deepEqual(shifts[0].registeredAdvisors, [
+    { registrationId: 'r1', advisorName: 'Nadia', corridorFocus: 'Legenda Wisata' }
+  ]);
 });
 
 test('buildHoursSummary groups days with the same hours', () => {
@@ -103,4 +105,13 @@ test('getOfficeStatus follows WIB office hours', () => {
   );
   assert.equal(formatLongDateId('2026-11-17'), 'Selasa, 17 November 2026');
   assert.equal(greetingForMinutes(7 * 60), 'Selamat pagi');
+});
+
+test('buildRoomsForDate marks past slots when nowMinutes is given', () => {
+  // 12:30 WIB: 08:00-10:00 dan 10:00-12:00 sudah lewat
+  const rooms = buildRoomsForDate(INITIAL_DEALING_ROOMS, [], MONDAY, WEEKLY_OFFICE_HOURS, 12 * 60 + 30);
+  assert.deepEqual(
+    rooms[0].slots.map((s) => s.status),
+    ['Sudah Lewat', 'Sudah Lewat', 'Tersedia', 'Tersedia']
+  );
 });

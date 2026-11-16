@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { MessageCircle, Menu, X, Calendar, Phone } from 'lucide-react';
+import { MessageCircle, Menu, X, Calendar, Phone, LogIn, LogOut, ShieldCheck } from 'lucide-react';
 import {
   MORNING_INSPIRATIONS,
   OFFICE_STAFF_CONTACTS,
@@ -17,6 +17,10 @@ import { TodayOverview } from './components/TodayOverview';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
 import { BookingPortalModal, type BookingPortalTab } from './components/BookingPortalModal';
+import { PropertyCalculators } from './components/PropertyCalculators';
+import { OfficeDocuments } from './components/OfficeDocuments';
+import { LoginDialog } from './components/LoginDialog';
+import { AdminProvider, useAdmin } from './hooks/useAdmin';
 import { buildWhatsAppChatUrl } from './utils/hubLogic';
 import { buildHoursSummary } from './utils/schedule';
 
@@ -25,10 +29,23 @@ const HOURS_SUMMARY = buildHoursSummary(WEEKLY_OFFICE_HOURS);
 const NAV_LINKS = [
   { href: '#beranda', label: 'Hari ini' },
   { href: '#kontak-staf', label: 'Kontak staf' },
+  { href: '#kalkulator', label: 'Kalkulator' },
+  { href: '#dokumen', label: 'Dokumen' },
   { href: '#jam-operasional', label: 'Jam & lokasi' }
 ];
 
 export default function App() {
+  return (
+    <AdminProvider>
+      <PortalApp />
+    </AdminProvider>
+  );
+}
+
+function PortalApp() {
+  const { isAdmin, session, signOut } = useAdmin();
+  const [loginOpen, setLoginOpen] = useState<boolean>(false);
+  const handleCloseLogin = useCallback(() => setLoginOpen(false), []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [isPortalOpen, setIsPortalOpen] = useState<boolean>(false);
   const [activePortalTab, setActivePortalTab] = useState<BookingPortalTab>('dealing-room-1');
@@ -61,7 +78,7 @@ export default function App() {
             </span>
           </a>
 
-          <nav aria-label="Navigasi utama" className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600">
+          <nav aria-label="Navigasi utama" className="hidden lg:flex items-center gap-6 text-sm font-semibold text-slate-600">
             {NAV_LINKS.map((link) => (
               <a key={link.href} href={link.href} className="hover:text-slate-950 transition-colors">
                 {link.label}
@@ -74,11 +91,31 @@ export default function App() {
               href={opsWhatsAppUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
+              className="hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               Chat Operasional
             </a>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                title={`Masuk sebagai ${session?.email ?? 'admin'}`}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 ring-1 ring-emerald-200 rounded-lg transition-colors cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Admin · Keluar
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Masuk staf
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handleOpenPortal('dealing-room-1')}
@@ -92,7 +129,7 @@ export default function App() {
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-expanded={mobileMenuOpen}
               aria-label={mobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
-              className="md:hidden p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              className="lg:hidden p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -100,7 +137,7 @@ export default function App() {
         </div>
 
         {mobileMenuOpen && (
-          <nav aria-label="Navigasi seluler" className="md:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col gap-1 text-sm font-semibold text-slate-700">
+          <nav aria-label="Navigasi seluler" className="lg:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col gap-1 text-sm font-semibold text-slate-700">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
@@ -119,6 +156,31 @@ export default function App() {
             >
               Chat Operasional (WhatsApp)
             </a>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  void signOut();
+                }}
+                className="py-2 text-left text-emerald-800 inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                Keluar dari mode admin
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setLoginOpen(true);
+                }}
+                className="py-2 text-left hover:text-slate-950 inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                Masuk staf
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handleOpenPortal('dealing-room-1')}
@@ -141,6 +203,8 @@ export default function App() {
           onOpenPortal={handleOpenPortal}
         />
         <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
+        <PropertyCalculators />
+        <OfficeDocuments />
         <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
       </main>
 
@@ -155,6 +219,8 @@ export default function App() {
         onChangeTab={setActivePortalTab}
         onBookingSaved={handleBookingSaved}
       />
+
+      <LoginDialog open={loginOpen} onClose={handleCloseLogin} />
 
       <footer className="bg-white py-8">
         <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-sm text-slate-600">

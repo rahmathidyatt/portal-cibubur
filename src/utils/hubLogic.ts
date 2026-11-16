@@ -134,7 +134,7 @@ export function bookConsultationRoomSlot(
           alreadyBooked = true;
           return slot;
         }
-        if (slot.status === 'Di Luar Jam') {
+        if (slot.status !== 'Tersedia') {
           outsideHours = true;
           return slot;
         }
@@ -167,7 +167,7 @@ export function bookConsultationRoomSlot(
     return {
       updatedRooms: rooms,
       success: false,
-      error: 'Jam sesi ini berada di luar jam operasional kantor pada tanggal tersebut.'
+      error: 'Jam sesi ini tidak bisa dipesan (di luar jam operasional atau sudah lewat).'
     };
   }
 

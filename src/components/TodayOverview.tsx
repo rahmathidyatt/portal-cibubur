@@ -8,6 +8,7 @@ import type {
 } from '../data/cibuburData';
 import type { BookingPortalTab } from './BookingPortalModal';
 import { MorningInspirationCard } from './MorningInspirationCard';
+import { AnnouncementsCard } from './AnnouncementsCard';
 import { useBookings } from '../hooks/useBookings';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
@@ -41,7 +42,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
 }) => {
   const now = useJakartaClock();
   const today = todayInJakarta(now);
-  const greeting = greetingForMinutes(minutesNowInJakarta(now));
+  const nowMinutes = minutesNowInJakarta(now);
+  const greeting = greetingForMinutes(nowMinutes);
   const status = getOfficeStatus(weeklyHours, now);
   const todaySchedule = getScheduleForDate(today, weeklyHours);
   const isClosedToday = !todaySchedule || todaySchedule.isClosed;
@@ -49,8 +51,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
   const { roomBookings, registrations, isLoading, error } = useBookings(today, refreshKey);
 
   const rooms = useMemo(
-    () => buildRoomsForDate(roomTemplates, roomBookings, today, weeklyHours),
-    [roomTemplates, roomBookings, today, weeklyHours]
+    () => buildRoomsForDate(roomTemplates, roomBookings, today, weeklyHours, nowMinutes),
+    [roomTemplates, roomBookings, today, weeklyHours, nowMinutes]
   );
   const shifts = useMemo(
     () =>
@@ -115,6 +117,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
             </div>
           </div>
 
+          <AnnouncementsCard />
           <MorningInspirationCard quotes={quotes} />
         </div>
 
@@ -168,6 +171,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({
                           </span>
                         ) : slot.status === 'Di Luar Jam' ? (
                           <span className="text-slate-400 text-xs">Di luar jam</span>
+                        ) : slot.status === 'Sudah Lewat' ? (
+                          <span className="text-slate-400 text-xs">Lewat</span>
                         ) : (
                           <span className="text-emerald-700 text-xs font-semibold">Kosong</span>
                         )}

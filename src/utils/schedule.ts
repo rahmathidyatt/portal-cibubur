@@ -6,6 +6,7 @@ import type {
 
 /** Data reservasi Dealing Room yang disimpan (localStorage / Supabase). */
 export interface RoomBooking {
+  id: string;
   roomId: DealingRoom['id'];
   date: string; // YYYY-MM-DD
   slotTime: string;
@@ -15,6 +16,7 @@ export interface RoomBooking {
 
 /** Data pendaftaran floortime yang disimpan (localStorage / Supabase). */
 export interface FloortimeRegistration {
+  id: string;
   shiftId: string;
   date: string; // YYYY-MM-DD
   advisorName: string;
@@ -99,7 +101,9 @@ export function buildRoomsForDate(
   roomTemplates: DealingRoom[],
   bookings: RoomBooking[],
   isoDate: string,
-  weeklyHours: OfficeDaySchedule[]
+  weeklyHours: OfficeDaySchedule[],
+  /** Isi menit-sekarang (WIB) bila isoDate = hari ini, agar slot yang sudah lewat ditandai. */
+  nowMinutes?: number
 ): DealingRoom[] {
   const schedule = getScheduleForDate(isoDate, weeklyHours);
   return roomTemplates.map((room) => ({
@@ -113,12 +117,17 @@ export function buildRoomsForDate(
         return {
           time: slot.time,
           status: 'Terisi' as const,
+          bookingId: booking.id,
           bookedBy: booking.bookedBy,
           agenda: booking.agenda
         };
       }
       if (!isWithinOfficeHours(slot.time, schedule)) {
         return { time: slot.time, status: 'Di Luar Jam' as const };
+      }
+      const range = parseTimeRange(slot.time);
+      if (nowMinutes !== undefined && range && range.end <= nowMinutes) {
+        return { time: slot.time, status: 'Sudah Lewat' as const };
       }
       return { time: slot.time, status: 'Tersedia' as const };
     })
@@ -140,7 +149,11 @@ export function buildShiftsForDate(
     ...shift,
     registeredAdvisors: registrations
       .filter((r) => r.shiftId === shift.id && r.date === isoDate)
-      .map((r) => ({ advisorName: r.advisorName, corridorFocus: r.corridorFocus }))
+      .map((r) => ({
+        registrationId: r.id,
+        advisorName: r.advisorName,
+        corridorFocus: r.corridorFocus
+      }))
   }));
 }
 

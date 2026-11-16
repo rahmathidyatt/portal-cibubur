@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MessageCircle, Phone, Copy, Check } from 'lucide-react';
-import type { OfficeStaffContact, StaffDivision } from '../data/cibuburData';
+import type {
+  OfficeStaffContact,
+  StaffAvailabilityStatus,
+  StaffDivision
+} from '../data/cibuburData';
+import { getContentStore, type StaffStatus } from '../services/contentStore';
+import { useAdmin } from '../hooks/useAdmin';
+import { todayInJakarta } from '../utils/schedule';
 import {
   buildWhatsAppChatUrl,
   buildCustomStaffWhatsAppMessage,
@@ -18,11 +25,110 @@ const DIVISION_TABS: ('Semua' | StaffDivision)[] = [
   'Kurir & Dokumen'
 ];
 
+const STATUS_STYLE: Record<StaffAvailabilityStatus, { dot: string; text: string }> = {
+  Online: { dot: 'bg-emerald-500', text: 'text-emerald-700' },
+  Sibuk: { dot: 'bg-amber-500', text: 'text-amber-700' },
+  'Di Luar Kantor': { dot: 'bg-slate-400', text: 'text-slate-600' }
+};
+
+const STATUS_OPTIONS: StaffAvailabilityStatus[] = ['Online', 'Sibuk', 'Di Luar Kantor'];
+
+function formatTimeWib(iso: string): string {
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(iso));
+}
+
+/** Status hanya ditampilkan jika diperbarui hari ini, agar tidak menampilkan status basi. */
+function isFromToday(iso: string): boolean {
+  return todayInJakarta(new Date(iso)) === todayInJakarta();
+}
+
+const StaffStatusEditor: React.FC<{
+  staffId: string;
+  current?: StaffStatus;
+  onSaved: () => void;
+}> = ({ staffId, current, onSaved }) => {
+  const { auth } = useAdmin();
+  const [status, setStatus] = useState<StaffAvailabilityStatus>(current?.status ?? 'Online');
+  const [detail, setDetail] = useState<string>(current?.detail ?? '');
+  const [busy, setBusy] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await getContentStore().setStaffStatus({ staffId, status, detail }, auth);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan status.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-dashed border-slate-300 p-3 space-y-2">
+      <p className="text-[11px] font-semibold text-slate-500">Admin · ubah status</p>
+      <div className="flex gap-2">
+        <select
+          aria-label="Status staf"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as StaffAvailabilityStatus)}
+          className="px-2 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"
+        >
+          {STATUS_OPTIONS.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+        <input
+          aria-label="Keterangan status"
+          value={detail}
+          maxLength={80}
+          onChange={(e) => setDetail(e.target.value)}
+          placeholder="Keterangan (opsional)"
+          className="min-w-0 flex-1 px-2 py-1.5 text-xs bg-white border border-slate-300 rounded-lg"
+        />
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        {error ? <p className="text-[11px] text-red-700">{error}</p> : <span />}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={handleSave}
+          className="px-3 py-1 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg disabled:opacity-60 cursor-pointer"
+        >
+          {busy ? 'Menyimpan…' : 'Simpan status'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ contacts }) => {
   const [selectedDivision, setSelectedDivision] = useState<'Semua' | StaffDivision>('Semua');
   const [senderName, setSenderName] = useState<string>('');
   const [selectedTopics, setSelectedTopics] = useState<Record<string, string>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [statuses, setStatuses] = useState<StaffStatus[]>([]);
+  const { isAdmin } = useAdmin();
+
+  const loadStatuses = useCallback(async () => {
+    try {
+      setStatuses(await getContentStore().listStaffStatuses());
+    } catch {
+      setStatuses([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadStatuses();
+  }, [loadStatuses]);
 
   const visibleContacts = filterStaffByDivision(contacts, selectedDivision);
 
@@ -98,6 +204,8 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
             const message = buildCustomStaffWhatsAppMessage(contact, chosenTopic, senderName);
             const whatsappUrl = buildWhatsAppChatUrl(contact.whatsappNumber, message);
             const isCopied = copiedId === contact.id;
+            const staffStatus = statuses.find((st) => st.staffId === contact.id);
+            const showStatus = staffStatus && isFromToday(staffStatus.updatedAt);
 
             return (
               <article
@@ -107,6 +215,32 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
                 <p className="text-xs font-semibold text-amber-700">{contact.division}</p>
                 <h3 className="mt-1 text-lg font-bold text-slate-950">{contact.staffName}</h3>
                 <p className="text-xs text-slate-500">{contact.roleTitle}</p>
+
+                {showStatus && staffStatus && (
+                  <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-xs">
+                    <span
+                      aria-hidden="true"
+                      className={`w-2 h-2 rounded-full ${STATUS_STYLE[staffStatus.status].dot}`}
+                    />
+                    <span className={`font-semibold ${STATUS_STYLE[staffStatus.status].text}`}>
+                      {staffStatus.status}
+                    </span>
+                    {staffStatus.detail && (
+                      <span className="text-slate-500">· {staffStatus.detail}</span>
+                    )}
+                    <span className="text-slate-400">
+                      · diperbarui {formatTimeWib(staffStatus.updatedAt)}
+                    </span>
+                  </p>
+                )}
+                {isAdmin && (
+                  <StaffStatusEditor
+                    key={`${contact.id}-${staffStatus?.updatedAt ?? 'new'}`}
+                    staffId={contact.id}
+                    current={staffStatus}
+                    onSaved={loadStatuses}
+                  />
+                )}
 
                 <p className="mt-3 text-sm text-slate-600 leading-relaxed">{contact.description}</p>
 

@@ -71,11 +71,12 @@ export interface OfficeDaySchedule {
   note: string;
 }
 
-export type RoomSlotStatus = 'Tersedia' | 'Terisi' | 'Di Luar Jam';
+export type RoomSlotStatus = 'Tersedia' | 'Terisi' | 'Di Luar Jam' | 'Sudah Lewat';
 
 export interface RoomTimeSlot {
   time: string;
   status: RoomSlotStatus;
+  bookingId?: string;
   bookedBy?: string;
   agenda?: string;
 }
@@ -99,6 +100,7 @@ export interface FloortimeSlot {
   activeDays: number[];
   quotaMax: number;
   registeredAdvisors: {
+    registrationId?: string;
     advisorName: string;
     corridorFocus: string;
   }[];
@@ -108,7 +110,10 @@ export const OFFICE_IDENTITY = {
   name: 'Brighton HUB Cibubur',
   address: 'Jl. Canadian Broadway Blok CBB 30–31, Kota Wisata Cibubur',
   phoneDisplay: '021 3873 9073',
-  phoneHref: 'tel:02138739073'
+  phoneHref: 'tel:02138739073',
+  mapsUrl:
+    'https://www.google.com/maps/search/?api=1&query=' +
+    encodeURIComponent('Jl. Canadian Broadway Blok CBB 30-31, Kota Wisata Cibubur')
 };
 
 export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [

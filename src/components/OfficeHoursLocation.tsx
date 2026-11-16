@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, MapPin, Phone, Copy, Check } from 'lucide-react';
+import { Clock, MapPin, Phone, Copy, Check, ExternalLink } from 'lucide-react';
 import { OFFICE_IDENTITY, type OfficeDaySchedule } from '../data/cibuburData';
 import { getScheduleForDate, todayInJakarta } from '../utils/schedule';
 import { useJakartaClock } from '../hooks/useJakartaClock';
@@ -95,7 +95,18 @@ export const OfficeHoursLocation: React.FC<OfficeHoursLocationProps> = ({ weekly
               <h3 className="text-base font-bold text-slate-950">{OFFICE_IDENTITY.name}</h3>
               <p className="flex items-start gap-2.5 text-sm text-slate-700">
                 <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-                {OFFICE_IDENTITY.address}
+                <span>
+                  {OFFICE_IDENTITY.address}
+                  <a
+                    href={OFFICE_IDENTITY.mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 flex items-center gap-1 text-xs font-bold text-slate-900 hover:text-amber-700"
+                  >
+                    Buka di Google Maps
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </span>
               </p>
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 border border-slate-200 px-4 py-3">
                 <p className="flex items-center gap-2.5">
