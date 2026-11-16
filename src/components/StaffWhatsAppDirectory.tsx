@@ -25,7 +25,7 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
           Kontak staf kantor
         </h2>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {contacts.map((contact) => {
             const whatsappUrl = buildWhatsAppChatUrl(contact.whatsappNumber, contact.defaultMessage);
             const isCopied = copiedId === contact.id;
@@ -33,16 +33,16 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
             return (
               <article
                 key={contact.id}
-                className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 flex flex-col gap-4"
+                className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3"
               >
                 <div>
-                  <p className="text-xs font-bold tracking-widest text-amber-700">{contact.division}</p>
-                  <h3 className="mt-1.5 text-lg font-bold text-slate-950">{contact.staffName}</h3>
+                  <p className="text-[11px] font-bold tracking-widest text-amber-700">{contact.division}</p>
+                  <h3 className="mt-1 text-sm font-semibold text-slate-950">{contact.staffName}</h3>
                 </div>
 
                 <div className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-2 font-mono text-base text-slate-900">
-                    <Phone className="w-4 h-4 text-slate-400" />
+                  <span className="flex items-center gap-1.5 font-mono text-[13px] text-slate-700">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
                     {contact.phoneDisplay}
                   </span>
                   <button
@@ -69,9 +69,9 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
                 >
-                  <MessageCircle className="w-4 h-4" />
+                  <MessageCircle className="w-3.5 h-3.5" />
                   Chat WhatsApp
                 </a>
               </article>

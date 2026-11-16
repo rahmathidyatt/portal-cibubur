@@ -70,13 +70,6 @@ create table if not exists public.announcements (
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.office_documents (
-  id         uuid primary key default gen_random_uuid(),
-  title      text not null check (char_length(trim(title)) between 3 and 120),
-  url        text not null check (url like 'https://%'),
-  category   text not null default 'Lainnya',
-  created_at timestamptz not null default now()
-);
 
 
 -- ===================================================================
@@ -151,9 +144,9 @@ grant select (id, shift_id, booking_date, advisor_name, corridor_focus, created_
   on public.floortime_registrations to anon, authenticated;
 grant delete on public.room_bookings, public.floortime_registrations to authenticated;
 
-revoke all on public.announcements, public.office_documents from anon, authenticated;
-grant select on public.announcements, public.office_documents to anon, authenticated;
-grant insert, update, delete on public.announcements, public.office_documents to authenticated;
+revoke all on public.announcements from anon, authenticated;
+grant select on public.announcements to anon, authenticated;
+grant insert, update, delete on public.announcements to authenticated;
 
 -- ===================================================================
 -- Row Level Security
@@ -161,7 +154,6 @@ grant insert, update, delete on public.announcements, public.office_documents to
 alter table public.room_bookings enable row level security;
 alter table public.floortime_registrations enable row level security;
 alter table public.announcements enable row level security;
-alter table public.office_documents enable row level security;
 
 -- Hapus kebijakan lama dari versi skema sebelumnya.
 drop policy if exists "anon read room_bookings" on public.room_bookings;
@@ -186,7 +178,7 @@ create policy "admin delete floortime" on public.floortime_registrations
 do $$
 declare t text;
 begin
-  foreach t in array array['announcements', 'office_documents'] loop
+  foreach t in array array['announcements'] loop
     execute format('drop policy if exists "read %1$s" on public.%1$I', t);
     execute format('create policy "read %1$s" on public.%1$I for select to anon, authenticated using (true)', t);
     execute format('drop policy if exists "admin write %1$s" on public.%1$I', t);

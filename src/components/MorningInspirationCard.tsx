@@ -27,12 +27,12 @@ export const MorningInspirationCard: React.FC<MorningInspirationCardProps> = ({ 
   };
 
   return (
-    <figure className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
+    <figure className="w-full lg:flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
       <p className="flex items-center gap-2 text-xs font-semibold text-amber-700">
         <Sun className="w-4 h-4" />
         Inspirasi hari ini
       </p>
-      <blockquote className="mt-3 text-lg font-semibold leading-snug text-slate-900 text-pretty">
+      <blockquote className="mt-3 max-w-3xl text-lg font-semibold leading-snug text-slate-900 text-pretty">
         “{current.quote}”
       </blockquote>
       <figcaption className="mt-2 text-sm text-slate-500">{current.authorOrContext}</figcaption>

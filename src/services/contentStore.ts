@@ -8,7 +8,7 @@ import {
   type SupabaseConfig
 } from './supabaseClient';
 
-/** Konten yang dikelola admin: pengumuman dan dokumen kantor. */
+/** Konten yang dikelola admin: pengumuman kantor. */
 
 export interface Announcement {
   id: string;
@@ -17,20 +17,7 @@ export interface Announcement {
   createdAt: string; // ISO
 }
 
-export interface OfficeDocument {
-  id: string;
-  title: string;
-  url: string;
-  category: string;
-  createdAt: string; // ISO
-}
-
-export const DOCUMENT_CATEGORIES = ['SOP', 'Template', 'Formulir', 'Lainnya'] as const;
-
 export interface ContentStore {
-  listDocuments(): Promise<OfficeDocument[]>;
-  addDocument(input: { title: string; url: string; category: string }, auth: AdminAuth): Promise<void>;
-  deleteDocument(id: string, auth: AdminAuth): Promise<void>;
   listAnnouncements(): Promise<Announcement[]>;
   addAnnouncement(input: { title: string; body: string }, auth: AdminAuth): Promise<void>;
   deleteAnnouncement(id: string, auth: AdminAuth): Promise<void>;
@@ -47,48 +34,13 @@ export function validateAnnouncement(input: { title: string; body: string }): st
   return null;
 }
 
-export function validateDocument(input: { title: string; url: string }): string | null {
-  if (input.title.trim().length < 3) return 'Nama dokumen minimal 3 karakter.';
-  try {
-    const url = new URL(input.url.trim());
-    if (url.protocol !== 'https:') return 'Tautan harus diawali https://';
-  } catch {
-    return 'Tautan tidak valid. Contoh: https://drive.google.com/...';
-  }
-  return null;
-}
-
 /* ----------------------------- localStorage ----------------------------- */
 
-const DOCUMENT_KEY = 'portal-cibubur:documents';
 
 const ANNOUNCEMENT_KEY = 'portal-cibubur:announcements';
 
 function createLocalContentStore(): ContentStore {
   return {
-    async listDocuments() {
-      const list = readLocal<OfficeDocument[]>(DOCUMENT_KEY, []);
-      return (Array.isArray(list) ? list : []).sort((a, b) => a.title.localeCompare(b.title, 'id'));
-    },
-    async addDocument(input, auth) {
-      requireAdmin(auth);
-      const list = readLocal<OfficeDocument[]>(DOCUMENT_KEY, []);
-      writeLocal(DOCUMENT_KEY, [
-        ...(Array.isArray(list) ? list : []),
-        {
-          id: randomId(),
-          title: input.title.trim(),
-          url: input.url.trim(),
-          category: input.category,
-          createdAt: new Date().toISOString()
-        }
-      ]);
-    },
-    async deleteDocument(id, auth) {
-      requireAdmin(auth);
-      const list = readLocal<OfficeDocument[]>(DOCUMENT_KEY, []);
-      writeLocal(DOCUMENT_KEY, (Array.isArray(list) ? list : []).filter((d) => d.id !== id));
-    },
     async listAnnouncements() {
       const list = readLocal<Announcement[]>(ANNOUNCEMENT_KEY, []);
       return (Array.isArray(list) ? list : []).sort((a, b) =>
@@ -123,46 +75,6 @@ function createLocalContentStore(): ContentStore {
 
 function createSupabaseContentStore(config: SupabaseConfig): ContentStore {
   return {
-    async listDocuments() {
-      const res = await supabaseFetch(
-        config,
-        'rest/v1/office_documents?select=id,title,url,category,created_at&order=title.asc'
-      );
-      const rows = (await res.json()) as {
-        id: string;
-        title: string;
-        url: string;
-        category: string;
-        created_at: string;
-      }[];
-      return rows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        url: r.url,
-        category: r.category,
-        createdAt: r.created_at
-      }));
-    },
-    async addDocument(input, auth) {
-      requireAdmin(auth);
-      await supabaseFetch(config, 'rest/v1/office_documents', {
-        method: 'POST',
-        accessToken: auth.accessToken,
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          title: input.title.trim(),
-          url: input.url.trim(),
-          category: input.category
-        })
-      });
-    },
-    async deleteDocument(id, auth) {
-      requireAdmin(auth);
-      await supabaseFetch(config, `rest/v1/office_documents?id=eq.${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-        accessToken: auth.accessToken
-      });
-    },
     async listAnnouncements() {
       const res = await supabaseFetch(
         config,

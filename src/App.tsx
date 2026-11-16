@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useCallback, useState } from 'react';
-import { MessageCircle, Menu, X, Calendar, Phone, LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { MessageCircle, Menu, X, Phone, LogIn, LogOut, ShieldCheck } from 'lucide-react';
 import {
   MORNING_INSPIRATIONS,
   OFFICE_STAFF_CONTACTS,
@@ -16,21 +16,19 @@ import {
 import { TodayOverview } from './components/TodayOverview';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
-import { BookingPortalModal, type BookingPortalTab } from './components/BookingPortalModal';
-import { PropertyCalculators } from './components/PropertyCalculators';
-import { OfficeDocuments } from './components/OfficeDocuments';
+import { ReservationPage } from './components/ReservationPage';
+import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
 import { LoginDialog } from './components/LoginDialog';
 import { AdminProvider, useAdmin } from './hooks/useAdmin';
+import { useHashRoute } from './hooks/useHashRoute';
 import { buildWhatsAppChatUrl } from './utils/hubLogic';
 import { buildHoursSummary } from './utils/schedule';
 
 const HOURS_SUMMARY = buildHoursSummary(WEEKLY_OFFICE_HOURS);
 
 const NAV_LINKS = [
-  { href: '#beranda', label: 'Hari ini' },
+  { href: '#beranda', label: 'Beranda' },
   { href: '#kontak-staf', label: 'Kontak staf' },
-  { href: '#kalkulator', label: 'Kalkulator' },
-  { href: '#dokumen', label: 'Dokumen' },
   { href: '#jam-operasional', label: 'Jam & lokasi' }
 ];
 
@@ -44,23 +42,16 @@ export default function App() {
 
 function PortalApp() {
   const { isAdmin, session, signOut } = useAdmin();
+  const { route } = useHashRoute();
   const [loginOpen, setLoginOpen] = useState<boolean>(false);
-  const handleCloseLogin = useCallback(() => setLoginOpen(false), []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [isPortalOpen, setIsPortalOpen] = useState<boolean>(false);
-  const [activePortalTab, setActivePortalTab] = useState<BookingPortalTab>('dealing-room-1');
-  const [bookingRefreshKey, setBookingRefreshKey] = useState<number>(0);
+  const handleCloseLogin = useCallback(() => setLoginOpen(false), []);
+
+  // Tutup menu HP setiap kali berpindah halaman.
+  useEffect(() => setMobileMenuOpen(false), [route]);
 
   const opsStaff = OFFICE_STAFF_CONTACTS[0];
   const opsWhatsAppUrl = buildWhatsAppChatUrl(opsStaff.whatsappNumber, opsStaff.defaultMessage);
-
-  const handleOpenPortal = useCallback((tab: BookingPortalTab = 'dealing-room-1') => {
-    setActivePortalTab(tab);
-    setIsPortalOpen(true);
-    setMobileMenuOpen(false);
-  }, []);
-  const handleClosePortal = useCallback(() => setIsPortalOpen(false), []);
-  const handleBookingSaved = useCallback(() => setBookingRefreshKey((k) => k + 1), []);
 
   return (
     <div className="min-h-screen flex flex-col bg-white text-slate-900">
@@ -78,8 +69,15 @@ function PortalApp() {
             </span>
           </a>
 
-          <nav aria-label="Navigasi utama" className="hidden lg:flex items-center gap-6 text-sm font-semibold text-slate-600">
-            {NAV_LINKS.map((link) => (
+          <nav
+            aria-label="Navigasi utama"
+            className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600"
+          >
+            <a href={NAV_LINKS[0].href} className="hover:text-slate-950 transition-colors">
+              {NAV_LINKS[0].label}
+            </a>
+            <ReservationMenu route={route} />
+            {NAV_LINKS.slice(1).map((link) => (
               <a key={link.href} href={link.href} className="hover:text-slate-950 transition-colors">
                 {link.label}
               </a>
@@ -91,7 +89,7 @@ function PortalApp() {
               href={opsWhatsAppUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               Chat Operasional
@@ -101,7 +99,7 @@ function PortalApp() {
                 type="button"
                 onClick={() => void signOut()}
                 title={`Masuk sebagai ${session?.email ?? 'admin'}`}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 ring-1 ring-emerald-200 rounded-lg transition-colors cursor-pointer"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 ring-1 ring-emerald-200 rounded-lg transition-colors cursor-pointer"
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Admin · Keluar
@@ -110,7 +108,7 @@ function PortalApp() {
               <button
                 type="button"
                 onClick={() => setLoginOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 Masuk staf
@@ -118,18 +116,10 @@ function PortalApp() {
             )}
             <button
               type="button"
-              onClick={() => handleOpenPortal('dealing-room-1')}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg transition-colors cursor-pointer"
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              Reservasi
-            </button>
-            <button
-              type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-expanded={mobileMenuOpen}
               aria-label={mobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
-              className="lg:hidden p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              className="md:hidden p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -137,8 +127,26 @@ function PortalApp() {
         </div>
 
         {mobileMenuOpen && (
-          <nav aria-label="Navigasi seluler" className="lg:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col gap-1 text-sm font-semibold text-slate-700">
-            {NAV_LINKS.map((link) => (
+          <nav
+            aria-label="Navigasi seluler"
+            className="md:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col text-sm font-semibold text-slate-700"
+          >
+            <a href="#beranda" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-950">
+              Beranda
+            </a>
+            <p className="pt-2 pb-1 text-xs font-semibold text-slate-400">Reservasi</p>
+            {RESERVATION_LINKS.map(({ href, label, Icon }) => (
+              <a
+                key={href}
+                href={href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 pl-3 inline-flex items-center gap-2 hover:text-slate-950"
+              >
+                <Icon className="w-4 h-4 text-amber-600" />
+                {label}
+              </a>
+            ))}
+            {NAV_LINKS.slice(1).map((link) => (
               <a
                 key={link.href}
                 href={link.href}
@@ -148,81 +156,62 @@ function PortalApp() {
                 {link.label}
               </a>
             ))}
-            <a
-              href={opsWhatsAppUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="py-2 hover:text-slate-950"
-            >
-              Chat Operasional (WhatsApp)
-            </a>
-            {isAdmin ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  void signOut();
-                }}
-                className="py-2 text-left text-emerald-800 inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                Keluar dari mode admin
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  setLoginOpen(true);
-                }}
-                className="py-2 text-left hover:text-slate-950 inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogIn className="w-4 h-4" />
-                Masuk staf
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => handleOpenPortal('dealing-room-1')}
-              className="mt-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg cursor-pointer"
-            >
-              <Calendar className="w-4 h-4" />
-              Reservasi ruang & floortime
-            </button>
+            <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col">
+              <a href={opsWhatsAppUrl} target="_blank" rel="noopener noreferrer" className="py-2 hover:text-slate-950">
+                Chat Operasional (WhatsApp)
+              </a>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    void signOut();
+                  }}
+                  className="py-2 text-left text-emerald-800 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Keluar dari mode admin
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setLoginOpen(true);
+                  }}
+                  className="py-2 text-left hover:text-slate-950 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Masuk staf
+                </button>
+              )}
+            </div>
           </nav>
         )}
       </header>
 
       <main className="flex-1">
-        <TodayOverview
-          weeklyHours={WEEKLY_OFFICE_HOURS}
-          roomTemplates={INITIAL_DEALING_ROOMS}
-          shiftTemplates={INITIAL_FLOORTIME_SHIFTS}
-          quotes={MORNING_INSPIRATIONS}
-          refreshKey={bookingRefreshKey}
-          onOpenPortal={handleOpenPortal}
-        />
-        <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
-        <PropertyCalculators />
-        <OfficeDocuments />
-        <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
+        {route === 'beranda' ? (
+          <>
+            <TodayOverview weeklyHours={WEEKLY_OFFICE_HOURS} quotes={MORNING_INSPIRATIONS} />
+            <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
+            <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
+          </>
+        ) : (
+          <ReservationPage
+            key={route}
+            view={route}
+            initialRooms={INITIAL_DEALING_ROOMS}
+            initialShifts={INITIAL_FLOORTIME_SHIFTS}
+            weeklyHours={WEEKLY_OFFICE_HOURS}
+            opsContact={opsStaff}
+          />
+        )}
       </main>
-
-      <BookingPortalModal
-        initialRooms={INITIAL_DEALING_ROOMS}
-        initialShifts={INITIAL_FLOORTIME_SHIFTS}
-        weeklyHours={WEEKLY_OFFICE_HOURS}
-        opsContact={opsStaff}
-        isPortalOpen={isPortalOpen}
-        activeTab={activePortalTab}
-        onClosePortal={handleClosePortal}
-        onChangeTab={setActivePortalTab}
-        onBookingSaved={handleBookingSaved}
-      />
 
       <LoginDialog open={loginOpen} onClose={handleCloseLogin} />
 
-      <footer className="bg-white py-8">
+      <footer className="bg-white border-t border-slate-200 py-8">
         <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-sm text-slate-600">
           <div>
             <p className="font-display font-bold text-slate-950">{OFFICE_IDENTITY.name}</p>
@@ -236,7 +225,15 @@ function PortalApp() {
             </p>
           </div>
           <nav aria-label="Navigasi footer" className="flex flex-wrap items-center gap-5 font-semibold text-slate-700">
-            {NAV_LINKS.map((link) => (
+            <a href="#beranda" className="hover:text-slate-950">
+              Beranda
+            </a>
+            {RESERVATION_LINKS.map(({ href, label }) => (
+              <a key={href} href={href} className="hover:text-slate-950">
+                {label}
+              </a>
+            ))}
+            {NAV_LINKS.slice(1).map((link) => (
               <a key={link.href} href={link.href} className="hover:text-slate-950">
                 {link.label}
               </a>

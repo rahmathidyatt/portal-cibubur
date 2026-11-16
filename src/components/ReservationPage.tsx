@@ -1,25 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Calendar,
-  Clock,
-  Users,
-  CheckCircle2,
-  MessageCircle,
-  ExternalLink,
-  MapPin,
-  Phone,
-  Copy,
-  Check,
-  X,
-  Building2,
-  ArrowUpRight
-} from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle2, MessageCircle, ExternalLink } from 'lucide-react';
 import {
   DealingRoom,
   FloortimeSlot,
   OfficeStaffContact,
-  OfficeDaySchedule,
-  OFFICE_IDENTITY
+  OfficeDaySchedule
 } from '../data/cibuburData';
 import {
   bookConsultationRoomSlot,
@@ -41,32 +26,33 @@ import { BookingConflictError, getBookingStore, isOwnBooking } from '../services
 import { useAdmin } from '../hooks/useAdmin';
 import { ConfirmCancelButton } from './ConfirmCancelButton';
 
-export type BookingPortalTab = 'dealing-room-1' | 'dealing-room-2' | 'floortime';
+type BookingTab = 'dealing-room-1' | 'dealing-room-2' | 'floortime';
 
-interface BookingPortalModalProps {
+export type ReservationView = 'dealing-room' | 'floortime';
+
+interface ReservationPageProps {
+  view: ReservationView;
   initialRooms: DealingRoom[];
   initialShifts: FloortimeSlot[];
   weeklyHours: OfficeDaySchedule[];
   opsContact: OfficeStaffContact;
-  isPortalOpen: boolean;
-  activeTab: BookingPortalTab;
-  /** Dipanggil setelah reservasi/pendaftaran berhasil disimpan. */
-  onBookingSaved?: () => void;
-  onClosePortal: () => void;
-  onChangeTab: (tab: BookingPortalTab) => void;
 }
 
-export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
+/** Halaman reservasi: Dealing Room (2 ruang) atau pendaftaran Floortime. */
+export const ReservationPage: React.FC<ReservationPageProps> = ({
+  view,
   initialRooms,
   initialShifts,
   weeklyHours,
-  opsContact,
-  isPortalOpen,
-  activeTab,
-  onBookingSaved,
-  onClosePortal,
-  onChangeTab
+  opsContact
 }) => {
+  const [activeRoomTab, setActiveRoomTab] = useState<'dealing-room-1' | 'dealing-room-2'>(
+    'dealing-room-1'
+  );
+  const activeTab: BookingTab = view === 'floortime' ? 'floortime' : activeRoomTab;
+  const onChangeTab = (tab: BookingTab) => {
+    if (tab !== 'floortime') setActiveRoomTab(tab);
+  };
   const store = getBookingStore();
   const { auth, isAdmin } = useAdmin();
   const today = todayInJakarta();
@@ -174,20 +160,6 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
     }
   }, [shifts, selectedShiftId, bookingDate]);
 
-  // Tutup panel dengan tombol Esc dan kunci scroll halaman di belakang modal.
-  useEffect(() => {
-    if (!isPortalOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClosePortal();
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isPortalOpen, onClosePortal]);
 
   const handleSelectRoomSlot = (time: string) => {
     setSelectedSlotTime(time);
@@ -204,8 +176,7 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
     try {
       await store.cancelRoomBooking(bookingId, auth);
       setRoomFeedback({ type: 'success', text: `Reservasi ${label} dibatalkan.` });
-      onBookingSaved?.();
-    } catch (err) {
+      } catch (err) {
       setRoomFeedback({
         type: 'error',
         text: err instanceof Error ? err.message : 'Pembatalan gagal.'
@@ -218,8 +189,7 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
     try {
       await store.cancelFloortimeRegistration(registrationId, auth);
       setFtFeedback({ type: 'success', text: `Pendaftaran floortime ${label} dibatalkan.` });
-      onBookingSaved?.();
-    } catch (err) {
+      } catch (err) {
       setFtFeedback({
         type: 'error',
         text: err instanceof Error ? err.message : 'Pembatalan gagal.'
@@ -290,7 +260,6 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
     }
     await loadBookings(bookingDate);
     setIsSaving(false);
-    onBookingSaved?.();
 
     const waText = `Halo Mas Amat (${opsContact.staffName}), saya ${advisor} telah melakukan reservasi ${roomName} pada tanggal ${bookingDate} jam ${slotTime} WIB untuk keperluan: ${agenda}. Mohon konfirmasinya, terima kasih.`;
     const waUrl = buildWhatsAppChatUrl(opsContact.whatsappNumber, waText);
@@ -360,7 +329,6 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
     }
     await loadBookings(bookingDate);
     setIsSaving(false);
-    onBookingSaved?.();
 
     const waText = `Halo Mas Amat (${opsContact.staffName}), saya ${advisor} mengajukan Floortime Request untuk ${shiftTitle} tanggal ${bookingDate} dengan fokus koridor ${corridor}. Terima kasih.`;
     const waUrl = buildWhatsAppChatUrl(opsContact.whatsappNumber, waText);
@@ -373,45 +341,40 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
     setFtAdvisorName('');
   };
 
-  return (
-    <>
-      {/* Off-Screen Modal / Drawer containing the 2 "Dealing Room" tabs & "Floortime Request" tab */}
-      {isPortalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="portal-reservasi-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/50 backdrop-blur-xs overflow-y-auto"
-        >
-          <div className="w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden my-auto">
-            {/* Modal Header */}
-            <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold text-amber-700">Portal reservasi</p>
-                <h2
-                  id="portal-reservasi-title"
-                  className="text-lg sm:text-xl font-bold text-slate-950"
-                >
-                  Dealing Room & Floortime
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={onClosePortal}
-                autoFocus
-                aria-label="Tutup panel reservasi (Esc)"
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-                Tutup
-              </button>
-            </div>
+  const pageTitle = view === 'floortime' ? 'Daftar Floortime' : 'Reservasi Dealing Room';
+  const pageIntro =
+    view === 'floortime'
+      ? 'Daftarkan diri untuk jaga kantor. Maksimal 3 advisor per sesi.'
+      : 'Pesan ruang diskusi klien per sesi 2 jam. Konfirmasikan ke Operasional setelah menyimpan.';
 
+  return (
+    <section className="bg-stone-50 min-h-[70vh] py-8 sm:py-12">
+      <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
+        <nav aria-label="Breadcrumb" className="text-xs text-slate-500">
+          <a href="#beranda" className="hover:text-slate-900">
+            Beranda
+          </a>
+          <span className="mx-1.5">/</span>
+          <span>Reservasi</span>
+          <span className="mx-1.5">/</span>
+          <span className="font-semibold text-slate-700">
+            {view === 'floortime' ? 'Floortime' : 'Dealing Room'}
+          </span>
+        </nav>
+        <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
+          {pageTitle}
+        </h1>
+        <p className="mt-1 text-sm text-slate-600">{pageIntro}</p>
+
+        <div className="mt-6 bg-white border border-slate-200 rounded-2xl overflow-hidden">
             {/* Modal Sub-Header: 3 Tabs (Dealing Room 1, Dealing Room 2, Floortime Request) + Date Picker */}
             <div className="px-6 py-3.5 bg-stone-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              {view === 'floortime' ? (
+                <p className="text-sm font-semibold text-slate-700">Pilih tanggal jaga</p>
+              ) : (
               <div
                 role="tablist"
-                aria-label="Pilih tab Dealing Room atau Floortime Request"
+                aria-label="Pilih Dealing Room"
                 className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl"
               >
                 <button
@@ -446,23 +409,8 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
                 >
                   Dealing Room 2
                 </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === 'floortime'}
-                  onClick={() => {
-                    onChangeTab('floortime');
-                    setFtFeedback(null);
-                  }}
-                  className={`px-3.5 py-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                    activeTab === 'floortime'
-                      ? 'bg-white text-slate-950 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-950'
-                  }`}
-                >
-                  Floortime Request
-                </button>
               </div>
+              )}
 
               <div className="flex items-center gap-2 text-xs">
                 <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
@@ -484,7 +432,7 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 max-h-[75vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
               {(dateError || loadError || isLoading || store.mode === 'local') && (
                 <div className="mb-5 space-y-2" aria-live="polite">
                   {dateError && (
@@ -815,7 +763,7 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
                   >
                     <h4 className="text-sm font-bold text-slate-950 flex items-center gap-2">
                       <Users className="w-4 h-4 text-slate-500" />
-                      Formulir Floortime Request
+                      Formulir floortime
                     </h4>
 
                     <div>
@@ -919,15 +867,14 @@ export const BookingPortalModal: React.FC<BookingPortalModalProps> = ({
                       disabled={isSaving || isLoading || Boolean(dateError)}
                       className="w-full px-4 py-2.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isSaving ? 'Menyimpan…' : 'Kirim Floortime Request'}
+                      {isSaving ? 'Menyimpan…' : 'Daftar floortime'}
                     </button>
                   </form>
                 </div>
               )}
             </div>
-          </div>
         </div>
-      )}
-    </>
+      </div>
+    </section>
   );
 };

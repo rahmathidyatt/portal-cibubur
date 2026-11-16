@@ -4,11 +4,12 @@ Portal operasional kantor Brighton HUB Cibubur untuk property advisor dan staf.
 
 Fitur:
 
-- **Hari ini**: sapaan, status kantor buka/tutup (WIB), agenda Dealing Room dan floortime hari ini, pengumuman, inspirasi pagi.
-- **Reservasi**: Dealing Room 1 & 2 per tanggal dan jam, pendaftaran floortime (kuota 3 advisor per sesi). Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
+- **Beranda**: sapaan, status kantor buka/tutup (WIB), pengumuman, inspirasi pagi.
+- **Reservasi** (menu header, halaman terpisah):
+  - `#dealing-room` — Dealing Room 1 & 2 per tanggal dan jam.
+  - `#floortime` — pendaftaran jaga kantor (kuota 3 advisor per sesi).
+  Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
 - **Kontak staf**: OPERASIONAL, FINANCE, MESSENGER — nama, nomor telepon, dan tombol chat WhatsApp.
-- **Kalkulator**: cicilan KPR, BPHTB & PPh final, pembagian komisi (perkiraan).
-- **Dokumen & formulir**: tautan SOP, template, dan formulir yang dikelola admin.
 - **Jam & lokasi**: jadwal mingguan, alamat, tautan Google Maps, telepon kantor.
 
 Dibangun dengan React 19, Vite, TypeScript, dan Tailwind CSS 4.
@@ -24,14 +25,14 @@ npm run dev        # http://localhost:3000
 
 | Perintah          | Fungsi                                   |
 | ----------------- | ---------------------------------------- |
-| `npm test`        | Unit test (jadwal, reservasi, kalkulator)|
+| `npm test`        | Unit test (jadwal & reservasi)           |
 | `npm run lint`    | Pengecekan tipe TypeScript               |
 | `npm run build`   | Build produksi ke folder `dist/`         |
 | `npm run preview` | Menjalankan hasil build secara lokal     |
 
 ## Mode data
 
-**Tanpa konfigurasi (mode demo)** — semua data (reservasi, pengumuman, dokumen)
+**Tanpa konfigurasi (mode demo)** — semua data (reservasi dan pengumuman)
 disimpan di `localStorage` browser masing-masing. Login admin memakai akun demo
 `admin@demo.local` / `admin123`, yang hanya berlaku di mode ini.
 
@@ -54,15 +55,15 @@ Aturan yang ditegakkan (di aplikasi dan di database):
 - Satu slot ruang hanya bisa dipesan sekali per tanggal.
 - Floortime maksimal 3 advisor per sesi per tanggal, tanpa nama ganda; Sesi Sore hanya Senin–Jumat.
 - Kode pembatalan reservasi tidak pernah dikirim ke pengunjung lain.
-- Hanya admin yang bisa mengubah pengumuman dan dokumen.
+- Hanya admin yang bisa mengubah pengumuman.
 
 ## Struktur
 
 ```
 src/
-  components/          Komponen UI (ringkasan hari ini, staf, kalkulator, dokumen, reservasi, login)
+  components/          Komponen UI (beranda, staf, jam & lokasi, halaman reservasi, login)
   data/cibuburData.ts  Data statis: staf, jam operasional, ruang, sesi floortime
-  hooks/               useAdmin (sesi admin), useBookings, useJakartaClock
+  hooks/               useAdmin (sesi admin), useHashRoute (navigasi), useJakartaClock
   services/            Penyimpanan (localStorage / Supabase) dan login admin
   utils/               Logika murni + unit test
 public/favicon.svg     Ikon situs

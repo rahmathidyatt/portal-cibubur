@@ -58,7 +58,7 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({ open, onClose }) => {
               Masuk sebagai admin
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Untuk staf kantor: kelola pengumuman, dokumen, dan reservasi.
+              Untuk staf kantor: kelola pengumuman dan reservasi.
             </p>
           </div>
           <button
