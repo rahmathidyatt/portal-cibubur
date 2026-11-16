@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { MessageCircle, Menu, X, Phone, LogIn, LogOut, ShieldCheck } from 'lucide-react';
 import {
-  MORNING_INSPIRATIONS,
   OFFICE_STAFF_CONTACTS,
   OFFICE_IDENTITY,
   WEEKLY_OFFICE_HOURS,
@@ -193,7 +192,7 @@ function PortalApp() {
       <main className="flex-1">
         {route === 'beranda' ? (
           <>
-            <TodayOverview weeklyHours={WEEKLY_OFFICE_HOURS} quotes={MORNING_INSPIRATIONS} />
+            <TodayOverview weeklyHours={WEEKLY_OFFICE_HOURS} />
             <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
             <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
           </>

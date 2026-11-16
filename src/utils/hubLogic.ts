@@ -1,4 +1,4 @@
-import type { MorningQuote, DealingRoom, FloortimeSlot } from '../data/cibuburData';
+import type { DealingRoom, FloortimeSlot } from '../data/cibuburData';
 
 export function buildWhatsAppChatUrl(
   whatsappNumber: string,
@@ -7,20 +7,6 @@ export function buildWhatsAppChatUrl(
   const cleanDigits = whatsappNumber.replace(/[^0-9]/g, '');
   const encodedText = encodeURIComponent(messageText.trim());
   return `https://wa.me/${cleanDigits}?text=${encodedText}`;
-}
-
-export function getNextMorningInspiration(
-  quotes: MorningQuote[],
-  currentIndex: number
-): { nextIndex: number; quote: MorningQuote } {
-  if (quotes.length === 0) {
-    throw new Error('Quotes array must not be empty');
-  }
-  const nextIndex = (currentIndex + 1) % quotes.length;
-  return {
-    nextIndex,
-    quote: quotes[nextIndex]
-  };
 }
 
 export function bookConsultationRoomSlot(

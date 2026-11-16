@@ -2,12 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildWhatsAppChatUrl,
-  getNextMorningInspiration,
   bookConsultationRoomSlot,
   bookFloortimeShift
 } from './hubLogic';
 import {
-  MORNING_INSPIRATIONS,
   OFFICE_STAFF_CONTACTS,
   OFFICE_IDENTITY,
   WEEKLY_OFFICE_HOURS,
@@ -48,12 +46,6 @@ test('buildWhatsAppChatUrl strips non-digits and encodes Bahasa Indonesia messag
     url,
     'https://wa.me/6282124962159?text=Halo%20Mas%20Amat%20Brighton%20HUB%20Cibubur'
   );
-});
-
-test('getNextMorningInspiration cycles through quotes', () => {
-  const step1 = getNextMorningInspiration(MORNING_INSPIRATIONS, 0);
-  assert.equal(step1.nextIndex, 1);
-  assert.equal(getNextMorningInspiration(MORNING_INSPIRATIONS, MORNING_INSPIRATIONS.length - 1).nextIndex, 0);
 });
 
 test('bookConsultationRoomSlot books Dealing Room 1 and Dealing Room 2 accurately', () => {

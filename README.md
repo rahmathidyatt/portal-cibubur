@@ -4,7 +4,7 @@ Portal operasional kantor Brighton HUB Cibubur untuk property advisor dan staf.
 
 Fitur:
 
-- **Beranda**: sapaan, status kantor buka/tutup (WIB), pengumuman, inspirasi pagi.
+- **Beranda**: sapaan, status kantor buka/tutup (WIB), pengumuman.
 - **Reservasi** (menu header, halaman terpisah):
   - `#dealing-room` — Dealing Room 1 & 2 per tanggal dan jam.
   - `#floortime` — pendaftaran jaga kantor (kuota 3 advisor per sesi).

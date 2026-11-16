@@ -1,11 +1,3 @@
-export interface MorningQuote {
-  id: string;
-  title: string;
-  quote: string;
-  authorOrContext: string;
-  dailyFocus: string;
-}
-
 export type StaffDivision = 'OPERASIONAL' | 'FINANCE' | 'MESSENGER';
 
 export interface OfficeStaffContact {
@@ -66,9 +58,7 @@ export const OFFICE_IDENTITY = {
   address: 'Jl. Canadian Broadway Blok CBB 30–31, Kota Wisata Cibubur',
   phoneDisplay: '021 3873 9073',
   phoneHref: 'tel:02138739073',
-  mapsUrl:
-    'https://www.google.com/maps/search/?api=1&query=' +
-    encodeURIComponent('Jl. Canadian Broadway Blok CBB 30-31, Kota Wisata Cibubur')
+  mapsUrl: 'https://maps.app.goo.gl/fbFsEzTkC3Jp9HEY6'
 };
 
 export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
@@ -118,7 +108,7 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     dayNameEn: 'Friday',
     hours: '08:00 - 17:00',
     isClosed: false,
-    note: 'Batas klaim komisi pukul 15:00'
+    note: ''
   },
   {
     dayId: 'sat',
@@ -127,33 +117,6 @@ export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
     hours: '08:00 - 15:00',
     isClosed: false,
     note: ''
-  }
-];
-
-export const MORNING_INSPIRATIONS: MorningQuote[] = [
-  {
-    id: 'insp-1',
-    title: 'Semangat Pagi · Brighton HUB Cibubur',
-    quote:
-      'Setiap kunci properti yang kita serahkan hari ini adalah awal dari cerita masa depan sebuah keluarga. Layani dengan ketulusan, kecepatan, dan integritas terbaik.',
-    authorOrContext: 'Prinsip Pelayanan One Management · Brighton Real Estate',
-    dailyFocus: 'Fokus Hari Ini: Respons cepat pelanggan & kerapian dokumen legalitas.'
-  },
-  {
-    id: 'insp-2',
-    title: 'Inspirasi Pagi · Kolaborasi Tim Cibubur',
-    quote:
-      'Keberhasilan satu transaksi adalah hasil kerja sama yang solid antara Property Advisor di lapangan dan dukungan penuh tim Operasional di kantor.',
-    authorOrContext: 'Budaya Kerja Brighton HUB Cibubur · ISO 9001:2015',
-    dailyFocus: 'Fokus Hari Ini: Koordinasi jadwal ruang konsultasi & ketepatan waktu kurir dokumen.'
-  },
-  {
-    id: 'insp-3',
-    title: 'Motivasi Pagi · Konsistensi & Kepercayaan',
-    quote:
-      'Kepercayaan klien dibangun dari hal-hal sederhana yang dilakukan secara konsisten: hadir tepat waktu, komunikasi yang jelas, dan administrasi yang transparan.',
-    authorOrContext: 'Standar Layanan Prima · Koridor Kota Wisata & Cibubur',
-    dailyFocus: 'Fokus Hari Ini: Verifikasi berkas komisi & kelancaran serah terima dokumen AJB.'
   }
 ];
 

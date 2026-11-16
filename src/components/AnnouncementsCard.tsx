@@ -72,7 +72,7 @@ export const AnnouncementsCard: React.FC = () => {
   return (
     <section
       aria-labelledby="pengumuman-title"
-      className="w-full lg:flex-1 min-w-0 bg-white border border-slate-200 rounded-2xl p-5 sm:p-6"
+      className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 id="pengumuman-title" className="flex items-center gap-2 text-base font-bold text-slate-950">

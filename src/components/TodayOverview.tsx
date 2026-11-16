@@ -1,6 +1,5 @@
 import React from 'react';
-import type { MorningQuote, OfficeDaySchedule } from '../data/cibuburData';
-import { MorningInspirationCard } from './MorningInspirationCard';
+import type { OfficeDaySchedule } from '../data/cibuburData';
 import { AnnouncementsCard } from './AnnouncementsCard';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
@@ -13,10 +12,9 @@ import {
 
 interface TodayOverviewProps {
   weeklyHours: OfficeDaySchedule[];
-  quotes: MorningQuote[];
 }
 
-export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours, quotes }) => {
+export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => {
   const now = useJakartaClock();
   const today = todayInJakarta(now);
   const greeting = greetingForMinutes(minutesNowInJakarta(now));
@@ -43,8 +41,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours, quote
           Kantor {status.label.toLowerCase()}
         </p>
 
-        <div className="mt-8 flex flex-col lg:flex-row gap-6 items-start">
-          <MorningInspirationCard quotes={quotes} />
+        <div className="mt-8 max-w-3xl empty:hidden">
           <AnnouncementsCard />
         </div>
       </div>
