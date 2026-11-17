@@ -25,6 +25,7 @@ import {
 import { BookingConflictError, getBookingStore, isOwnBooking } from '../services/bookingStore';
 import { useAdmin } from '../hooks/useAdmin';
 import { ConfirmCancelButton } from './ConfirmCancelButton';
+import { PublishedFloorTime } from '../features/floortime/PublishedFloorTime';
 
 type BookingTab = 'dealing-room-1' | 'dealing-room-2' | 'floortime';
 
@@ -341,10 +342,10 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
     setFtAdvisorName('');
   };
 
-  const pageTitle = view === 'floortime' ? 'Daftar Floortime' : 'Reservasi Dealing Room';
+  const pageTitle = view === 'floortime' ? 'Floortime' : 'Reservasi Dealing Room';
   const pageIntro =
     view === 'floortime'
-      ? 'Daftarkan diri untuk jaga kantor. Maksimal 3 advisor per sesi.'
+      ? 'Lihat jadwal floor time bulanan, ajukan perubahan sebelum batas waktu, atau daftar jaga harian.'
       : 'Pesan ruang diskusi klien per sesi 2 jam.';
 
   return (
@@ -365,6 +366,16 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
           {pageTitle}
         </h1>
         <p className="mt-1 text-sm text-slate-600">{pageIntro}</p>
+
+        {view === 'floortime' && (
+          <>
+            <div className="mt-6">
+              <PublishedFloorTime />
+            </div>
+            <h2 className="mt-10 text-lg font-bold text-slate-950">Pendaftaran jaga harian</h2>
+            <p className="text-sm text-slate-600">Maksimal 3 advisor per sesi.</p>
+          </>
+        )}
 
         <div className="mt-6 bg-white border border-slate-200 rounded-2xl overflow-hidden">
             {/* Modal Sub-Header: 3 Tabs (Dealing Room 1, Dealing Room 2, Floortime Request) + Date Picker */}

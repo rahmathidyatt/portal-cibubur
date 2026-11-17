@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Calendar, Users } from 'lucide-react';
+import { ChevronDown, Calendar, Users, CalendarRange, Receipt } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
 export const RESERVATION_LINKS = [
@@ -19,11 +19,40 @@ export const RESERVATION_LINKS = [
   }
 ];
 
+/** Alat staf: hanya tampil setelah login admin. */
+export const STAFF_LINKS = [
+  {
+    href: '#staf-floor-time',
+    route: 'staf-floor-time' as PortalRoute,
+    label: 'Floor Time Scheduler',
+    hint: 'Buat, terbitkan & kelola jadwal',
+    Icon: CalendarRange
+  },
+  {
+    href: '#staf-nota',
+    route: 'staf-nota' as PortalRoute,
+    label: 'Nota Smart Messenger',
+    hint: 'Hitung & unduh nota messenger',
+    Icon: Receipt
+  }
+];
+
+type MenuLink = (typeof RESERVATION_LINKS)[number];
+
 /** Menu "Reservasi" di header dengan sub menu Dealing Room & Floortime. */
-export const ReservationMenu: React.FC<{ route: PortalRoute }> = ({ route }) => {
+export const ReservationMenu: React.FC<{ route: PortalRoute }> = ({ route }) => (
+  <NavMenu label="Reservasi" links={RESERVATION_LINKS} route={route} />
+);
+
+/** Dropdown navigasi header dengan beberapa sub menu. */
+export const NavMenu: React.FC<{ label: string; links: MenuLink[]; route: PortalRoute }> = ({
+  label,
+  links,
+  route
+}) => {
   const [open, setOpen] = useState<boolean>(false);
   const ref = useRef<HTMLDivElement>(null);
-  const isActive = route === 'dealing-room' || route === 'floortime';
+  const isActive = links.some((l) => l.route === route);
 
   useEffect(() => {
     if (!open) return;
@@ -52,7 +81,7 @@ export const ReservationMenu: React.FC<{ route: PortalRoute }> = ({ route }) => 
           isActive ? 'text-slate-950' : 'hover:text-slate-950'
         }`}
       >
-        Reservasi
+        {label}
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
@@ -60,7 +89,7 @@ export const ReservationMenu: React.FC<{ route: PortalRoute }> = ({ route }) => 
           role="menu"
           className="absolute left-1/2 -translate-x-1/2 top-full mt-3 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
         >
-          {RESERVATION_LINKS.map(({ href, route: r, label, hint, Icon }) => (
+          {links.map(({ href, route: r, label: itemLabel, hint, Icon }) => (
             <a
               key={href}
               role="menuitem"
@@ -72,7 +101,7 @@ export const ReservationMenu: React.FC<{ route: PortalRoute }> = ({ route }) => 
             >
               <Icon className="w-4 h-4 mt-0.5 text-amber-600 shrink-0" />
               <span>
-                <span className="block text-sm font-semibold text-slate-900">{label}</span>
+                <span className="block text-sm font-semibold text-slate-900">{itemLabel}</span>
                 <span className="block text-xs font-normal text-slate-500">{hint}</span>
               </span>
             </a>

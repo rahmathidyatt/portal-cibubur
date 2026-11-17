@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Menu, X, LogIn, LogOut, ShieldCheck } from 'lucide-react';
 import {
   OFFICE_STAFF_CONTACTS,
@@ -17,7 +17,15 @@ import { BusinessManagers } from './components/BusinessManagers';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
 import { ReservationPage } from './components/ReservationPage';
-import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
+import { NavMenu, ReservationMenu, RESERVATION_LINKS, STAFF_LINKS } from './components/ReservationMenu';
+
+// Alat staf dimuat terpisah agar halaman publik tetap ringan (PDF/ZIP/Excel hanya untuk staf).
+const FloorTimeSchedulerPage = lazy(() =>
+  import('./features/floortime/FloorTimeSchedulerPage').then((m) => ({ default: m.FloorTimeSchedulerPage }))
+);
+const NotaMessengerPage = lazy(() =>
+  import('./features/nota/NotaMessengerPage').then((m) => ({ default: m.NotaMessengerPage }))
+);
 import { LoginDialog } from './components/LoginDialog';
 import { AdminProvider, useAdmin } from './hooks/useAdmin';
 import { useHashRoute } from './hooks/useHashRoute';
@@ -78,6 +86,7 @@ function PortalApp() {
                 {link.label}
               </a>
             ))}
+            {isAdmin && <NavMenu label="Alat staf" links={STAFF_LINKS} route={route} />}
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -143,6 +152,22 @@ function PortalApp() {
                 {link.label}
               </a>
             ))}
+            {isAdmin && (
+              <>
+                <p className="pt-2 pb-1 text-xs font-semibold text-slate-400">Alat staf</p>
+                {STAFF_LINKS.map(({ href, label, Icon }) => (
+                  <a
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2 pl-3 inline-flex items-center gap-2 hover:text-slate-950"
+                  >
+                    <Icon className="w-4 h-4 text-amber-600" />
+                    {label}
+                  </a>
+                ))}
+              </>
+            )}
             <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col">
               {isAdmin ? (
                 <button
@@ -182,6 +207,27 @@ function PortalApp() {
             <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
             <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
           </>
+        ) : route === 'staf-floor-time' || route === 'staf-nota' ? (
+          isAdmin ? (
+            <Suspense fallback={<p className="max-w-[1140px] mx-auto px-6 py-12 text-sm text-slate-500">Memuat alat staf…</p>}>
+              {route === 'staf-floor-time' ? <FloorTimeSchedulerPage /> : <NotaMessengerPage />}
+            </Suspense>
+          ) : (
+            <section className="bg-stone-50 min-h-[60vh] py-16">
+              <div className="max-w-md mx-auto px-6 text-center">
+                <h1 className="text-2xl font-bold text-slate-950">Khusus staf kantor</h1>
+                <p className="mt-2 text-sm text-slate-600">Masuk sebagai admin untuk membuka alat staf.</p>
+                <button
+                  type="button"
+                  onClick={() => setLoginOpen(true)}
+                  className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  Masuk staf
+                </button>
+              </div>
+            </section>
+          )
         ) : (
           <ReservationPage
             key={route}

@@ -239,3 +239,121 @@ begin
   end loop;
 end;
 $$;
+
+-- ===================================================================
+-- Floor Time Scheduler: jadwal bulanan yang diterbitkan staf + request advisor
+-- ===================================================================
+create table if not exists public.floortime_schedules (
+  id               uuid primary key default gen_random_uuid(),
+  year             integer not null check (year between 2024 and 2100),
+  month            integer not null check (month between 1 and 12),
+  data             jsonb not null,
+  request_deadline timestamptz not null,
+  published_at     timestamptz not null default now(),
+  updated_at       timestamptz not null default now(),
+  unique (year, month)
+);
+
+create table if not exists public.floortime_change_requests (
+  id          uuid primary key default gen_random_uuid(),
+  schedule_id uuid not null references public.floortime_schedules(id) on delete cascade,
+  agent_id    text not null,
+  agent_name  text not null check (char_length(agent_name) between 1 and 120),
+  from_slot   text,
+  to_slot     text not null,
+  reason      text not null check (char_length(trim(reason)) between 3 and 200),
+  status      text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  created_at  timestamptz not null default now(),
+  decided_at  timestamptz
+);
+create index if not exists floortime_change_requests_schedule_idx
+  on public.floortime_change_requests (schedule_id, created_at desc);
+create unique index if not exists floortime_change_requests_pending_unique
+  on public.floortime_change_requests (schedule_id, agent_id, to_slot) where status = 'pending';
+
+-- Advisor mengajukan request lewat fungsi ini; batas waktu ditegakkan di database.
+create or replace function public.submit_floortime_request(
+  p_schedule_id uuid, p_agent_id text, p_from_slot text, p_to_slot text, p_reason text
+) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare
+  v_schedule public.floortime_schedules;
+  v_agent jsonb;
+  v_id uuid;
+begin
+  select * into v_schedule from public.floortime_schedules where id = p_schedule_id;
+  if not found then
+    raise exception 'Jadwal tidak ditemukan';
+  end if;
+  if now() > v_schedule.request_deadline then
+    raise exception 'Batas waktu request sudah lewat';
+  end if;
+  select a into v_agent from jsonb_array_elements(v_schedule.data -> 'agents') a
+    where a ->> 'id' = p_agent_id limit 1;
+  if v_agent is null then
+    raise exception 'Agen tidak ada di jadwal';
+  end if;
+  if not exists (select 1 from jsonb_array_elements(v_schedule.data -> 'slots') s where s ->> 'key' = p_to_slot) then
+    raise exception 'Slot tujuan tidak ada di jadwal';
+  end if;
+  if p_from_slot is not null and not exists (
+    select 1 from jsonb_array_elements(coalesce(v_schedule.data -> 'assignments' -> p_from_slot, '[]'::jsonb)) e
+    where e ->> 'agentId' = p_agent_id
+  ) then
+    raise exception 'Jadwal asal tidak ditemukan untuk agen ini';
+  end if;
+  insert into public.floortime_change_requests (schedule_id, agent_id, agent_name, from_slot, to_slot, reason)
+  values (
+    p_schedule_id,
+    p_agent_id,
+    case when coalesce(v_agent ->> 'code', '') <> ''
+      then (v_agent ->> 'name') || ' (' || (v_agent ->> 'code') || ')'
+      else v_agent ->> 'name' end,
+    p_from_slot,
+    p_to_slot,
+    trim(p_reason)
+  )
+  returning id into v_id;
+  return v_id;
+exception
+  when unique_violation then
+    raise exception 'Request yang sama masih menunggu keputusan admin';
+end;
+$$;
+revoke all on function public.submit_floortime_request(uuid, text, text, text, text) from public;
+grant execute on function public.submit_floortime_request(uuid, text, text, text, text) to anon, authenticated;
+
+revoke all on public.floortime_schedules, public.floortime_change_requests from anon, authenticated;
+grant select on public.floortime_schedules to anon, authenticated;
+grant insert, update, delete on public.floortime_schedules to authenticated;
+-- Alasan request hanya terbaca akun yang login (admin).
+grant select (id, schedule_id, agent_id, agent_name, from_slot, to_slot, status, created_at, decided_at)
+  on public.floortime_change_requests to anon, authenticated;
+grant select (reason) on public.floortime_change_requests to authenticated;
+grant update, delete on public.floortime_change_requests to authenticated;
+
+alter table public.floortime_schedules enable row level security;
+alter table public.floortime_change_requests enable row level security;
+
+drop policy if exists "read floortime_schedules" on public.floortime_schedules;
+create policy "read floortime_schedules" on public.floortime_schedules
+  for select to anon, authenticated using (true);
+drop policy if exists "admin insert floortime_schedules" on public.floortime_schedules;
+create policy "admin insert floortime_schedules" on public.floortime_schedules
+  for insert to authenticated with check (public.is_portal_admin());
+drop policy if exists "admin update floortime_schedules" on public.floortime_schedules;
+create policy "admin update floortime_schedules" on public.floortime_schedules
+  for update to authenticated using (public.is_portal_admin()) with check (public.is_portal_admin());
+drop policy if exists "admin delete floortime_schedules" on public.floortime_schedules;
+create policy "admin delete floortime_schedules" on public.floortime_schedules
+  for delete to authenticated using (public.is_portal_admin());
+
+drop policy if exists "read floortime_change_requests" on public.floortime_change_requests;
+create policy "read floortime_change_requests" on public.floortime_change_requests
+  for select to anon, authenticated using (true);
+drop policy if exists "admin update floortime_change_requests" on public.floortime_change_requests;
+create policy "admin update floortime_change_requests" on public.floortime_change_requests
+  for update to authenticated using (public.is_portal_admin()) with check (public.is_portal_admin());
+drop policy if exists "admin delete floortime_change_requests" on public.floortime_change_requests;
+create policy "admin delete floortime_change_requests" on public.floortime_change_requests
+  for delete to authenticated using (public.is_portal_admin());

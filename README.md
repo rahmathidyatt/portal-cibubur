@@ -7,9 +7,18 @@ Fitur:
 - **Beranda**: sapaan, status kantor buka/tutup (WIB), pengumuman.
 - **Reservasi** (menu header, halaman terpisah):
   - `#dealing-room` — Dealing Room 1 & 2 per tanggal dan jam.
-  - `#floortime` — pendaftaran jaga kantor (kuota 3 advisor per sesi).
+  - `#floortime` — jadwal Floor Time bulanan yang diterbitkan staf + request pindah/tambah jadwal
+    sampai batas waktu (bawaan: Minggu 23:59 WIB pada minggu tayang), serta pendaftaran jaga harian
+    (kuota 3 advisor per sesi).
   Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
 - **Business Manager**: BM Brighton HUB Cibubur dengan foto, kode, dan level. Admin bisa menambah (termasuk unggah foto) dan menghapus BM dari portal. Daftar awal ada di `src/data/businessManagers.ts`, foto bawaan di `src/assets/managers/`.
+- **Alat staf** (menu muncul setelah login admin):
+  - `#staf-floor-time` — **Floor Time Scheduler** (port dari repo `floor-time`): unggah data agen
+    (.xlsx/.csv), filter kehadiran, hari libur, request khusus, generate jadwal adil 1x/2x/3x per
+    minggu, unduh poster PNG (ZIP), PDF, dan Excel, lalu **terbitkan ke portal** dengan batas request.
+    Admin menyetujui/menolak request perubahan dari advisor.
+  - `#staf-nota` — **Nota Smart Messenger** (port dari repo `nota-smart-messenger`): hitung BBM +
+    biaya jasa per titik, pratinjau nota, unduh PDF/PNG.
 - **Kontak staf**: OPERASIONAL, FINANCE, MESSENGER — nama, nomor telepon, dan tombol chat WhatsApp.
 - **Jam & lokasi**: jadwal mingguan, alamat, tautan Google Maps, telepon kantor.
 
@@ -74,6 +83,9 @@ Aturan yang ditegakkan (di aplikasi dan di database):
 ```
 src/
   components/          Komponen UI (beranda, Business Manager, staf, jam & lokasi, reservasi, login)
+  features/floortime/  Floor Time Scheduler: mesin jadwal, Excel/CSV, poster, terbit & request
+  features/nota/       Nota Smart Messenger: rumus & render nota
+  assets/fonts/        DejaVu Sans (poster & nota, lisensi di LICENSE-DejaVu.txt)
   data/cibuburData.ts  Data statis: staf, jam operasional, ruang, sesi floortime
   hooks/               useAdmin (sesi admin), useHashRoute (navigasi), useJakartaClock
   services/            Penyimpanan (localStorage / Supabase) dan login admin

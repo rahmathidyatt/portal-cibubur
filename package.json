@@ -9,10 +9,12 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/utils/*.test.ts src/data/*.test.ts"
+    "test": "tsx --test src/utils/*.test.ts src/data/*.test.ts src/features/**/*.test.ts"
   },
   "dependencies": {
+    "jszip": "^3.10.1",
     "lucide-react": "^0.546.0",
+    "pdf-lib": "^1.17.1",
     "react": "^19.0.1",
     "react-dom": "^19.0.1"
   },
