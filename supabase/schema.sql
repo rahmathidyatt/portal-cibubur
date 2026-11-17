@@ -465,5 +465,5 @@ begin
   return v_result;
 end;
 $$;
-revoke all on function public.page_view_stats(int) from public;
+revoke all on function public.page_view_stats(int) from public, anon;
 grant execute on function public.page_view_stats(int) to authenticated;
