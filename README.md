@@ -31,23 +31,34 @@ npm run dev        # http://localhost:3000
 | `npm run build`   | Build produksi ke folder `dist/`         |
 | `npm run preview` | Menjalankan hasil build secara lokal     |
 
-## Mode data
+## Database (Supabase)
 
-**Tanpa konfigurasi (mode demo)** — semua data (reservasi, pengumuman, daftar BM)
-disimpan di `localStorage` browser masing-masing. Login admin memakai akun demo
-`admin@demo.local` / `admin123`, yang hanya berlaku di mode ini.
+Portal sudah tersambung ke Supabase project **portal-cibubur** (region Singapura).
+URL dan kunci publiknya ada di `.env.development` dan `.env.production`, jadi
+`npm run dev` maupun `npm run build` langsung memakai database yang sama.
 
-**Dengan Supabase (mode produksi)** — semua pengguna melihat data yang sama:
+Skema lengkap ada di [`supabase/schema.sql`](supabase/schema.sql) (sudah terpasang;
+aman dijalankan ulang di SQL Editor bila skema diperbarui).
 
-1. Buat project di [supabase.com](https://supabase.com).
-2. Buka **SQL Editor**, jalankan seluruh isi [`supabase/schema.sql`](supabase/schema.sql).
-   File ini aman dijalankan ulang setiap kali skema diperbarui.
-3. Buka **Authentication → Users → Add user** dan buat akun untuk tiap admin/staf.
-   Lalu di **Authentication → Sign In / Providers**, matikan *Allow new users to sign up*
-   agar orang lain tidak bisa mendaftar sendiri sebagai admin.
-4. Salin `.env.example` menjadi `.env`, isi `VITE_SUPABASE_URL` dan
-   `VITE_SUPABASE_ANON_KEY` (Project Settings → API).
-5. Jalankan ulang `npm run dev`. Akun demo otomatis tidak berlaku lagi.
+### Menambah admin portal
+
+1. Supabase Dashboard → **Authentication → Users → Add user → Create new user**.
+   Isi email & kata sandi, centang *Auto Confirm User*.
+2. Dashboard → **SQL Editor**, jalankan (ganti emailnya):
+   ```sql
+   insert into public.portal_admins (email) values ('nama@domain.com');
+   ```
+3. Login di portal lewat tombol **Masuk staf**.
+
+Hanya email di tabel `portal_admins` yang bisa mengubah pengumuman, daftar BM,
+dan membatalkan reservasi orang lain — akun lain yang sekadar mendaftar tetap ditolak.
+Menghapus admin: `delete from public.portal_admins where email = 'nama@domain.com';`
+
+### Mode demo (tanpa database)
+
+Buat `.env.local` berisi `VITE_SUPABASE_URL=""` dan `VITE_SUPABASE_ANON_KEY=""`.
+Data lalu disimpan di `localStorage` browser, dan login admin memakai akun demo
+`admin@demo.local` / `admin123`.
 
 Aturan yang ditegakkan (di aplikasi dan di database):
 
@@ -56,7 +67,7 @@ Aturan yang ditegakkan (di aplikasi dan di database):
 - Satu slot ruang hanya bisa dipesan sekali per tanggal.
 - Floortime maksimal 3 advisor per sesi per tanggal, tanpa nama ganda; Sesi Sore hanya Senin–Jumat.
 - Kode pembatalan reservasi tidak pernah dikirim ke pengunjung lain.
-- Hanya admin yang bisa mengubah pengumuman dan daftar Business Manager.
+- Hanya email di `portal_admins` yang bisa mengubah pengumuman dan daftar Business Manager.
 
 ## Struktur
 

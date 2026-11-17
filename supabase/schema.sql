@@ -6,8 +6,8 @@
 --   anon          = pengunjung portal (advisor). Boleh membaca data, membuat reservasi
 --                   lewat fungsi create_*, dan membatalkan reservasinya sendiri dengan
 --                   kode pembatalan (cancel_*).
---   authenticated = admin/staf kantor yang login (akun dibuat manual di
---                   Authentication → Users; matikan "Allow new users to sign up").
+--   authenticated = akun yang login. Hanya email yang terdaftar di tabel portal_admins
+--                   yang boleh mengubah data (lihat bagian "Admin portal" di bawah).
 
 create extension if not exists pgcrypto;
 
@@ -44,7 +44,7 @@ create unique index if not exists floortime_unique_advisor
 
 -- Kuota maksimal 3 advisor per sesi per tanggal (sama dengan quotaMax di aplikasi).
 create or replace function public.enforce_floortime_quota()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   perform pg_advisory_xact_lock(hashtext(new.shift_id || new.booking_date::text));
   if (select count(*) from public.floortime_registrations
@@ -69,8 +69,6 @@ create table if not exists public.announcements (
   body       text not null default '' check (char_length(body) <= 1000),
   created_at timestamptz not null default now()
 );
-
-
 
 create table if not exists public.business_managers (
   id         text primary key default gen_random_uuid()::text,
@@ -176,6 +174,28 @@ grant select on public.announcements, public.business_managers to anon, authenti
 grant insert, update, delete on public.announcements, public.business_managers to authenticated;
 
 -- ===================================================================
+-- Admin portal: hanya email di tabel ini yang boleh mengubah data.
+-- Tambah admin:  insert into public.portal_admins(email) values ('nama@domain.com');
+-- ===================================================================
+create table if not exists public.portal_admins (
+  email      text primary key check (email = lower(email)),
+  created_at timestamptz not null default now()
+);
+alter table public.portal_admins enable row level security;
+revoke all on public.portal_admins from anon, authenticated;
+
+create or replace function public.is_portal_admin()
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.portal_admins
+    where email = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
+$$;
+revoke all on function public.is_portal_admin() from public, anon;
+grant execute on function public.is_portal_admin() to authenticated;
+
+-- ===================================================================
 -- Row Level Security
 -- ===================================================================
 alter table public.room_bookings enable row level security;
@@ -194,14 +214,14 @@ create policy "read room_bookings" on public.room_bookings
   for select to anon, authenticated using (true);
 drop policy if exists "admin delete room_bookings" on public.room_bookings;
 create policy "admin delete room_bookings" on public.room_bookings
-  for delete to authenticated using (true);
+  for delete to authenticated using (public.is_portal_admin());
 
 drop policy if exists "read floortime" on public.floortime_registrations;
 create policy "read floortime" on public.floortime_registrations
   for select to anon, authenticated using (true);
 drop policy if exists "admin delete floortime" on public.floortime_registrations;
 create policy "admin delete floortime" on public.floortime_registrations
-  for delete to authenticated using (true);
+  for delete to authenticated using (public.is_portal_admin());
 
 do $$
 declare t text;
@@ -210,7 +230,12 @@ begin
     execute format('drop policy if exists "read %1$s" on public.%1$I', t);
     execute format('create policy "read %1$s" on public.%1$I for select to anon, authenticated using (true)', t);
     execute format('drop policy if exists "admin write %1$s" on public.%1$I', t);
-    execute format('create policy "admin write %1$s" on public.%1$I for all to authenticated using (true) with check (true)', t);
+    execute format('drop policy if exists "admin insert %1$s" on public.%1$I', t);
+    execute format('create policy "admin insert %1$s" on public.%1$I for insert to authenticated with check (public.is_portal_admin())', t);
+    execute format('drop policy if exists "admin update %1$s" on public.%1$I', t);
+    execute format('create policy "admin update %1$s" on public.%1$I for update to authenticated using (public.is_portal_admin()) with check (public.is_portal_admin())', t);
+    execute format('drop policy if exists "admin delete %1$s" on public.%1$I', t);
+    execute format('create policy "admin delete %1$s" on public.%1$I for delete to authenticated using (public.is_portal_admin())', t);
   end loop;
 end;
 $$;

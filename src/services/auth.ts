@@ -71,6 +71,20 @@ function createSupabaseAuth(config: SupabaseConfig): AuthService {
           expires_in: number;
           user?: { email?: string };
         };
+
+        // Akun harus terdaftar di tabel portal_admins agar boleh mengelola data.
+        const check = await supabaseFetch(config, 'rest/v1/rpc/is_portal_admin', {
+          method: 'POST',
+          accessToken: data.access_token,
+          body: '{}'
+        });
+        if (!((await check.json()) as boolean)) {
+          await supabaseFetch(config, 'auth/v1/logout', {
+            method: 'POST',
+            accessToken: data.access_token
+          }).catch(() => {});
+          throw new Error('Akun ini belum terdaftar sebagai admin portal.');
+        }
         const session: AdminSession = {
           email: data.user?.email ?? email.trim(),
           accessToken: data.access_token,

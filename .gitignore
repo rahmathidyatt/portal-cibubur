@@ -6,6 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+# Hanya berisi URL & kunci publik Supabase (aman di-commit)
+!.env.development
+!.env.production
 
 # Artefak AI Studio
 .aistudio/
