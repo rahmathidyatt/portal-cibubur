@@ -23,3 +23,25 @@ test('validateBusinessManager', () => {
     /AUFZ sudah dipakai/
   );
 });
+
+import { groupByUnit, isPrincipal, unitOf } from './businessManagers';
+
+test('unit BM & principal', () => {
+  assert.equal(unitOf('Brighton Warrior'), 'Warrior');
+  assert.equal(unitOf('brighton VISION'), 'Vision');
+  assert.ok(isPrincipal({ tier: 'Principal' }));
+  assert.ok(!isPrincipal({ tier: 'Brighton Winner' }));
+  const g = groupByUnit([
+    { tier: 'Brighton Winner' },
+    { tier: 'Brighton Warrior' },
+    { tier: 'Brighton Priority' },
+    { tier: 'Brighton Warrior' },
+    { tier: 'Brighton Champion' }
+  ]);
+  assert.deepEqual(g.map((x) => [x.unit, x.members.length]), [
+    ['Warrior', 2],
+    ['Champion', 1],
+    ['Priority', 1],
+    ['Winner', 1]
+  ]);
+});

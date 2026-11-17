@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Clock, Eye, FileText, Monitor, RefreshCw, Smartphone, Tablet, TrendingUp, Users } from 'lucide-react';
+import { Clock, Eye, Monitor, RefreshCw, Smartphone, Tablet, TrendingUp, Users } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
-import { getViewStats, pageLabel, whenVisitRecorded, type ViewStats } from '../../services/analytics';
+import { getViewStats, whenVisitRecorded, type ViewStats } from '../../services/analytics';
 import { MONTH_NAMES_ID } from '../floortime/engine';
 
 const number = new Intl.NumberFormat('id-ID');
@@ -115,16 +115,15 @@ export const PortalStatsPage: React.FC = () => {
         {error && <p className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
 
         {!stats && !error && (
-          <div className="mt-6 h-80 rounded-3xl bg-slate-200/70 animate-pulse" aria-label="Memuat statistik" />
+          <div className="mt-6 h-40 rounded-2xl bg-slate-200/60 animate-pulse" aria-label="Memuat statistik" />
         )}
 
         {stats && (
           <>
-            <div className="mt-6 overflow-hidden rounded-3xl">
+            <div className="mt-6">
               <StatsHero stats={stats} />
             </div>
-            <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              <TopPages stats={stats} />
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
               <PeakHours stats={stats} />
               <Devices stats={stats} />
             </div>
@@ -143,131 +142,82 @@ const StatsHero: React.FC<{ stats: ViewStats }> = ({ stats }) => {
   const labelEvery = stats.daily.length <= 7 ? 1 : stats.daily.length <= 14 ? 3 : stats.daily.length <= 31 ? 5 : 15;
 
   const tiles = [
-    { label: `Pengunjung unik · ${stats.rangeDays} hari`, value: stats.rangeVisitors, Icon: Users },
-    { label: 'Kunjungan hari ini', value: stats.todayViews, Icon: Eye },
-    { label: `Halaman dibuka · ${stats.rangeDays} hari`, value: stats.pageViews, Icon: FileText }
+    { label: `Kunjungan · ${stats.rangeDays} hari`, value: stats.rangeViews, Icon: Eye },
+    { label: 'Pengunjung unik', value: stats.rangeVisitors, Icon: Users },
+    { label: 'Kunjungan hari ini', value: stats.todayViews, Icon: Clock },
+    { label: 'Total sepanjang waktu', value: stats.totalViews, Icon: TrendingUp }
   ];
 
   return (
-    <div aria-labelledby="statistik-title" className="relative overflow-hidden bg-slate-950 text-white">
-      <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-400/20 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl" />
-      <div className="relative px-5 sm:px-8 py-8 sm:py-10">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-end">
-          <div>
-            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-amber-400">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60 motion-reduce:hidden" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
+    <div aria-labelledby="statistik-title" className="rounded-2xl bg-white/60 p-4 ring-1 ring-slate-200 backdrop-blur sm:p-5">
+      <h2 id="statistik-title" className="sr-only">
+        Kunjungan portal
+      </h2>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-4">
+        {tiles.map(({ label, value, Icon }, i) => (
+          <div key={label} className="min-w-0">
+            <dt className="flex items-center gap-1.5 text-xs text-slate-500">
+              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+              {label}
+            </dt>
+            <dd className="mt-0.5 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-slate-950">
+                <Counter value={value} />
               </span>
-              Kunjungan portal
-            </p>
-            <h2 id="statistik-title" className="mt-3 text-sm font-medium text-slate-400">
-              Kunjungan {stats.rangeDays} hari terakhir
-            </h2>
-            <p className="mt-1 text-6xl sm:text-7xl font-extrabold tracking-tight text-white">
-              <Counter value={stats.rangeViews} />
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {growth !== null && (
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                    growth >= 0 ? 'bg-emerald-400/15 text-emerald-300' : 'bg-red-400/15 text-red-300'
-                  }`}
-                >
-                  <TrendingUp className={`w-3.5 h-3.5 ${growth < 0 ? 'rotate-180' : ''}`} aria-hidden="true" />
-                  {growth >= 0 ? '+' : ''}
-                  {growth}% dibanding {stats.rangeDays} hari sebelumnya
+              {i === 0 && growth !== null && (
+                <span className={`text-xs font-semibold ${growth >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {growth >= 0 ? '▲' : '▼'} {Math.abs(growth)}%
                 </span>
               )}
-              <span className="text-xs text-slate-400">
-                Total sepanjang waktu: <b className="text-slate-200">{number.format(stats.totalViews)}</b> kunjungan ·{' '}
-                {number.format(stats.uniqueVisitors)} pengunjung
-              </span>
-            </div>
-
-            <dl className="mt-8 grid grid-cols-3 gap-3">
-              {tiles.map(({ label, value, Icon }) => (
-                <div key={label} className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-3 sm:p-4">
-                  <Icon className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                  <dd className="mt-2 text-xl sm:text-2xl font-bold text-white">
-                    <Counter value={value} />
-                  </dd>
-                  <dt className="mt-0.5 text-[11px] sm:text-xs text-slate-400 leading-tight">{label}</dt>
-                </div>
-              ))}
-            </dl>
+            </dd>
           </div>
+        ))}
+      </dl>
 
-          <div className="rounded-3xl bg-white/5 ring-1 ring-white/10 p-5 sm:p-6">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="text-sm font-semibold text-white">Kunjungan per hari</p>
-              <p className="text-xs text-slate-400">
-                Hari ini <span className="font-bold text-amber-400">{number.format(stats.todayViews)}</span>
-              </p>
-            </div>
-            <div
-              className={`mt-6 flex items-end h-40 ${dense ? 'gap-px' : 'gap-1 sm:gap-1.5'}`}
-              role="img"
-              aria-label={`Grafik kunjungan ${stats.rangeDays} hari terakhir`}
-            >
-              {stats.daily.map((d, i) => {
-                const isToday = i === stats.daily.length - 1;
-                const pct = d.views ? Math.max(6, (d.views / max) * 100) : 2;
-                return (
-                  <div key={d.date} className="group relative flex-1 min-w-0 h-full flex items-end">
-                    <div
-                      title={`${shortDay(d.date)}: ${d.views} kunjungan · ${d.visitors} pengunjung`}
-                      className={`w-full rounded-t-sm transition-[height] duration-700 ease-out ${
-                        isToday
-                          ? 'bg-gradient-to-t from-amber-500 to-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.45)]'
-                          : 'bg-gradient-to-t from-white/10 to-white/30 group-hover:from-amber-500/60 group-hover:to-amber-300/80'
-                      }`}
-                      style={{ height: `${pct}%` }}
-                    />
-                    {!dense && d.views > 0 && (
-                      <span
-                        className={`absolute left-1/2 -translate-x-1/2 text-[10px] font-bold tabular-nums ${
-                          isToday ? 'text-amber-300' : 'text-slate-400 opacity-0 group-hover:opacity-100'
-                        }`}
-                        style={{ bottom: `calc(${pct}% + 4px)` }}
-                      >
-                        {d.views}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className={`mt-2 flex border-t border-white/10 pt-2 ${dense ? 'gap-px' : 'gap-1 sm:gap-1.5'}`}>
-              {stats.daily.map((d, i) => {
-                const last = i === stats.daily.length - 1;
-                return (
-                  <span key={d.date} className="relative flex-1 min-w-0 h-3 text-[10px] text-slate-500">
-                    {(last || (stats.daily.length - 1 - i) % labelEvery === 0) && (
-                      <span className={`absolute top-0 whitespace-nowrap ${last ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}>
-                        {last ? 'Hari ini' : shortDay(d.date)}
-                      </span>
-                    )}
+      <div className="mt-4 border-t border-slate-100 pt-3">
+        <div
+          className={`flex h-20 items-end ${dense ? 'gap-px' : 'gap-1'}`}
+          role="img"
+          aria-label={`Grafik kunjungan ${stats.rangeDays} hari terakhir`}
+        >
+          {stats.daily.map((d, i) => {
+            const isToday = i === stats.daily.length - 1;
+            const pct = d.views ? Math.max(6, (d.views / max) * 100) : 3;
+            return (
+              <div
+                key={d.date}
+                title={`${shortDay(d.date)}: ${d.views} kunjungan · ${d.visitors} pengunjung`}
+                className={`flex-1 min-w-0 rounded-t-sm ${isToday ? 'bg-slate-700' : 'bg-slate-300 hover:bg-slate-400'}`}
+                style={{ height: `${pct}%` }}
+              />
+            );
+          })}
+        </div>
+        <div className={`mt-1 flex ${dense ? 'gap-px' : 'gap-1'}`}>
+          {stats.daily.map((d, i) => {
+            const last = i === stats.daily.length - 1;
+            return (
+              <span key={d.date} className="relative h-3 flex-1 min-w-0 text-[10px] text-slate-500">
+                {(last || (stats.daily.length - 1 - i) % labelEvery === 0) && (
+                  <span className={`absolute top-0 whitespace-nowrap ${last ? 'right-0' : 'left-1/2 -translate-x-1/2'}`}>
+                    {last ? 'Hari ini' : shortDay(d.date)}
                   </span>
-                );
-              })}
-            </div>
-          </div>
+                )}
+              </span>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 };
 
-const panel = 'rounded-2xl bg-white p-5 ring-1 ring-slate-200';
+const panel = 'rounded-2xl bg-white/60 p-4 ring-1 ring-slate-200';
 
 const PanelTitle: React.FC<{ Icon: typeof Eye; title: string; note?: string }> = ({ Icon, title, note }) => (
   <div className="flex items-baseline justify-between gap-2">
     <h3 className="flex items-center gap-2 text-sm font-bold text-slate-950">
-      <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-100 text-amber-700">
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
+      <Icon className="h-4 w-4 text-slate-500" aria-hidden="true" />
       {title}
     </h3>
     {note && <span className="text-[11px] text-slate-500">{note}</span>}
@@ -275,32 +225,6 @@ const PanelTitle: React.FC<{ Icon: typeof Eye; title: string; note?: string }> =
 );
 
 const Empty: React.FC = () => <p className="mt-4 text-sm text-slate-500">Belum ada data di rentang ini.</p>;
-
-const TopPages: React.FC<{ stats: ViewStats }> = ({ stats }) => {
-  const max = Math.max(1, ...stats.topPages.map((p) => p.views));
-  return (
-    <section className={panel}>
-      <PanelTitle Icon={FileText} title="Halaman terpopuler" note={`${stats.rangeDays} hari`} />
-      {stats.topPages.length === 0 ? (
-        <Empty />
-      ) : (
-        <ol className="mt-4 space-y-2.5">
-          {stats.topPages.map((p) => (
-            <li key={p.path}>
-              <div className="flex items-baseline justify-between gap-2 text-sm">
-                <span className="truncate font-medium text-slate-800">{pageLabel(p.path)}</span>
-                <span className="tabular-nums font-semibold text-slate-950">{number.format(p.views)}</span>
-              </div>
-              <div className="mt-1 h-1.5 rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-amber-400" style={{ width: `${(p.views / max) * 100}%` }} />
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
-  );
-};
 
 const PeakHours: React.FC<{ stats: ViewStats }> = ({ stats }) => {
   const max = Math.max(0, ...stats.hours);
@@ -313,16 +237,16 @@ const PeakHours: React.FC<{ stats: ViewStats }> = ({ stats }) => {
         <Empty />
       ) : (
         <>
-          <p className="mt-3 text-2xl font-bold text-slate-950 tabular-nums">
+          <p className="mt-2 text-xl font-bold text-slate-950 tabular-nums">
             {pad(peak)}.00–{pad((peak + 1) % 24)}.00
           </p>
           <p className="text-xs text-slate-500">{number.format(max)} kunjungan dimulai di jam ini</p>
-          <div className="mt-4 flex h-20 items-end gap-px" role="img" aria-label="Kunjungan per jam">
+          <div className="mt-3 flex h-14 items-end gap-px" role="img" aria-label="Kunjungan per jam">
             {stats.hours.map((n, h) => (
               <div
                 key={h}
                 title={`${pad(h)}.00: ${n} kunjungan`}
-                className={`flex-1 rounded-t-sm ${h === peak ? 'bg-amber-400' : 'bg-slate-200'}`}
+                className={`flex-1 rounded-t-sm ${h === peak ? 'bg-slate-700' : 'bg-slate-200'}`}
                 style={{ height: `${n ? Math.max(6, (n / max) * 100) : 3}%` }}
               />
             ))}
@@ -342,9 +266,9 @@ const PeakHours: React.FC<{ stats: ViewStats }> = ({ stats }) => {
 
 const Devices: React.FC<{ stats: ViewStats }> = ({ stats }) => {
   const rows = [
-    { key: 'mobile' as const, label: 'HP', Icon: Smartphone, color: 'bg-amber-400' },
-    { key: 'desktop' as const, label: 'Komputer', Icon: Monitor, color: 'bg-slate-900' },
-    { key: 'tablet' as const, label: 'Tablet', Icon: Tablet, color: 'bg-amber-200' },
+    { key: 'mobile' as const, label: 'HP', Icon: Smartphone, color: 'bg-slate-700' },
+    { key: 'desktop' as const, label: 'Komputer', Icon: Monitor, color: 'bg-slate-400' },
+    { key: 'tablet' as const, label: 'Tablet', Icon: Tablet, color: 'bg-slate-300' },
     { key: 'unknown' as const, label: 'Belum tercatat', Icon: Eye, color: 'bg-slate-200' }
   ].filter((r) => r.key !== 'unknown' || stats.devices.unknown > 0);
   const total = rows.reduce((s, r) => s + stats.devices[r.key], 0);
@@ -355,14 +279,14 @@ const Devices: React.FC<{ stats: ViewStats }> = ({ stats }) => {
         <Empty />
       ) : (
         <>
-          <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-slate-100">
             {rows.map((r) =>
               stats.devices[r.key] ? (
                 <div key={r.key} className={r.color} style={{ width: `${(stats.devices[r.key] / total) * 100}%` }} />
               ) : null
             )}
           </div>
-          <ul className="mt-4 space-y-2">
+          <ul className="mt-3 space-y-1.5">
             {rows.map(({ key, label, Icon, color }) => (
               <li key={key} className="flex items-center justify-between gap-2 text-sm">
                 <span className="flex items-center gap-2 text-slate-700">

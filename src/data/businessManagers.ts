@@ -10,12 +10,37 @@ export interface BusinessManager {
 
 /** Pilihan level yang disarankan di formulir admin (tetap bisa diketik bebas). */
 export const BM_TIER_OPTIONS = [
+  'Principal',
   'Brighton Warrior',
   'Brighton Champion',
   'Brighton Vision',
-  'Brighton Winner',
-  'Brighton Priority'
+  'Brighton Priority',
+  'Brighton Winner'
 ];
+
+/** Urutan unit sesuai kebiasaan kantor. */
+export const UNIT_ORDER = ['Warrior', 'Champion', 'Vision', 'Priority', 'Winner'];
+
+/** "Brighton Warrior" → "Warrior". */
+export function unitOf(tier: string): string {
+  const t = tier.trim().replace(/^brighton\s+/i, '');
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+}
+
+/** Principal = level tertinggi (ditampilkan di atas Business Manager). */
+export function isPrincipal(bm: Pick<BusinessManager, 'tier'>): boolean {
+  return /principal/i.test(bm.tier);
+}
+
+/** Kelompokkan BM per unit, urut Warrior, Champion, Vision, Priority, Winner, lalu unit lain. */
+export function groupByUnit<T extends Pick<BusinessManager, 'tier'>>(list: T[]): { unit: string; members: T[] }[] {
+  const map = new Map<string, T[]>();
+  for (const bm of list) map.set(unitOf(bm.tier), [...(map.get(unitOf(bm.tier)) ?? []), bm]);
+  const rank = (u: string) => (UNIT_ORDER.indexOf(u) === -1 ? 99 : UNIT_ORDER.indexOf(u));
+  return [...map.entries()]
+    .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+    .map(([unit, members]) => ({ unit, members }));
+}
 
 export function validateBusinessManager(
   input: { name: string; code: string; tier: string },

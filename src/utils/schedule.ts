@@ -274,3 +274,11 @@ export function getOfficeStatus(
   }
   return { isOpen: false, label: 'Tutup' };
 }
+
+/** Jam istirahat staf (WIB): 12.00–13.00 pada hari kantor buka. */
+export const BREAK_START = 12 * 60;
+export const BREAK_END = 13 * 60;
+
+export function isStaffBreak(status: OfficeStatus, minutes: number): boolean {
+  return status.isOpen && minutes >= BREAK_START && minutes < BREAK_END;
+}

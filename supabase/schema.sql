@@ -641,3 +641,58 @@ end;
 $$;
 revoke all on function public.page_view_stats(int) from public, anon;
 grant execute on function public.page_view_stats(int) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- Training Brighton & Nota Medpro: data internal, khusus admin portal.
+-- Tidak ada akses anon sama sekali.
+-- ---------------------------------------------------------------------
+create table if not exists public.training_agents (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique check (char_length(name) between 1 and 80),
+  scores jsonb not null default '{}'::jsonb,
+  pending jsonb not null default '{}'::jsonb,
+  graduated boolean not null default false,
+  note text check (note is null or char_length(note) <= 500),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.medpro_notas (
+  id uuid primary key default gen_random_uuid(),
+  nota_date date not null,
+  invoice text not null unique check (char_length(invoice) between 5 and 60),
+  banner integer not null default 0 check (banner >= 0),
+  branding integer not null default 0 check (branding >= 0),
+  checked boolean not null default false,
+  paid_on date,
+  note text check (note is null or char_length(note) <= 200),
+  created_at timestamptz not null default now()
+);
+create index if not exists medpro_notas_paid_idx on public.medpro_notas (paid_on);
+
+create table if not exists public.medpro_drops (
+  id uuid primary key default gen_random_uuid(),
+  drop_date date not null,
+  office text not null check (char_length(office) between 1 and 60),
+  nota_no text not null check (char_length(nota_no) between 1 and 60),
+  amount integer not null default 0 check (amount >= 0),
+  checked boolean not null default false,
+  paid_on date,
+  note text check (note is null or char_length(note) <= 200),
+  created_at timestamptz not null default now(),
+  unique (nota_no, drop_date)
+);
+
+do $$
+declare t text;
+begin
+  foreach t in array array['training_agents', 'medpro_notas', 'medpro_drops'] loop
+    execute format('revoke all on public.%I from anon, authenticated', t);
+    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists "admin all %s" on public.%I', t, t);
+    execute format(
+      'create policy "admin all %s" on public.%I for all to authenticated using (public.is_portal_admin()) with check (public.is_portal_admin())',
+      t, t);
+  end loop;
+end $$;

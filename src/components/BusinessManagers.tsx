@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Plus, Upload } from 'lucide-react';
+import { Crown, Plus, Upload } from 'lucide-react';
 import {
   BM_TIER_OPTIONS,
   BUSINESS_MANAGERS,
+  groupByUnit,
+  isPrincipal,
   validateBusinessManager,
   type BusinessManager
 } from '../data/businessManagers';
@@ -39,6 +41,43 @@ function photoFor(bm: BusinessManager): string | undefined {
   return bm.photoUrl || BUNDLED_PHOTOS[bm.id];
 }
 
+const UNIT_STYLE: Record<string, { label: string; chip: string; dot: string }> = {
+  Warrior: { label: 'text-amber-700', chip: 'bg-amber-100 text-amber-900', dot: 'bg-amber-500' },
+  Champion: { label: 'text-sky-700', chip: 'bg-sky-100 text-sky-900', dot: 'bg-sky-500' },
+  Vision: { label: 'text-violet-700', chip: 'bg-violet-100 text-violet-900', dot: 'bg-violet-500' },
+  Priority: { label: 'text-emerald-700', chip: 'bg-emerald-100 text-emerald-900', dot: 'bg-emerald-500' },
+  Winner: { label: 'text-rose-700', chip: 'bg-rose-100 text-rose-900', dot: 'bg-rose-500' },
+  default: { label: 'text-slate-600', chip: 'bg-slate-100 text-slate-800', dot: 'bg-slate-500' }
+};
+
+const PrincipalSection: React.FC<{
+  principals: BusinessManager[];
+  isAdmin: boolean;
+  renderCard: (bm: BusinessManager) => React.ReactNode;
+}> = ({ principals, isAdmin, renderCard }) => (
+  <div className="mt-6">
+    <h3 className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-950">
+      <Crown className="h-5 w-5 text-amber-500" aria-hidden="true" />
+      Principal
+    </h3>
+    {principals.length === 0 ? (
+      <div className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-white px-4 py-5">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-stone-100 text-slate-400">
+          <Crown className="h-6 w-6" aria-hidden="true" />
+        </span>
+        <div>
+          <p className="text-sm font-semibold text-slate-700">Belum ada Principal di HUB Cibubur.</p>
+          {isAdmin && (
+            <p className="text-xs text-slate-500">Tambah lewat tombol Tambah BM dengan level &quot;Principal&quot;.</p>
+          )}
+        </div>
+      </div>
+    ) : (
+      <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{principals.map(renderCard)}</ul>
+    )}
+  </div>
+);
+
 const inputClass =
   'w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400';
 
@@ -50,7 +89,7 @@ const AddBmForm: React.FC<{
   const { auth } = useAdmin();
   const [name, setName] = useState<string>('');
   const [code, setCode] = useState<string>('');
-  const [tier, setTier] = useState<string>(BM_TIER_OPTIONS[0]);
+  const [tier, setTier] = useState<string>('Brighton Warrior');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
@@ -196,12 +235,51 @@ export const BusinessManagers: React.FC = () => {
     await load();
   };
 
+  const principals = managers.filter(isPrincipal);
+  const bms = managers.filter((m) => !isPrincipal(m));
+  const units = groupByUnit(bms);
+
+  const renderCard = (bm: BusinessManager) => {
+    const photo = photoFor(bm);
+    return (
+      <li key={bm.id} className="flex items-center gap-3 rounded-xl bg-white p-2.5 ring-1 ring-slate-200">
+        {photo ? (
+          <img
+            src={photo}
+            alt={`Foto ${bm.name}`}
+            width={400}
+            height={400}
+            loading="lazy"
+            decoding="async"
+            className="h-16 w-16 shrink-0 rounded-lg object-cover bg-amber-400"
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-amber-400 text-xl font-bold text-slate-950"
+          >
+            {bm.name.charAt(0)}
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-950">{bm.name}</p>
+          <p className="mt-0.5 font-mono text-xs text-slate-500">{bm.code}</p>
+        </div>
+        {isAdmin && (
+          <div className="self-start">
+            <ConfirmCancelButton label="Hapus" confirmLabel="Hapus" onConfirm={() => handleDelete(bm)} />
+          </div>
+        )}
+      </li>
+    );
+  };
+
   return (
     <section id="business-manager" className="scroll-mt-20 py-12 sm:py-16 bg-white border-b border-slate-200">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-            Business Manager
+            Pimpinan & Business Manager
           </h2>
           {isAdmin && !formOpen && (
             <button
@@ -227,55 +305,39 @@ export const BusinessManagers: React.FC = () => {
         )}
         {error && <p className="mt-4 text-xs font-semibold text-red-700">{error}</p>}
 
-        {managers.length === 0 ? (
-          <p className="mt-6 text-sm text-slate-500">Belum ada Business Manager.</p>
+        <PrincipalSection principals={principals} isAdmin={isAdmin} renderCard={renderCard} />
+
+        <div className="mt-10 flex items-baseline justify-between gap-3">
+          <h3 className="text-xl font-bold tracking-tight text-slate-950">Business Manager per unit</h3>
+          <p className="text-xs text-slate-500">{bms.length} BM · {units.length} unit</p>
+        </div>
+        {bms.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">Belum ada Business Manager.</p>
         ) : (
-          <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {managers.map((bm) => {
-              const photo = photoFor(bm);
+          <div className="mt-4 space-y-4">
+            {units.map(({ unit, members }) => {
+              const style = UNIT_STYLE[unit] ?? UNIT_STYLE.default;
               return (
-                <li
-                  key={bm.id}
-                  className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl p-3"
+                <section
+                  key={unit}
+                  aria-label={`Unit ${unit}`}
+                  className="grid gap-3 rounded-2xl bg-stone-50 p-3 ring-1 ring-slate-200 md:grid-cols-[180px_minmax(0,1fr)] md:p-4"
                 >
-                  {photo ? (
-                    <img
-                      src={photo}
-                      alt={`Foto ${bm.name}`}
-                      width={400}
-                      height={400}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-20 h-20 shrink-0 rounded-xl object-cover bg-amber-400"
-                    />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="grid place-items-center w-20 h-20 shrink-0 rounded-xl bg-amber-400 text-2xl font-bold text-slate-950"
-                    >
-                      {bm.name.charAt(0)}
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-slate-950 truncate">{bm.name}</p>
-                    <p className="mt-0.5 font-mono text-xs text-slate-500">{bm.code}</p>
-                    <p className="mt-1.5 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200">
-                      {bm.tier}
-                    </p>
-                  </div>
-                  {isAdmin && (
-                    <div className="self-start">
-                      <ConfirmCancelButton
-                        label="Hapus"
-                        confirmLabel="Hapus"
-                        onConfirm={() => handleDelete(bm)}
-                      />
+                  <div className="flex items-center justify-between gap-3 md:flex-col md:items-start md:justify-center">
+                    <div>
+                      <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${style.label}`}>Brighton</p>
+                      <p className="text-2xl font-extrabold tracking-tight text-slate-950">{unit}</p>
                     </div>
-                  )}
-                </li>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${style.chip}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+                      {members.length} BM
+                    </span>
+                  </div>
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{members.map(renderCard)}</ul>
+                </section>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
     </section>

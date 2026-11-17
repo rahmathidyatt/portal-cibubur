@@ -8,11 +8,11 @@ import { FEATURES } from '../data/features';
 import { OFFICE_IDENTITY } from '../data/cibuburData';
 import { AnnouncementsCard } from './AnnouncementsCard';
 import { BirthdayReminder } from './BirthdayReminder';
+import { LiveClock } from './LiveClock';
 import { officeAnniversary } from '../utils/anniversary';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
   formatLongDateId,
-  getOfficeStatus,
   greetingForMinutes,
   minutesNowInJakarta,
   todayInJakarta
@@ -26,7 +26,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
   const now = useJakartaClock();
   const today = todayInJakarta(now);
   const greeting = greetingForMinutes(minutesNowInJakarta(now));
-  const status = getOfficeStatus(weeklyHours, now);
   const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
 
   const minutesNow = minutesNowInJakarta(now);
@@ -47,19 +46,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
             <BirthdayReminder today={today} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <p
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                status.isOpen
-                  ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
-                  : 'bg-white text-slate-700 ring-1 ring-slate-200'
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`w-2 h-2 rounded-full ${status.isOpen ? 'bg-emerald-500' : 'bg-slate-400'}`}
-              />
-              Kantor {status.label.toLowerCase()}
-            </p>
+            <LiveClock weeklyHours={weeklyHours} />
             {FEATURES.dealingRoom && (
             <a
               href="#dealing-room"

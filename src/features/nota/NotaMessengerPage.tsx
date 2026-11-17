@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download, Plus, Trash2 } from 'lucide-react';
-import { todayInJakarta } from '../../utils/schedule';
+import { minutesNowInJakarta, todayInJakarta } from '../../utils/schedule';
+import { CopyTextBlock } from '../../components/CopyTextBlock';
+import { buildNotaMessage, buildPhotoMessage } from './notaMessages';
 import { canvasToPng, downloadBytes } from '../floortime/posterRenderer';
 import {
   calculateTotal,
@@ -162,7 +164,14 @@ export const NotaMessengerPage: React.FC = () => {
                         </button>
                       )}
                     </div>
-                    <input aria-label={`Alamat titik ${i + 1}`} value={job.alamat} onChange={(e) => updateJob(i, { alamat: e.target.value })} placeholder="Alamat, mis. Workshop Multiteknik" className={input} />
+                    <textarea
+                      aria-label={`Alamat titik ${i + 1}`}
+                      value={job.alamat}
+                      onChange={(e) => updateJob(i, { alamat: e.target.value })}
+                      placeholder="Alamat lengkap, mis. Workshop Multiteknik, Jl. Alternatif Cibubur No. 12"
+                      rows={2}
+                      className={`${input} resize-y min-h-[2.75rem] [field-sizing:content] leading-snug`}
+                    />
                     <div className="grid grid-cols-2 gap-2">
                       <input aria-label={`Tugas titik ${i + 1}`} value={job.tugas} onChange={(e) => updateJob(i, { tugas: e.target.value })} placeholder="Tugas" className={input} />
                       <input aria-label={`Keterangan titik ${i + 1}`} value={job.keterangan} onChange={(e) => updateJob(i, { keterangan: e.target.value })} placeholder="Keterangan (opsional)" className={input} />
@@ -272,6 +281,14 @@ export const NotaMessengerPage: React.FC = () => {
               ) : (
                 <p className="mt-3 text-sm text-slate-500">Membuat pratinjau…</p>
               )}
+            </div>
+            <div className={`${card} space-y-3`}>
+              <div>
+                <p className="text-sm font-bold text-slate-950">Pesan WhatsApp untuk agen</p>
+                <p className="mt-0.5 text-xs text-slate-500">Bahasa formal & sopan, siap disalin. Sesuaikan bila perlu sebelum dikirim.</p>
+              </div>
+              <CopyTextBlock text={buildNotaMessage(meta, jobs, result, minutesNowInJakarta())} label="BC kirim nota" rows={12} />
+              <CopyTextBlock text={buildPhotoMessage(meta, jobs, minutesNowInJakarta())} label="BC kirim foto dokumentasi" rows={9} />
             </div>
           </div>
         </div>

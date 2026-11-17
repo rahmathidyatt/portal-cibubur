@@ -5,6 +5,8 @@ Portal operasional kantor Brighton HUB Cibubur untuk property advisor dan staf.
 Fitur:
 
 - **Beranda (dashboard "Hari ini")**: sapaan, pengingat ulang tahun agen (hari ini & besok) tepat di bawahnya, status kantor, lalu kartu Floor Time hari ini (shift berjalan ditandai + jadwal saya berikutnya) dan pengumuman.
+- **Jam WIB** di kanan atas beranda; pukul 12.00–13.00 pada hari kantor buka tampil *Staf sedang istirahat*.
+- **Pimpinan & Business Manager**: bagian *Principal* (kosong sampai admin menambah BM dengan level "Principal"), lalu BM dikelompokkan per unit Warrior, Champion, Vision, Priority, Winner.
 - **Saklar fitur** `src/data/features.ts`: Dealing Room sedang disembunyikan (`dealingRoom: false`); ubah ke `true` untuk menampilkannya lagi.
 - **Floortime → Jadwal saya**: agen memilih namanya (diingat di perangkat), melihat jadwal berikutnya, dan menyimpan seluruh jadwal ke kalender HP (.ics, pengingat 1 jam sebelumnya).
 - **PWA**: portal bisa dipasang di layar utama HP (manifest, ikon, service worker; tombol *Pasang aplikasi* muncul bila browser mendukung). Pratinjau tautan WhatsApp memakai `public/og-image.png`. Pemutar **jingle Brighton** mengambang di pojok kanan bawah, langsung memutar saat portal dibuka (atau pada sentuhan pertama bila browser menahan autoplay) dan lanjut bergantian; bisa dijeda dan dipilih lagunya (lagu bawaan di `public/jingles/`). Footer menampilkan tanggal berdiri kantor (6 Mei 2023) dan ucapan setiap 6 Mei.
@@ -17,6 +19,9 @@ Fitur:
 - **Business Manager**: BM Brighton HUB Cibubur dengan foto, kode, dan level. Admin bisa menambah (termasuk unggah foto) dan menghapus BM dari portal. Daftar awal ada di `src/data/businessManagers.ts`, foto bawaan di `src/assets/managers/`.
 - **Area admin** (link di header setelah login; sidebar di desktop, tab geser di HP) — `#staf-admin` diarahkan ke Statistik portal:
   - *Statistik portal* (`#staf-statistik`): rentang 7/30/90 hari, kunjungan (dibanding periode sebelumnya), pengunjung unik, halaman terpopuler, jam paling ramai, perangkat (HP/komputer/tablet). Khusus admin.
+  - *Training Brighton* (`#staf-training`): rekap nilai 11 sesi (lulus ≥ 60). Hijau = lulus, merah = didaftarkan & menunggu nilai, abu-abu = belum lulus. Klik sel untuk isi nilai / daftarkan sesi; *Daftarkan ke batch* menandai semua sesi yang belum lulus; teks BC pengingat siap salin; impor dari rekap Excel (sheet berkolom "PROPERTY ADVISOR", warna sel ikut terbaca).
+  - *Ekspor*: Training Brighton & Nota Medpro punya tombol *Unduh Excel* dan *Unduh PDF* (warna status ikut; file Excel hasil ekspor bisa diimpor ulang).
+  - *Nota Medpro* (`#staf-medpro`): input nota (INVOICE asli → INVOICE BR `nomor-CIBUBUR` otomatis), centang *Sesuai* setelah dicek (hijau), jadwal bayar tanggal 14 & 28 (Sabtu/Minggu → Jumat), *Sudah dibayar* menutup periode dan menghasilkan BC pembayaran (banner & alat branding). Drop banner dicatat terpisah dengan BC sendiri. Impor dari rekap Excel (sheet berkolom "INVOICE BR"; tiap tabel = satu periode).
   - *Jingle Brighton* (`#staf-jingle`): unggah lagu baru ke Storage bucket `jingles`, dengarkan, hapus.
   - *Ulang tahun agen* (`#staf-ulang-tahun`): data ulang tahun agen — unggah ekspor bulanan .csv/.xlsx (kolom `Code`, `Nama Panggilan`, `Tgl Lahir`), tambah manual, hapus per agen/per bulan. Tahun lahir tidak disimpan.
   - `#staf-floor-time` — **Floor Time Scheduler** (port dari repo `floor-time`): unggah data agen
@@ -24,7 +29,8 @@ Fitur:
     minggu, unduh poster PNG (ZIP), PDF, dan Excel, lalu **terbitkan ke portal** dengan batas request.
     Admin menyetujui/menolak request perubahan dari advisor.
   - `#staf-nota` — **Nota Smart Messenger** (port dari repo `nota-smart-messenger`): hitung BBM +
-    biaya jasa per titik, pratinjau nota, unduh PDF/PNG.
+    biaya jasa per titik, pratinjau nota (alamat panjang otomatis dibungkus & baris menyesuaikan), unduh PDF/PNG,
+    serta teks WhatsApp formal untuk kirim nota dan kirim foto dokumentasi ke agen.
 - **Kontak staf**: OPERASIONAL, FINANCE, MESSENGER — nama, nomor telepon, dan tombol chat WhatsApp.
 - **Jam & lokasi**: jadwal mingguan, alamat, tautan Google Maps, telepon kantor.
 

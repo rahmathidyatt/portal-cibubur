@@ -31,6 +31,8 @@ const FloorTimeSchedulerPage = lazy(() =>
   import('./features/floortime/FloorTimeSchedulerPage').then((m) => ({ default: m.FloorTimeSchedulerPage }))
 );
 const PortalStatsPage = lazy(() => import('./features/admin/PortalStatsPage').then((m) => ({ default: m.PortalStatsPage })));
+const TrainingPage = lazy(() => import('./features/training/TrainingPage').then((m) => ({ default: m.TrainingPage })));
+const MedproPage = lazy(() => import('./features/medpro/MedproPage').then((m) => ({ default: m.MedproPage })));
 const JinglePage = lazy(() => import('./features/admin/ContentPages').then((m) => ({ default: m.JinglePage })));
 const BirthdayPage = lazy(() => import('./features/admin/ContentPages').then((m) => ({ default: m.BirthdayPage })));
 const NotaMessengerPage = lazy(() =>
@@ -264,6 +266,10 @@ function StaffPage({ route }: { route: PortalRoute }) {
       return <FloorTimeSchedulerPage />;
     case 'staf-nota':
       return <NotaMessengerPage />;
+    case 'staf-training':
+      return <TrainingPage />;
+    case 'staf-medpro':
+      return <MedproPage />;
     case 'staf-jingle':
       return <JinglePage />;
     case 'staf-ulang-tahun':

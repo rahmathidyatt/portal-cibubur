@@ -86,7 +86,7 @@ function cell(
   box: Box,
   text = '',
   size = 19,
-  { fill = '#fff', align = 'center' as Align, padding = 4, bold = false } = {}
+  { fill = '#fff', align = 'center' as Align, padding = 4, bold = false, fit = false } = {}
 ) {
   const [x1, y1, x2, y2] = box;
   ctx.fillStyle = fill;
@@ -94,7 +94,61 @@ function cell(
   ctx.strokeStyle = '#000';
   ctx.lineWidth = 1;
   ctx.strokeRect(x1 + 0.5, y1 + 0.5, x2 - x1 - 1, y2 - y1);
-  if (text) textBox(ctx, text, box, size, { align, padding, bold });
+  if (!text) return;
+  // fit: perkecil huruf sampai seluruh teks muat di dalam sel (tidak keluar garis).
+  const fitted = fit ? fitSize(ctx, text, x2 - x1 - padding * 2, y2 - y1 - 4, size, bold) : size;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x1 + 1, y1 + 1, x2 - x1 - 2, y2 - y1 - 2);
+  ctx.clip();
+  textBox(ctx, text, box, fitted, { align, padding, bold, lineSpacing: fit ? 1.05 : 1.15 });
+  ctx.restore();
+}
+
+const MIN_TEXT = 11;
+
+/** Tinggi teks terbungkus pada ukuran huruf tertentu. */
+function wrappedHeight(ctx: CanvasRenderingContext2D, text: string, width: number, size: number, bold = false): number {
+  setFont(ctx, size, bold);
+  return wrapLines(ctx, text, Math.max(1, width)).length * size * 1.05 * 1.05;
+}
+
+/** Ukuran huruf terbesar (≤ size) agar teks muat dalam lebar × tinggi sel. */
+function fitSize(ctx: CanvasRenderingContext2D, text: string, width: number, height: number, size: number, bold = false): number {
+  for (let s = size; s > MIN_TEXT; s -= 0.5) {
+    if (wrappedHeight(ctx, text, width, s, bold) <= height) return s;
+  }
+  return MIN_TEXT;
+}
+
+/**
+ * Tinggi tiap baris pekerjaan: baris dengan alamat/tugas/keterangan panjang
+ * dibuat lebih tinggi; total tinggi tabel tetap sama dengan template.
+ */
+export function rowHeights(ctx: CanvasRenderingContext2D, jobs: NotaJob[], rows: number, total: number): number[] {
+  const base = 17;
+  const cols: [keyof NotaJob, number][] = [
+    ['alamat', TABLE_X[2] - TABLE_X[1] - 10],
+    ['tugas', TABLE_X[3] - TABLE_X[2] - 10],
+    ['keterangan', TABLE_X[9] - TABLE_X[8] - 10]
+  ];
+  const MIN_ROW = 22;
+  const need = Array.from({ length: rows }, (_, i) => {
+    const job = jobs[i];
+    if (!job) return MIN_ROW;
+    const h = Math.max(...cols.map(([k, w]) => (job[k] ? wrappedHeight(ctx, job[k], w, base) + 8 : 0)));
+    return Math.max(ROW_H, Math.ceil(h));
+  });
+  const used = need.reduce((a, b) => a + b, 0);
+  if (used <= total) {
+    // Sisa ruang dibagi rata ke baris yang belum diperbesar.
+    const flexible = need.map((h) => h === ROW_H || h === MIN_ROW);
+    const n = flexible.filter(Boolean).length;
+    const extra = n ? (total - used) / n : 0;
+    return need.map((h, i) => (flexible[i] ? h + extra : h + (n ? 0 : (total - used) / rows)));
+  }
+  // Terlalu panjang: kecilkan proporsional (teks lalu diperkecil oleh fitSize).
+  return need.map((h) => (h / used) * total);
 }
 
 function splitRupiahCell(ctx: CanvasRenderingContext2D, box: Box, text: string, size = 19) {
@@ -186,31 +240,37 @@ export async function renderNotaCanvas(
   cell(ctx, [x[5], Y_TOP + HEADER_1_H, x[6], HEADER_BOTTOM], formatRupiah(config.tariffPerKm), 20, hdr);
   cell(ctx, [x[6], Y_TOP + HEADER_1_H, x[7], HEADER_BOTTOM], formatRupiah(config.serviceFeePerPoint), 20, hdr);
 
+  const heights = rowHeights(ctx, jobs, MAX_TEMPLATE_ROWS, MAX_TEMPLATE_ROWS * ROW_H);
+  const rowY: number[] = [HEADER_BOTTOM];
+  for (const h of heights) rowY.push(rowY[rowY.length - 1] + h);
+  rowY[rowY.length - 1] = TOTAL_Y;
+
   for (let i = 0; i < MAX_TEMPLATE_ROWS; i++) {
-    const y1 = HEADER_BOTTOM + i * ROW_H;
-    const y2 = y1 + ROW_H;
+    const y1 = rowY[i];
+    const y2 = rowY[i + 1];
     const job = jobs[i] ?? { alamat: '', tugas: '', keterangan: '' };
-    cell(ctx, [x[0], y1, x[1], y2], String(i + 1));
-    cell(ctx, [x[1], y1, x[2], y2], job.alamat, 19, { align: 'left', padding: 5 });
-    cell(ctx, [x[2], y1, x[3], y2], job.tugas, 19, { align: 'left', padding: 5 });
-    cell(ctx, [x[8], y1, x[9], y2], job.keterangan, 19, { align: 'left', padding: 5 });
+    cell(ctx, [x[0], y1, x[1], y2], String(i + 1), 17, { fit: true });
+    cell(ctx, [x[1], y1, x[2], y2], job.alamat, 17, { align: 'left', padding: 5, fit: true });
+    cell(ctx, [x[2], y1, x[3], y2], job.tugas, 17, { align: 'left', padding: 5, fit: true });
+    cell(ctx, [x[8], y1, x[9], y2], job.keterangan, 17, { align: 'left', padding: 5, fit: true });
   }
 
   const merge = result.jobCount ? Math.min(Math.max(1, result.jobCount), MAX_TEMPLATE_ROWS) : 1;
-  const my2 = HEADER_BOTTOM + merge * ROW_H;
+  const my2 = rowY[merge];
   cell(ctx, [x[3], HEADER_BOTTOM, x[4], my2], result.jobCount ? formatNumberId(result.distanceKm) : '');
   cell(ctx, [x[4], HEADER_BOTTOM, x[5], my2], 'X');
   cell(ctx, [x[5], HEADER_BOTTOM, x[6], my2], formatRupiah(config.tariffPerKm));
   cell(ctx, [x[6], HEADER_BOTTOM, x[7], my2], result.jobCount ? formatRupiah(result.serviceFee) : '');
   splitRupiahCell(ctx, [x[7], HEADER_BOTTOM, x[8], my2], result.jobCount ? formatRupiah(result.total) : 'Rp -');
   for (let i = merge; i < MAX_TEMPLATE_ROWS; i++) {
-    const y1 = HEADER_BOTTOM + i * ROW_H;
-    const y2 = y1 + ROW_H;
+    const y1 = rowY[i];
+    const y2 = rowY[i + 1];
+    const small = Math.min(19, Math.max(12, (y2 - y1) * 0.62));
     cell(ctx, [x[3], y1, x[4], y2]);
-    cell(ctx, [x[4], y1, x[5], y2], 'X');
-    cell(ctx, [x[5], y1, x[6], y2], formatRupiah(config.tariffPerKm));
+    cell(ctx, [x[4], y1, x[5], y2], 'X', small);
+    cell(ctx, [x[5], y1, x[6], y2], formatRupiah(config.tariffPerKm), small);
     cell(ctx, [x[6], y1, x[7], y2]);
-    splitRupiahCell(ctx, [x[7], y1, x[8], y2], 'Rp -');
+    splitRupiahCell(ctx, [x[7], y1, x[8], y2], 'Rp -', small);
   }
 
   cell(ctx, [x[0], TOTAL_Y, x[7], TABLE_BOTTOM], 'TOTAL', 38, { fill: YELLOW });
