@@ -12,3 +12,4 @@ coverage/
 
 # Artefak AI Studio
 .aistudio/
+*.tsbuildinfo
