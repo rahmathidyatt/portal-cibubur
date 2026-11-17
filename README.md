@@ -4,7 +4,7 @@ Portal operasional kantor Brighton HUB Cibubur untuk property advisor dan staf.
 
 Fitur:
 
-- **Beranda**: sapaan, status kantor buka/tutup (WIB), pengumuman.
+- **Beranda**: sapaan, status kantor buka/tutup (WIB), pengingat ulang tahun agen (hari ini & besok), pengumuman. Footer menampilkan tanggal berdiri kantor (6 Mei 2023) dan ucapan setiap 6 Mei.
 - **Reservasi** (menu header, halaman terpisah):
   - `#dealing-room` — Dealing Room 1 & 2 per tanggal dan jam.
   - `#floortime` — jadwal Floor Time bulanan yang diterbitkan staf + request pindah/tambah jadwal
@@ -13,6 +13,7 @@ Fitur:
   Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
 - **Business Manager**: BM Brighton HUB Cibubur dengan foto, kode, dan level. Admin bisa menambah (termasuk unggah foto) dan menghapus BM dari portal. Daftar awal ada di `src/data/businessManagers.ts`, foto bawaan di `src/assets/managers/`.
 - **Alat staf** (menu muncul setelah login admin):
+  - *Panel admin* (`#staf-admin`): statistik kunjungan (total, pengunjung unik, hari ini, grafik 14 hari) dan data ulang tahun agen — unggah ekspor bulanan .csv/.xlsx (kolom `Code`, `Nama Panggilan`, `Tgl Lahir`), tambah manual, hapus per agen/per bulan. Tahun lahir tidak disimpan.
   - `#staf-floor-time` — **Floor Time Scheduler** (port dari repo `floor-time`): unggah data agen
     (.xlsx/.csv), filter kehadiran, hari libur, request khusus, generate jadwal adil 1x/2x/3x per
     minggu, unduh poster PNG (ZIP), PDF, dan Excel, lalu **terbitkan ke portal** dengan batas request.

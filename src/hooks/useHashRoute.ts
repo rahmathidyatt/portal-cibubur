@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
-export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota';
+export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota' | 'staf-admin';
 
-const PAGE_ROUTES: PortalRoute[] = ['dealing-room', 'floortime', 'staf-floor-time', 'staf-nota'];
+const PAGE_ROUTES: PortalRoute[] = ['dealing-room', 'floortime', 'staf-floor-time', 'staf-nota', 'staf-admin'];
 
 function readHash(): string {
   try {
@@ -15,7 +15,7 @@ function readHash(): string {
 /**
  * Navigasi sederhana berbasis hash:
  * - #dealing-room dan #floortime membuka halaman reservasi masing-masing.
- * - #staf-floor-time dan #staf-nota membuka alat staf (wajib login admin).
+ * - #staf-admin, #staf-floor-time dan #staf-nota membuka alat staf (wajib login admin).
  * - Hash lain (#beranda, #kontak-staf, #jam-operasional) membuka beranda
  *   lalu menggulir ke bagian tersebut.
  */

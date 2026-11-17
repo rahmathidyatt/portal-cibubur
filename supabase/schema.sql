@@ -357,3 +357,113 @@ create policy "admin update floortime_change_requests" on public.floortime_chang
 drop policy if exists "admin delete floortime_change_requests" on public.floortime_change_requests;
 create policy "admin delete floortime_change_requests" on public.floortime_change_requests
   for delete to authenticated using (public.is_portal_admin());
+
+-- ---------------------------------------------------------------------
+-- Ulang tahun agen (tanpa tahun lahir) — dibaca publik untuk pengingat
+-- beranda, diubah hanya oleh admin portal.
+-- ---------------------------------------------------------------------
+create table if not exists public.agent_birthdays (
+  code text primary key check (code ~ '^[A-Z0-9]{2,12}$'),
+  name text not null check (char_length(name) between 1 and 80),
+  birth_month smallint not null check (birth_month between 1 and 12),
+  birth_day smallint not null check (birth_day between 1 and 31),
+  updated_at timestamptz not null default now()
+);
+
+revoke all on public.agent_birthdays from anon, authenticated;
+grant select on public.agent_birthdays to anon, authenticated;
+grant insert, update, delete on public.agent_birthdays to authenticated;
+alter table public.agent_birthdays enable row level security;
+
+drop policy if exists "read agent_birthdays" on public.agent_birthdays;
+create policy "read agent_birthdays" on public.agent_birthdays
+  for select to anon, authenticated using (true);
+drop policy if exists "admin insert agent_birthdays" on public.agent_birthdays;
+create policy "admin insert agent_birthdays" on public.agent_birthdays
+  for insert to authenticated with check (public.is_portal_admin());
+drop policy if exists "admin update agent_birthdays" on public.agent_birthdays;
+create policy "admin update agent_birthdays" on public.agent_birthdays
+  for update to authenticated using (public.is_portal_admin()) with check (public.is_portal_admin());
+drop policy if exists "admin delete agent_birthdays" on public.agent_birthdays;
+create policy "admin delete agent_birthdays" on public.agent_birthdays
+  for delete to authenticated using (public.is_portal_admin());
+
+-- ---------------------------------------------------------------------
+-- Statistik kunjungan. Tabel tertutup; tulis lewat record_page_view,
+-- baca ringkasan lewat page_view_stats (khusus admin).
+-- ---------------------------------------------------------------------
+create table if not exists public.page_views (
+  id bigint generated always as identity primary key,
+  visitor_id text not null check (char_length(visitor_id) between 8 and 64),
+  path text not null default '' check (char_length(path) <= 64),
+  viewed_at timestamptz not null default now()
+);
+create index if not exists page_views_viewed_at_idx on public.page_views (viewed_at);
+create index if not exists page_views_visitor_idx on public.page_views (visitor_id, viewed_at);
+
+revoke all on public.page_views from anon, authenticated;
+alter table public.page_views enable row level security;
+
+create or replace function public.record_page_view(p_visitor text, p_path text default '')
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_visitor is null or char_length(p_visitor) not between 8 and 64 then
+    return;
+  end if;
+  -- Batas wajar per pengunjung agar angka tidak bisa digelembungkan.
+  if (select count(*) from public.page_views
+      where visitor_id = p_visitor and viewed_at > now() - interval '1 day') >= 50 then
+    return;
+  end if;
+  insert into public.page_views (visitor_id, path)
+  values (p_visitor, left(coalesce(p_path, ''), 64));
+end;
+$$;
+revoke all on function public.record_page_view(text, text) from public;
+grant execute on function public.record_page_view(text, text) to anon, authenticated;
+
+create or replace function public.page_view_stats(p_days int default 14)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Asia/Jakarta')::date;
+  v_days int := least(greatest(coalesce(p_days, 14), 1), 90);
+  v_result jsonb;
+begin
+  if not public.is_portal_admin() then
+    raise exception 'Statistik hanya untuk admin portal';
+  end if;
+  with v as (
+    select visitor_id, (viewed_at at time zone 'Asia/Jakarta')::date as d from public.page_views
+  ),
+  days as (
+    select generate_series(v_today - (v_days - 1), v_today, interval '1 day')::date as d
+  ),
+  daily as (
+    select days.d, count(v.visitor_id) as views, count(distinct v.visitor_id) as visitors
+    from days left join v on v.d = days.d
+    group by days.d order by days.d
+  )
+  select jsonb_build_object(
+    'totalViews', (select count(*) from v),
+    'uniqueVisitors', (select count(distinct visitor_id) from v),
+    'todayViews', (select count(*) from v where d = v_today),
+    'todayVisitors', (select count(distinct visitor_id) from v where d = v_today),
+    'last7Views', (select count(*) from v where d > v_today - 7),
+    'daily', (select coalesce(jsonb_agg(jsonb_build_object(
+                'date', to_char(d, 'YYYY-MM-DD'), 'views', views, 'visitors', visitors) order by d), '[]'::jsonb)
+              from daily)
+  ) into v_result;
+  return v_result;
+end;
+$$;
+revoke all on function public.page_view_stats(int) from public;
+grant execute on function public.page_view_stats(int) to authenticated;

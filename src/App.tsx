@@ -6,6 +6,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Menu, X, LogIn, LogOut, ShieldCheck, Cake } from 'lucide-react';
 import { officeAnniversary } from './utils/anniversary';
+import { recordVisit } from './services/analytics';
 import { todayInJakarta } from './utils/schedule';
 import {
   OFFICE_STAFF_CONTACTS,
@@ -25,6 +26,7 @@ import { NavMenu, ReservationMenu, RESERVATION_LINKS, STAFF_LINKS } from './comp
 const FloorTimeSchedulerPage = lazy(() =>
   import('./features/floortime/FloorTimeSchedulerPage').then((m) => ({ default: m.FloorTimeSchedulerPage }))
 );
+const AdminPanelPage = lazy(() => import('./features/admin/AdminPanelPage').then((m) => ({ default: m.AdminPanelPage })));
 const NotaMessengerPage = lazy(() =>
   import('./features/nota/NotaMessengerPage').then((m) => ({ default: m.NotaMessengerPage }))
 );
@@ -56,6 +58,11 @@ function PortalApp() {
 
   // Tutup menu HP setiap kali berpindah halaman.
   useEffect(() => setMobileMenuOpen(false), [route]);
+
+  // Catat satu kunjungan per sesi browser (untuk statistik di Panel admin).
+  useEffect(() => {
+    void recordVisit(window.location.hash.replace(/^#/, '') || 'beranda');
+  }, []);
 
   const opsStaff = OFFICE_STAFF_CONTACTS[0];
 
@@ -209,10 +216,16 @@ function PortalApp() {
             <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
             <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
           </>
-        ) : route === 'staf-floor-time' || route === 'staf-nota' ? (
+        ) : route === 'staf-floor-time' || route === 'staf-nota' || route === 'staf-admin' ? (
           isAdmin ? (
             <Suspense fallback={<p className="max-w-[1140px] mx-auto px-6 py-12 text-sm text-slate-500">Memuat alat staf…</p>}>
-              {route === 'staf-floor-time' ? <FloorTimeSchedulerPage /> : <NotaMessengerPage />}
+              {route === 'staf-floor-time' ? (
+                <FloorTimeSchedulerPage />
+              ) : route === 'staf-admin' ? (
+                <AdminPanelPage />
+              ) : (
+                <NotaMessengerPage />
+              )}
             </Suspense>
           ) : (
             <section className="bg-stone-50 min-h-[60vh] py-16">

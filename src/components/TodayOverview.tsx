@@ -3,6 +3,7 @@ import type { OfficeDaySchedule } from '../data/cibuburData';
 import { Cake } from 'lucide-react';
 import { OFFICE_IDENTITY } from '../data/cibuburData';
 import { AnnouncementsCard } from './AnnouncementsCard';
+import { BirthdayReminderCard } from './BirthdayReminderCard';
 import { officeAnniversary } from '../utils/anniversary';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
@@ -62,7 +63,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
           </div>
         )}
 
-        <div className="mt-8 max-w-3xl empty:hidden">
+        <div className="mt-8 max-w-3xl space-y-4 empty:hidden">
+          <BirthdayReminderCard today={today} />
           <AnnouncementsCard />
         </div>
       </div>
