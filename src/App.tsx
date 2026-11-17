@@ -19,6 +19,8 @@ import { TodayOverview } from './components/TodayOverview';
 import { BusinessManagers } from './components/BusinessManagers';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
+import { VisitorStats } from './components/VisitorStats';
+import { JinglePlayer } from './components/JinglePlayer';
 import { ReservationPage } from './components/ReservationPage';
 import { NavMenu, ReservationMenu, RESERVATION_LINKS, STAFF_LINKS } from './components/ReservationMenu';
 
@@ -215,6 +217,7 @@ function PortalApp() {
             <BusinessManagers />
             <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
             <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
+            <VisitorStats />
           </>
         ) : route === 'staf-floor-time' || route === 'staf-nota' || route === 'staf-admin' ? (
           isAdmin ? (
@@ -258,6 +261,7 @@ function PortalApp() {
       <LoginDialog open={loginOpen} onClose={handleCloseLogin} />
 
       <SiteFooter />
+      <JinglePlayer />
     </div>
   );
 }

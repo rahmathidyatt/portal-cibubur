@@ -438,9 +438,6 @@ declare
   v_days int := least(greatest(coalesce(p_days, 14), 1), 90);
   v_result jsonb;
 begin
-  if not public.is_portal_admin() then
-    raise exception 'Statistik hanya untuk admin portal';
-  end if;
   with v as (
     select visitor_id, (viewed_at at time zone 'Asia/Jakarta')::date as d from public.page_views
   ),
@@ -465,5 +462,67 @@ begin
   return v_result;
 end;
 $$;
-revoke all on function public.page_view_stats(int) from public, anon;
+revoke all on function public.page_view_stats(int) from public;
 grant execute on function public.page_view_stats(int) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- Jingle Brighton: diputar di portal, dikelola admin.
+-- Lagu bawaan ada di public/jingles/ (url relatif); unggahan admin
+-- disimpan di Storage bucket "jingles" (url publik + storage_path).
+-- ---------------------------------------------------------------------
+create table if not exists public.jingles (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (char_length(title) between 1 and 100),
+  url text not null check (char_length(url) between 1 and 500),
+  storage_path text check (storage_path is null or char_length(storage_path) <= 200),
+  sort_order int not null default 100,
+  created_at timestamptz not null default now()
+);
+
+-- Lagu bawaan hanya diisi saat tabel masih kosong.
+insert into public.jingles (title, url, sort_order)
+select * from (values
+  ('Rise and Multiply', 'jingles/rise-and-multiply.mp3', 1),
+  ('Together Greater', 'jingles/together-greater.mp3', 2),
+  ('Selalu Melangkah', 'jingles/selalu-melangkah.mp3', 3),
+  ('United for Impact', 'jingles/united-for-impact.mp3', 4),
+  ('Mimpi Jadi Nyata', 'jingles/mimpi-jadi-nyata.mp3', 5)
+) as v(title, url, sort_order)
+where not exists (select 1 from public.jingles);
+
+revoke all on public.jingles from anon, authenticated;
+grant select on public.jingles to anon, authenticated;
+grant insert, update, delete on public.jingles to authenticated;
+alter table public.jingles enable row level security;
+
+drop policy if exists "read jingles" on public.jingles;
+create policy "read jingles" on public.jingles
+  for select to anon, authenticated using (true);
+drop policy if exists "admin insert jingles" on public.jingles;
+create policy "admin insert jingles" on public.jingles
+  for insert to authenticated with check (public.is_portal_admin());
+drop policy if exists "admin update jingles" on public.jingles;
+create policy "admin update jingles" on public.jingles
+  for update to authenticated using (public.is_portal_admin()) with check (public.is_portal_admin());
+drop policy if exists "admin delete jingles" on public.jingles;
+create policy "admin delete jingles" on public.jingles
+  for delete to authenticated using (public.is_portal_admin());
+
+-- Statistik kunjungan ditampilkan di bagian bawah beranda (hanya angka agregat).
+grant execute on function public.page_view_stats(int) to anon;
+
+-- Storage bucket untuk jingle unggahan admin (khusus Supabase).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('jingles', 'jingles', true, 15728640, array['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/wav', 'audio/x-wav', 'audio/ogg'])
+on conflict (id) do update set public = excluded.public,
+  file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "admin upload jingles" on storage.objects;
+create policy "admin upload jingles" on storage.objects
+  for insert to authenticated with check (bucket_id = 'jingles' and public.is_portal_admin());
+drop policy if exists "admin delete jingle files" on storage.objects;
+create policy "admin delete jingle files" on storage.objects
+  for delete to authenticated using (bucket_id = 'jingles' and public.is_portal_admin());
+drop policy if exists "admin read jingle files" on storage.objects;
+create policy "admin read jingle files" on storage.objects
+  for select to authenticated using (bucket_id = 'jingles' and public.is_portal_admin());

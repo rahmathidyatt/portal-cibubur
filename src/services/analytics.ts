@@ -1,4 +1,3 @@
-import type { AdminAuth } from './bookingStore';
 import { getSupabaseConfig, randomId, readLocal, supabaseFetch, writeLocal } from './supabaseClient';
 
 /**
@@ -38,8 +37,20 @@ function jakartaDate(d: Date): string {
   return new Date(d.getTime() + 7 * 3_600_000).toISOString().slice(0, 10);
 }
 
+let pendingVisit: Promise<void> = Promise.resolve();
+
+/** Selesai setelah kunjungan sesi ini tercatat (agar statistik beranda sudah menghitungnya). */
+export function whenVisitRecorded(): Promise<void> {
+  return pendingVisit;
+}
+
 /** Dipanggil sekali saat portal dibuka. */
-export async function recordVisit(path: string): Promise<void> {
+export function recordVisit(path: string): Promise<void> {
+  pendingVisit = doRecordVisit(path);
+  return pendingVisit;
+}
+
+async function doRecordVisit(path: string): Promise<void> {
   try {
     if (window.sessionStorage.getItem(SESSION_KEY)) return;
     window.sessionStorage.setItem(SESSION_KEY, '1');
@@ -89,8 +100,8 @@ export function summarizeViews(views: { v: string; at: string }[], now: Date, da
   };
 }
 
-export async function getViewStats(auth: AdminAuth): Promise<ViewStats> {
-  if (!auth.isAdmin) throw new Error('Statistik hanya untuk admin.');
+/** Ringkasan kunjungan (angka agregat, ditampilkan di bagian bawah beranda). */
+export async function getViewStats(): Promise<ViewStats> {
   const config = getSupabaseConfig();
   if (!config) {
     const list = readLocal<{ v: string; at: string }[]>(LOCAL_VIEWS_KEY, []);
@@ -98,7 +109,6 @@ export async function getViewStats(auth: AdminAuth): Promise<ViewStats> {
   }
   const res = await supabaseFetch(config, 'rest/v1/rpc/page_view_stats', {
     method: 'POST',
-    accessToken: auth.accessToken,
     body: JSON.stringify({ p_days: 14 })
   });
   return (await res.json()) as ViewStats;

@@ -25,7 +25,7 @@ export const STAFF_LINKS = [
     href: '#staf-admin',
     route: 'staf-admin' as PortalRoute,
     label: 'Panel admin',
-    hint: 'Statistik kunjungan & ulang tahun agen',
+    hint: 'Jingle Brighton & ulang tahun agen',
     Icon: LayoutDashboard
   },
   {

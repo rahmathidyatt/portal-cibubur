@@ -22,3 +22,10 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Equalizer kecil pada pemutar jingle */
+@keyframes jingle-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+[class*="jingle-eq"] { transform-origin: bottom; }
