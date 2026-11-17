@@ -3,8 +3,6 @@ import { Clock, MapPin, Phone, Copy, Check, ExternalLink } from 'lucide-react';
 import { OFFICE_IDENTITY, type OfficeDaySchedule } from '../data/cibuburData';
 import { getScheduleForDate, todayInJakarta } from '../utils/schedule';
 import { useJakartaClock } from '../hooks/useJakartaClock';
-// Di-import (bukan string path) agar Vite menyalin & meng-hash gambar saat `npm run build`.
-import officePhoto from '../assets/images/hero-cibubur-office.webp';
 
 const DISPLAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -16,7 +14,6 @@ export const OfficeHoursLocation: React.FC<OfficeHoursLocationProps> = ({ weekly
   const now = useJakartaClock();
   const todayId = getScheduleForDate(todayInJakarta(now), weeklyHours)?.dayId;
   const [copied, setCopied] = useState<boolean>(false);
-  const [photoFailed, setPhotoFailed] = useState<boolean>(false);
 
   const days = DISPLAY_ORDER.map((id) => weeklyHours.find((d) => d.dayId === id)).filter(
     (d): d is OfficeDaySchedule => Boolean(d)
@@ -78,23 +75,13 @@ export const OfficeHoursLocation: React.FC<OfficeHoursLocationProps> = ({ weekly
           </div>
 
           {/* Kantor */}
-          <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            {!photoFailed && (
-              <img
-                src={officePhoto}
-                alt={`Ruang kantor ${OFFICE_IDENTITY.name}`}
-                width={1376}
-                height={768}
-                loading="lazy"
-                decoding="async"
-                onError={() => setPhotoFailed(true)}
-                className="w-full aspect-[16/8] object-cover"
-              />
-            )}
+          <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl">
             <div className="p-5 sm:p-6 space-y-4">
-              <h3 className="text-base font-bold text-slate-950">{OFFICE_IDENTITY.name}</h3>
-              <p className="flex items-start gap-2.5 text-sm text-slate-700">
-                <MapPin className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+              <h3 className="flex items-center gap-2 text-base font-bold text-slate-950">
+                <MapPin className="w-4 h-4 text-slate-500" />
+                Alamat kantor
+              </h3>
+              <p className="text-sm text-slate-700">
                 <span>
                   {OFFICE_IDENTITY.address}
                   <a

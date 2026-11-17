@@ -345,7 +345,7 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
   const pageIntro =
     view === 'floortime'
       ? 'Daftarkan diri untuk jaga kantor. Maksimal 3 advisor per sesi.'
-      : 'Pesan ruang diskusi klien per sesi 2 jam. Konfirmasikan ke Operasional setelah menyimpan.';
+      : 'Pesan ruang diskusi klien per sesi 2 jam.';
 
   return (
     <section className="bg-stone-50 min-h-[70vh] py-8 sm:py-12">
@@ -492,12 +492,14 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
                         return (
                           <div
                             key={slot.time}
+                            // Seluruh kartu bisa diklik (tombol "Pilih Jam" tetap ada untuk keyboard).
+                            onClick={isUnavailable ? undefined : () => handleSelectRoomSlot(slot.time)}
                             className={`p-3.5 rounded-xl border text-xs transition-colors ${
                               isUnavailable
                                 ? 'bg-slate-50 border-slate-200 text-slate-400'
                                 : isSelected
-                                ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-400 text-slate-950'
-                                : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300'
+                                ? 'bg-amber-50 border-amber-400 ring-1 ring-amber-400 text-slate-950 cursor-pointer'
+                                : 'bg-white border-slate-200 text-slate-800 hover:border-slate-300 cursor-pointer'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2">
@@ -561,35 +563,17 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
                   >
                     <h4 className="text-sm font-bold text-slate-950 flex items-center gap-2">
                       <Clock className="w-4 h-4 text-slate-500" />
-                      Formulir Reservasi {currentRoom.tabLabel}
+                      Formulir reservasi
                     </h4>
 
                     <div>
-                      <label
-                        htmlFor="select-room-slot"
-                        className="block text-xs font-bold text-slate-800 mb-1"
+                      <p className="block text-xs font-bold text-slate-800 mb-1">Jam sesi</p>
+                      <p
+                        aria-live="polite"
+                        className="px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-900"
                       >
-                        Jam Sesi (WIB)
-                      </label>
-                      <select
-                        id="select-room-slot"
-                        value={selectedSlotTime}
-                        onChange={(e) => setSelectedSlotTime(e.target.value)}
-                        className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                      >
-                        {!selectedSlotTime && (
-                          <option value="">Tidak ada jam tersedia</option>
-                        )}
-                        {currentRoom.slots.map((s) => (
-                          <option
-                            key={s.time}
-                            value={s.time}
-                            disabled={s.status !== 'Tersedia'}
-                          >
-                            {`${s.time} WIB (${s.status})`}
-                          </option>
-                        ))}
-                      </select>
+                        {selectedSlotTime ? `${selectedSlotTime} WIB` : 'Pilih jam yang tersedia di daftar'}
+                      </p>
                     </div>
 
                     <div>
@@ -763,36 +747,22 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
                   >
                     <h4 className="text-sm font-bold text-slate-950 flex items-center gap-2">
                       <Users className="w-4 h-4 text-slate-500" />
-                      Formulir floortime
+                      Formulir pendaftaran
                     </h4>
 
                     <div>
-                      <label
-                        htmlFor="select-floortime-shift"
-                        className="block text-xs font-bold text-slate-800 mb-1"
+                      <p className="block text-xs font-bold text-slate-800 mb-1">Sesi</p>
+                      <p
+                        aria-live="polite"
+                        className="px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900"
                       >
-                        Pilih Sesi Floortime
-                      </label>
-                      <select
-                        id="select-floortime-shift"
-                        value={selectedShiftId}
-                        onChange={(e) => setSelectedShiftId(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                      >
-                        {shifts.map((s) => (
-                          <option
-                            key={s.id}
-                            value={s.id}
-                            disabled={!isShiftActiveOnDate(s, bookingDate)}
-                          >
-                            {`${s.shiftName} (${s.timeWindow}) — ${
-                              isShiftActiveOnDate(s, bookingDate)
-                                ? `Terisi ${s.registeredAdvisors.length}/${s.quotaMax}`
-                                : 'tidak tersedia di tanggal ini'
-                            }`}
-                          </option>
-                        ))}
-                      </select>
+                        {(() => {
+                          const sel = shifts.find((sh) => sh.id === selectedShiftId);
+                          return sel && isShiftActiveOnDate(sel, bookingDate)
+                            ? `${sel.shiftName} (${sel.timeWindow})`
+                            : 'Pilih sesi di daftar';
+                        })()}
+                      </p>
                     </div>
 
                     <div>

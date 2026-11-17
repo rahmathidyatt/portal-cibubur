@@ -72,6 +72,33 @@ create table if not exists public.announcements (
 
 
 
+create table if not exists public.business_managers (
+  id         text primary key default gen_random_uuid()::text,
+  name       text not null check (char_length(trim(name)) between 2 and 60),
+  code       text not null unique check (code ~ '^[A-Z0-9]{2,10}$'),
+  tier       text not null check (char_length(trim(tier)) between 3 and 40),
+  -- Foto unggahan admin (data URL ±10–40 KB). NULL = foto bawaan aplikasi untuk id ini.
+  photo_url  text check (photo_url is null or (photo_url like 'data:image/%' and char_length(photo_url) < 400000)),
+  sort_order integer not null default 1000,
+  created_at timestamptz not null default now()
+);
+
+-- Data awal 9 BM, hanya diisi saat tabel masih kosong (agar BM yang sudah dihapus admin
+-- tidak muncul lagi ketika file ini dijalankan ulang). Foto bawaan: src/assets/managers/<id>.webp.
+insert into public.business_managers (id, name, code, tier, sort_order)
+select * from (values
+  ('rudy',  'RUDY, CRA®',  'AUFZ', 'Brighton Warrior',  1),
+  ('adolf', 'ADOLF, CRA®', 'WIID', 'Brighton Warrior',  2),
+  ('vira',  'VIRA',        'AUTU', 'Brighton Warrior',  3),
+  ('edah',  'EDAH, CRA®',  'DDOG', 'Brighton Warrior',  4),
+  ('risda', 'RISDA, CRA®', 'TRVG', 'Brighton Champion', 5),
+  ('vee',   'VEE, CRA®',   'BMWD', 'Brighton Vision',   6),
+  ('moren', 'MOREN',       'VNIL', 'Brighton Champion', 7),
+  ('ade',   'ADE',         'FRJU', 'Brighton Winner',   8),
+  ('toni',  'TONI, CRA®',  'ACYS', 'Brighton Priority', 9)
+) as seed(id, name, code, tier, sort_order)
+where not exists (select 1 from public.business_managers);
+
 -- ===================================================================
 -- Fungsi untuk pengunjung (dijalankan sebagai pemilik tabel)
 -- ===================================================================
@@ -144,9 +171,9 @@ grant select (id, shift_id, booking_date, advisor_name, corridor_focus, created_
   on public.floortime_registrations to anon, authenticated;
 grant delete on public.room_bookings, public.floortime_registrations to authenticated;
 
-revoke all on public.announcements from anon, authenticated;
-grant select on public.announcements to anon, authenticated;
-grant insert, update, delete on public.announcements to authenticated;
+revoke all on public.announcements, public.business_managers from anon, authenticated;
+grant select on public.announcements, public.business_managers to anon, authenticated;
+grant insert, update, delete on public.announcements, public.business_managers to authenticated;
 
 -- ===================================================================
 -- Row Level Security
@@ -154,6 +181,7 @@ grant insert, update, delete on public.announcements to authenticated;
 alter table public.room_bookings enable row level security;
 alter table public.floortime_registrations enable row level security;
 alter table public.announcements enable row level security;
+alter table public.business_managers enable row level security;
 
 -- Hapus kebijakan lama dari versi skema sebelumnya.
 drop policy if exists "anon read room_bookings" on public.room_bookings;
@@ -178,7 +206,7 @@ create policy "admin delete floortime" on public.floortime_registrations
 do $$
 declare t text;
 begin
-  foreach t in array array['announcements'] loop
+  foreach t in array array['announcements', 'business_managers'] loop
     execute format('drop policy if exists "read %1$s" on public.%1$I', t);
     execute format('create policy "read %1$s" on public.%1$I for select to anon, authenticated using (true)', t);
     execute format('drop policy if exists "admin write %1$s" on public.%1$I', t);

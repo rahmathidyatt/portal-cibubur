@@ -9,7 +9,7 @@ Fitur:
   - `#dealing-room` — Dealing Room 1 & 2 per tanggal dan jam.
   - `#floortime` — pendaftaran jaga kantor (kuota 3 advisor per sesi).
   Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
-- **Business Manager**: 9 BM Brighton HUB Cibubur dengan foto, kode, dan level (data di `src/data/businessManagers.ts`, foto di `src/assets/managers/`).
+- **Business Manager**: BM Brighton HUB Cibubur dengan foto, kode, dan level. Admin bisa menambah (termasuk unggah foto) dan menghapus BM dari portal. Daftar awal ada di `src/data/businessManagers.ts`, foto bawaan di `src/assets/managers/`.
 - **Kontak staf**: OPERASIONAL, FINANCE, MESSENGER — nama, nomor telepon, dan tombol chat WhatsApp.
 - **Jam & lokasi**: jadwal mingguan, alamat, tautan Google Maps, telepon kantor.
 
@@ -33,7 +33,7 @@ npm run dev        # http://localhost:3000
 
 ## Mode data
 
-**Tanpa konfigurasi (mode demo)** — semua data (reservasi dan pengumuman)
+**Tanpa konfigurasi (mode demo)** — semua data (reservasi, pengumuman, daftar BM)
 disimpan di `localStorage` browser masing-masing. Login admin memakai akun demo
 `admin@demo.local` / `admin123`, yang hanya berlaku di mode ini.
 
@@ -56,13 +56,13 @@ Aturan yang ditegakkan (di aplikasi dan di database):
 - Satu slot ruang hanya bisa dipesan sekali per tanggal.
 - Floortime maksimal 3 advisor per sesi per tanggal, tanpa nama ganda; Sesi Sore hanya Senin–Jumat.
 - Kode pembatalan reservasi tidak pernah dikirim ke pengunjung lain.
-- Hanya admin yang bisa mengubah pengumuman.
+- Hanya admin yang bisa mengubah pengumuman dan daftar Business Manager.
 
 ## Struktur
 
 ```
 src/
-  components/          Komponen UI (beranda, staf, jam & lokasi, halaman reservasi, login)
+  components/          Komponen UI (beranda, Business Manager, staf, jam & lokasi, reservasi, login)
   data/cibuburData.ts  Data statis: staf, jam operasional, ruang, sesi floortime
   hooks/               useAdmin (sesi admin), useHashRoute (navigasi), useJakartaClock
   services/            Penyimpanan (localStorage / Supabase) dan login admin
