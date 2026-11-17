@@ -19,7 +19,6 @@ import { TodayOverview } from './components/TodayOverview';
 import { BusinessManagers } from './components/BusinessManagers';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
-import { VisitorStats } from './components/VisitorStats';
 import { JinglePlayer } from './components/JinglePlayer';
 import { ReservationPage } from './components/ReservationPage';
 import { NavMenu, ReservationMenu, RESERVATION_LINKS, STAFF_LINKS } from './components/ReservationMenu';
@@ -28,6 +27,7 @@ import { NavMenu, ReservationMenu, RESERVATION_LINKS, STAFF_LINKS } from './comp
 const FloorTimeSchedulerPage = lazy(() =>
   import('./features/floortime/FloorTimeSchedulerPage').then((m) => ({ default: m.FloorTimeSchedulerPage }))
 );
+const PortalStatsPage = lazy(() => import('./features/admin/PortalStatsPage').then((m) => ({ default: m.PortalStatsPage })));
 const AdminPanelPage = lazy(() => import('./features/admin/AdminPanelPage').then((m) => ({ default: m.AdminPanelPage })));
 const NotaMessengerPage = lazy(() =>
   import('./features/nota/NotaMessengerPage').then((m) => ({ default: m.NotaMessengerPage }))
@@ -217,15 +217,16 @@ function PortalApp() {
             <BusinessManagers />
             <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
             <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
-            <VisitorStats />
           </>
-        ) : route === 'staf-floor-time' || route === 'staf-nota' || route === 'staf-admin' ? (
+        ) : route === 'staf-floor-time' || route === 'staf-nota' || route === 'staf-admin' || route === 'staf-statistik' ? (
           isAdmin ? (
             <Suspense fallback={<p className="max-w-[1140px] mx-auto px-6 py-12 text-sm text-slate-500">Memuat alat staf…</p>}>
               {route === 'staf-floor-time' ? (
                 <FloorTimeSchedulerPage />
               ) : route === 'staf-admin' ? (
                 <AdminPanelPage />
+              ) : route === 'staf-statistik' ? (
+                <PortalStatsPage />
               ) : (
                 <NotaMessengerPage />
               )}

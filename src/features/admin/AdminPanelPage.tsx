@@ -28,7 +28,7 @@ export const AdminPanelPage: React.FC = () => (
     <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-950">Panel admin</h1>
-        <p className="mt-1 text-sm text-slate-600">Jingle Brighton dan data ulang tahun agen. Statistik kunjungan tampil di bagian bawah beranda.</p>
+        <p className="mt-1 text-sm text-slate-600">Jingle Brighton dan data ulang tahun agen.</p>
       </div>
       <JingleManager />
       <BirthdayManager />

@@ -1,3 +1,4 @@
+import type { AdminAuth } from './bookingStore';
 import { getSupabaseConfig, randomId, readLocal, supabaseFetch, writeLocal } from './supabaseClient';
 
 /**
@@ -100,8 +101,9 @@ export function summarizeViews(views: { v: string; at: string }[], now: Date, da
   };
 }
 
-/** Ringkasan kunjungan (angka agregat, ditampilkan di bagian bawah beranda). */
-export async function getViewStats(): Promise<ViewStats> {
+/** Ringkasan kunjungan untuk menu admin "Statistik portal". */
+export async function getViewStats(auth: AdminAuth): Promise<ViewStats> {
+  if (!auth.isAdmin) throw new Error('Statistik hanya untuk admin.');
   const config = getSupabaseConfig();
   if (!config) {
     const list = readLocal<{ v: string; at: string }[]>(LOCAL_VIEWS_KEY, []);
@@ -109,6 +111,7 @@ export async function getViewStats(): Promise<ViewStats> {
   }
   const res = await supabaseFetch(config, 'rest/v1/rpc/page_view_stats', {
     method: 'POST',
+    accessToken: auth.accessToken,
     body: JSON.stringify({ p_days: 14 })
   });
   return (await res.json()) as ViewStats;

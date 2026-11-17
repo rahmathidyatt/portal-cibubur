@@ -28,9 +28,10 @@ function rememberPaused(paused: boolean): void {
 }
 
 /**
- * Pemutar jingle Brighton: memutar daftar lagu bergantian tanpa henti.
- * Browser biasanya memblokir suara otomatis, jadi bila diblokir lagu mulai
- * pada sentuhan/klik pertama pengunjung di halaman (kecuali pengunjung menjedanya).
+ * Pemutar jingle Brighton: langsung memutar saat portal dibuka dan lanjut
+ * bergantian tanpa henti. Bila browser menahan suara otomatis (kebijakan
+ * autoplay), lagu langsung mulai pada sentuhan/klik/tombol pertama di halaman.
+ * Pengunjung tetap bisa menjeda atau memilih lagu.
  */
 export const JinglePlayer: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -94,11 +95,10 @@ export const JinglePlayer: React.FC = () => {
       if (rootRef.current && e.target instanceof Node && rootRef.current.contains(e.target)) return;
       void tryPlay();
     };
-    document.addEventListener('pointerdown', start, true);
-    document.addEventListener('keydown', start, true);
+    const events = ['pointerdown', 'touchstart', 'mousedown', 'keydown', 'click'] as const;
+    for (const ev of events) document.addEventListener(ev, start, true);
     return () => {
-      document.removeEventListener('pointerdown', start, true);
-      document.removeEventListener('keydown', start, true);
+      for (const ev of events) document.removeEventListener(ev, start, true);
     };
   }, [waiting, tryPlay]);
 
@@ -131,7 +131,7 @@ export const JinglePlayer: React.FC = () => {
     <div ref={rootRef} className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 max-w-[calc(100vw-1.5rem)]">
       <audio
         ref={audioRef}
-        preload="none"
+        preload="auto"
         loop={tracks.length === 1}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
@@ -192,7 +192,7 @@ export const JinglePlayer: React.FC = () => {
 
         <div className="min-w-0 w-32 sm:w-44">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
-            {waiting && !playing ? 'Ketuk untuk memutar' : 'Jingle Brighton'}
+            {playing ? 'Sedang diputar' : 'Jingle Brighton'}
           </p>
           <p className="truncate text-sm font-semibold" title={current.title}>
             {current.title}

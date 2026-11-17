@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Calendar, Users, CalendarRange, Receipt, LayoutDashboard } from 'lucide-react';
+import { ChevronDown, Calendar, Users, CalendarRange, Receipt, LayoutDashboard, TrendingUp } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
 export const RESERVATION_LINKS = [
@@ -21,6 +21,13 @@ export const RESERVATION_LINKS = [
 
 /** Alat staf: hanya tampil setelah login admin. */
 export const STAFF_LINKS = [
+  {
+    href: '#staf-statistik',
+    route: 'staf-statistik' as PortalRoute,
+    label: 'Statistik portal',
+    hint: 'Jumlah kunjungan & grafik 14 hari',
+    Icon: TrendingUp
+  },
   {
     href: '#staf-admin',
     route: 'staf-admin' as PortalRoute,

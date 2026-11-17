@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Eye, TrendingUp, Users } from 'lucide-react';
-import { getViewStats, whenVisitRecorded, type ViewStats } from '../services/analytics';
-import { MONTH_NAMES_ID } from '../features/floortime/engine';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Eye, RefreshCw, TrendingUp, Users } from 'lucide-react';
+import { useAdmin } from '../../hooks/useAdmin';
+import { getViewStats, whenVisitRecorded, type ViewStats } from '../../services/analytics';
+import { MONTH_NAMES_ID } from '../floortime/engine';
 
 const number = new Intl.NumberFormat('id-ID');
 
@@ -41,22 +42,66 @@ const Counter: React.FC<{ value: number; className?: string }> = ({ value, class
   <span className={`tabular-nums ${className ?? ''}`}>{number.format(useCountUp(value))}</span>
 );
 
-/** Statistik kunjungan portal di bagian paling bawah beranda. */
-export const VisitorStats: React.FC = () => {
+/** Menu admin "Statistik portal": kunjungan portal (khusus admin). */
+export const PortalStatsPage: React.FC = () => {
+  const { auth } = useAdmin();
   const [stats, setStats] = useState<ViewStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await whenVisitRecorded();
+      setStats(await getViewStats(auth));
+      setUpdatedAt(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal memuat statistik.');
+    } finally {
+      setLoading(false);
+    }
+  }, [auth]);
 
   useEffect(() => {
-    let alive = true;
-    whenVisitRecorded()
-      .then(() => getViewStats())
-      .then((s) => alive && setStats(s))
-      .catch(() => alive && setStats(null));
-    return () => {
-      alive = false;
-    };
-  }, []);
+    void load();
+  }, [load]);
 
-  if (!stats) return null;
+  return (
+    <section className="bg-stone-50 min-h-[60vh]">
+      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-950">Statistik portal</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Jumlah kunjungan portal. Satu kunjungan dihitung sekali per sesi browser.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:text-slate-950 cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {updatedAt
+              ? `Diperbarui ${updatedAt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })}`
+              : 'Muat ulang'}
+          </button>
+        </div>
+        {error && <p className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+        {stats && (
+          <div className="mt-6 overflow-hidden rounded-3xl">
+            <StatsPanel stats={stats} />
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};
+
+const StatsPanel: React.FC<{ stats: ViewStats }> = ({ stats }) => {
 
   const max = Math.max(1, ...stats.daily.map((d) => d.views));
   const prev7 = stats.daily.slice(0, 7).reduce((s, d) => s + d.views, 0);
@@ -69,11 +114,7 @@ export const VisitorStats: React.FC = () => {
   ];
 
   return (
-    <section
-      id="statistik"
-      aria-labelledby="statistik-title"
-      className="scroll-mt-20 relative overflow-hidden bg-slate-950 text-white"
-    >
+    <div aria-labelledby="statistik-title" className="relative overflow-hidden bg-slate-950 text-white">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-amber-400/20 blur-3xl"
@@ -82,7 +123,7 @@ export const VisitorStats: React.FC = () => {
         aria-hidden="true"
         className="pointer-events-none absolute -bottom-32 -left-16 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl"
       />
-      <div className="relative max-w-[1140px] mx-auto px-4 sm:px-6 py-12 sm:py-16">
+      <div className="relative px-5 sm:px-8 py-8 sm:py-10">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-end">
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-amber-400">
@@ -90,7 +131,7 @@ export const VisitorStats: React.FC = () => {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60 motion-reduce:hidden" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
               </span>
-              Statistik portal
+              Kunjungan portal
             </p>
             <h2 id="statistik-title" className="mt-3 text-sm font-medium text-slate-400">
               Total kunjungan portal
@@ -161,7 +202,7 @@ export const VisitorStats: React.FC = () => {
             </div>
             <div className="mt-2 flex gap-1.5 sm:gap-2 border-t border-white/10 pt-2">
               {stats.daily.map((d, i) => (
-                <span key={d.date} className="flex-1 min-w-0 text-center text-[10px] text-slate-500 truncate">
+                <span key={d.date} className="flex-1 min-w-0 text-center text-[10px] text-slate-500 whitespace-nowrap">
                   {i === stats.daily.length - 1 ? 'Hari ini' : i % 3 === 1 ? shortDay(d.date) : ''}
                 </span>
               ))}
@@ -169,6 +210,6 @@ export const VisitorStats: React.FC = () => {
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 };

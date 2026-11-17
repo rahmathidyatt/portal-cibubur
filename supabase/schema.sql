@@ -438,6 +438,9 @@ declare
   v_days int := least(greatest(coalesce(p_days, 14), 1), 90);
   v_result jsonb;
 begin
+  if not public.is_portal_admin() then
+    raise exception 'Statistik hanya untuk admin portal';
+  end if;
   with v as (
     select visitor_id, (viewed_at at time zone 'Asia/Jakarta')::date as d from public.page_views
   ),
@@ -462,7 +465,7 @@ begin
   return v_result;
 end;
 $$;
-revoke all on function public.page_view_stats(int) from public;
+revoke all on function public.page_view_stats(int) from public, anon;
 grant execute on function public.page_view_stats(int) to authenticated;
 
 -- ---------------------------------------------------------------------
@@ -508,8 +511,6 @@ drop policy if exists "admin delete jingles" on public.jingles;
 create policy "admin delete jingles" on public.jingles
   for delete to authenticated using (public.is_portal_admin());
 
--- Statistik kunjungan ditampilkan di bagian bawah beranda (hanya angka agregat).
-grant execute on function public.page_view_stats(int) to anon;
 
 -- Storage bucket untuk jingle unggahan admin (khusus Supabase).
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
