@@ -54,12 +54,25 @@ const PrincipalSection: React.FC<{
   principals: BusinessManager[];
   isAdmin: boolean;
   renderCard: (bm: BusinessManager) => React.ReactNode;
-}> = ({ principals, isAdmin, renderCard }) => (
+  onAdd: () => void;
+}> = ({ principals, isAdmin, renderCard, onAdd }) => (
   <div className="mt-6">
-    <h3 className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-950">
-      <Crown className="h-5 w-5 text-amber-500" aria-hidden="true" />
-      Principal
-    </h3>
+    <div className="flex items-center justify-between gap-3">
+      <h3 className="flex items-center gap-2 text-xl font-bold tracking-tight text-slate-950">
+        <Crown className="h-5 w-5 text-amber-500" aria-hidden="true" />
+        Principal
+      </h3>
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50 cursor-pointer"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Tambah Principal
+        </button>
+      )}
+    </div>
     {principals.length === 0 ? (
       <div className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 bg-white px-4 py-5">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-stone-100 text-slate-400">
@@ -68,7 +81,7 @@ const PrincipalSection: React.FC<{
         <div>
           <p className="text-sm font-semibold text-slate-700">Belum ada Principal di HUB Cibubur.</p>
           {isAdmin && (
-            <p className="text-xs text-slate-500">Tambah lewat tombol Tambah BM dengan level &quot;Principal&quot;.</p>
+            <p className="text-xs text-slate-500">Klik Tambah Principal untuk menambahkan.</p>
           )}
         </div>
       </div>
@@ -85,11 +98,13 @@ const AddBmForm: React.FC<{
   existing: BusinessManager[];
   onDone: () => void;
   onCancel: () => void;
-}> = ({ existing, onDone, onCancel }) => {
+  initialTier: string;
+}> = ({ existing, onDone, onCancel, initialTier }) => {
   const { auth } = useAdmin();
   const [name, setName] = useState<string>('');
   const [code, setCode] = useState<string>('');
-  const [tier, setTier] = useState<string>('Brighton Warrior');
+  const [tier, setTier] = useState<string>(initialTier);
+  const principal = isPrincipal({ tier });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
@@ -153,7 +168,7 @@ const AddBmForm: React.FC<{
           value={name}
           maxLength={60}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Nama, mis. BUDI, CRA®"
+          placeholder={principal ? 'Nama Principal' : 'Nama, mis. BUDI, CRA®'}
           className={inputClass}
         />
         <input
@@ -164,19 +179,13 @@ const AddBmForm: React.FC<{
           placeholder="Kode, mis. ABCD"
           className={`${inputClass} font-mono`}
         />
-        <input
-          aria-label="Level BM"
-          list="bm-tier-options"
-          value={tier}
-          maxLength={40}
-          onChange={(e) => setTier(e.target.value)}
-          className={inputClass}
-        />
-        <datalist id="bm-tier-options">
+        <select aria-label="Level BM" value={tier} onChange={(e) => setTier(e.target.value)} className={inputClass}>
           {BM_TIER_OPTIONS.map((t) => (
-            <option key={t} value={t} />
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
-        </datalist>
+        </select>
 
         <div className="sm:col-span-3 flex items-center justify-between gap-3">
           {error ? (
@@ -197,7 +206,7 @@ const AddBmForm: React.FC<{
               disabled={busy}
               className="px-3 py-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg disabled:opacity-60 cursor-pointer"
             >
-              {busy ? 'Menyimpan…' : 'Simpan BM'}
+              {busy ? 'Menyimpan…' : principal ? 'Simpan Principal' : 'Simpan BM'}
             </button>
           </div>
         </div>
@@ -209,7 +218,10 @@ const AddBmForm: React.FC<{
 export const BusinessManagers: React.FC = () => {
   const { isAdmin, auth } = useAdmin();
   const [managers, setManagers] = useState<BusinessManager[]>(BUSINESS_MANAGERS);
-  const [formOpen, setFormOpen] = useState<boolean>(false);
+  /** Level awal formulir tambah (null = formulir tertutup). */
+  const [formTier, setFormTier] = useState<string | null>(null);
+  const formOpen = formTier !== null;
+  const setFormOpen = (open: boolean, tier = 'Brighton Warrior') => setFormTier(open ? tier : null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -295,6 +307,8 @@ export const BusinessManagers: React.FC = () => {
 
         {isAdmin && formOpen && (
           <AddBmForm
+            key={formTier}
+            initialTier={formTier ?? 'Brighton Warrior'}
             existing={managers}
             onCancel={() => setFormOpen(false)}
             onDone={() => {
@@ -305,7 +319,12 @@ export const BusinessManagers: React.FC = () => {
         )}
         {error && <p className="mt-4 text-xs font-semibold text-red-700">{error}</p>}
 
-        <PrincipalSection principals={principals} isAdmin={isAdmin} renderCard={renderCard} />
+        <PrincipalSection
+          principals={principals}
+          isAdmin={isAdmin}
+          renderCard={renderCard}
+          onAdd={() => setFormOpen(true, 'Principal')}
+        />
 
         <div className="mt-10 flex items-baseline justify-between gap-3">
           <h3 className="text-xl font-bold tracking-tight text-slate-950">Business Manager per unit</h3>

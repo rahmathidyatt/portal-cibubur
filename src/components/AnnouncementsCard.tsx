@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Megaphone, Plus } from 'lucide-react';
+import { Megaphone, Plus, Repeat } from 'lucide-react';
 import {
   getContentStore,
   validateAnnouncement,
@@ -8,6 +8,8 @@ import {
 import { useAdmin } from '../hooks/useAdmin';
 import { ConfirmCancelButton } from './ConfirmCancelButton';
 import { useToast } from '../hooks/useToast';
+import { WEEKDAY_NAMES, repeatLabel } from '../data/recurringAnnouncements';
+import { todayInJakarta } from '../utils/schedule';
 
 function formatDateWib(iso: string): string {
   return new Intl.DateTimeFormat('id-ID', {
@@ -32,6 +34,7 @@ export const AnnouncementsCard: React.FC<{ className?: string; onLoaded?: (count
   const [formOpen, setFormOpen] = useState<boolean>(false);
   const [title, setTitle] = useState<string>('');
   const [body, setBody] = useState<string>('');
+  const [repeatWeekday, setRepeatWeekday] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
 
@@ -55,6 +58,7 @@ export const AnnouncementsCard: React.FC<{ className?: string; onLoaded?: (count
 
   // Pengunjung biasa: kartu tidak tampil bila belum ada pengumuman.
   if (!loaded || (items.length === 0 && !isAdmin)) return null;
+  const today = todayInJakarta();
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,9 +70,10 @@ export const AnnouncementsCard: React.FC<{ className?: string; onLoaded?: (count
     setBusy(true);
     setError(null);
     try {
-      await getContentStore().addAnnouncement({ title, body }, auth);
+      await getContentStore().addAnnouncement({ title, body, repeatWeekday: repeatWeekday || null }, auth);
       setTitle('');
       setBody('');
+      setRepeatWeekday(0);
       setFormOpen(false);
       await load();
       toast('Pengumuman diterbitkan.');
@@ -79,7 +84,9 @@ export const AnnouncementsCard: React.FC<{ className?: string; onLoaded?: (count
     }
   };
 
-  const visible = showAll ? items : items.slice(0, MAX_VISIBLE);
+  // Pengumuman mingguan di atas, lalu pengumuman biasa terbaru.
+  const ordered = [...items.filter((a) => a.repeatWeekday), ...items.filter((a) => !a.repeatWeekday)];
+  const visible = showAll ? ordered : ordered.slice(0, MAX_VISIBLE);
 
   return (
     <section
@@ -124,6 +131,22 @@ export const AnnouncementsCard: React.FC<{ className?: string; onLoaded?: (count
             placeholder="Isi pengumuman (opsional)"
             className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+            Ulangi
+            <select
+              aria-label="Ulangi pengumuman"
+              value={repeatWeekday}
+              onChange={(e) => setRepeatWeekday(Number(e.target.value))}
+              className="px-2 py-1.5 text-sm bg-white border border-slate-300 rounded-lg"
+            >
+              <option value={0}>Tidak (sekali)</option>
+              {WEEKDAY_NAMES.slice(1).map((d, i) => (
+                <option key={d} value={i + 1}>
+                  Setiap {d}
+                </option>
+              ))}
+            </select>
+          </label>
           {error && <p className="text-xs font-semibold text-red-700">{error}</p>}
           <div className="flex justify-end gap-2">
             <button
@@ -153,12 +176,31 @@ export const AnnouncementsCard: React.FC<{ className?: string; onLoaded?: (count
         <ul className="mt-3 divide-y divide-slate-100">
           {visible.map((item) => (
             <li key={item.id} className="py-3">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                <span className="text-[11px] text-slate-500 whitespace-nowrap">
-                  {formatDateWib(item.createdAt)}
-                </span>
-              </div>
+              {item.repeatWeekday ? (
+                (() => {
+                  const { label, isToday } = repeatLabel(item.repeatWeekday, today);
+                  return (
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-slate-900">
+                        <Repeat className={`h-3.5 w-3.5 ${isToday ? 'text-amber-600' : 'text-slate-400'}`} aria-hidden="true" />
+                        {item.title}
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            isToday ? 'bg-amber-400 text-slate-950' : 'bg-stone-100 text-slate-600 ring-1 ring-slate-200'
+                          }`}
+                        >
+                          {label}
+                        </span>
+                      </p>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                  <span className="text-[11px] text-slate-500 whitespace-nowrap">{formatDateWib(item.createdAt)}</span>
+                </div>
+              )}
               {item.body && (
                 <p className="mt-1 text-sm text-slate-600 whitespace-pre-line">{item.body}</p>
               )}

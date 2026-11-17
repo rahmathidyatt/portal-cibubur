@@ -696,3 +696,8 @@ begin
       t, t);
   end loop;
 end $$;
+
+-- Pengumuman berulang mingguan (1 = Senin … 7 = Minggu; null = sekali).
+-- Pengumuman "Co-Broking Day" (setiap Senin) diisi sekali lewat migrasi dan bisa dihapus admin.
+alter table public.announcements add column if not exists repeat_weekday smallint
+  check (repeat_weekday is null or repeat_weekday between 1 and 7);

@@ -1,4 +1,5 @@
 import type { AdminAuth } from './bookingStore';
+import { CO_BROKING_DAY } from '../data/recurringAnnouncements';
 import { BUSINESS_MANAGERS, type BusinessManager } from '../data/businessManagers';
 import {
   getSupabaseConfig,
@@ -16,6 +17,8 @@ export interface Announcement {
   title: string;
   body: string;
   createdAt: string; // ISO
+  /** Diulang tiap minggu pada hari ini (1 = Senin … 7 = Minggu); null = sekali. */
+  repeatWeekday?: number | null;
 }
 
 export interface NewBusinessManager {
@@ -30,7 +33,7 @@ export interface ContentStore {
   addBusinessManager(input: NewBusinessManager, auth: AdminAuth): Promise<void>;
   deleteBusinessManager(id: string, auth: AdminAuth): Promise<void>;
   listAnnouncements(): Promise<Announcement[]>;
-  addAnnouncement(input: { title: string; body: string }, auth: AdminAuth): Promise<void>;
+  addAnnouncement(input: { title: string; body: string; repeatWeekday?: number | null }, auth: AdminAuth): Promise<void>;
   deleteAnnouncement(id: string, auth: AdminAuth): Promise<void>;
 }
 
@@ -58,6 +61,14 @@ function readLocalBms(): BusinessManager[] {
   return Array.isArray(list) ? list : BUSINESS_MANAGERS;
 }
 
+/** Belum pernah diubah: pengumuman rutin bawaan (bisa dihapus admin). */
+function readLocalAnnouncements(): Announcement[] {
+  const stored = readLocal<Announcement[] | null>(ANNOUNCEMENT_KEY, null);
+  return Array.isArray(stored)
+    ? stored
+    : [{ id: 'co-broking-day', createdAt: '2026-11-18T00:00:00.000Z', ...CO_BROKING_DAY }];
+}
+
 function normalizeBm(input: NewBusinessManager): Omit<BusinessManager, 'id'> {
   return {
     name: input.name.trim(),
@@ -82,30 +93,28 @@ function createLocalContentStore(): ContentStore {
       writeLocal(BM_KEY, readLocalBms().filter((m) => m.id !== id));
     },
     async listAnnouncements() {
-      const list = readLocal<Announcement[]>(ANNOUNCEMENT_KEY, []);
-      return (Array.isArray(list) ? list : []).sort((a, b) =>
-        b.createdAt.localeCompare(a.createdAt)
-      );
+      return [...readLocalAnnouncements()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     async addAnnouncement(input, auth) {
       requireAdmin(auth);
-      const list = readLocal<Announcement[]>(ANNOUNCEMENT_KEY, []);
+      const list = readLocalAnnouncements();
       writeLocal(ANNOUNCEMENT_KEY, [
-        ...(Array.isArray(list) ? list : []),
+        ...list,
         {
           id: randomId(),
           title: input.title.trim(),
           body: input.body.trim(),
+          repeatWeekday: input.repeatWeekday ?? null,
           createdAt: new Date().toISOString()
         }
       ]);
     },
     async deleteAnnouncement(id, auth) {
       requireAdmin(auth);
-      const list = readLocal<Announcement[]>(ANNOUNCEMENT_KEY, []);
+      const list = readLocalAnnouncements();
       writeLocal(
         ANNOUNCEMENT_KEY,
-        (Array.isArray(list) ? list : []).filter((a) => a.id !== id)
+        list.filter((a) => a.id !== id)
       );
     }
   };
@@ -157,10 +166,22 @@ function createSupabaseContentStore(config: SupabaseConfig): ContentStore {
     async listAnnouncements() {
       const res = await supabaseFetch(
         config,
-        'rest/v1/announcements?select=id,title,body,created_at&order=created_at.desc&limit=20'
+        'rest/v1/announcements?select=id,title,body,created_at,repeat_weekday&order=created_at.desc&limit=20'
       );
-      const rows = (await res.json()) as { id: string; title: string; body: string; created_at: string }[];
-      return rows.map((r) => ({ id: r.id, title: r.title, body: r.body, createdAt: r.created_at }));
+      const rows = (await res.json()) as {
+        id: string;
+        title: string;
+        body: string;
+        created_at: string;
+        repeat_weekday: number | null;
+      }[];
+      return rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        body: r.body,
+        createdAt: r.created_at,
+        repeatWeekday: r.repeat_weekday
+      }));
     },
     async addAnnouncement(input, auth) {
       requireAdmin(auth);
@@ -168,7 +189,11 @@ function createSupabaseContentStore(config: SupabaseConfig): ContentStore {
         method: 'POST',
         accessToken: auth.accessToken,
         headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ title: input.title.trim(), body: input.body.trim() })
+        body: JSON.stringify({
+          title: input.title.trim(),
+          body: input.body.trim(),
+          ...(input.repeatWeekday ? { repeat_weekday: input.repeatWeekday } : {})
+        })
       });
     },
     async deleteAnnouncement(id, auth) {

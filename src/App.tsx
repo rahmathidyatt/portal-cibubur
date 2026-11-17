@@ -23,6 +23,7 @@ import { JinglePlayer } from './components/JinglePlayer';
 import { ReservationPage } from './components/ReservationPage';
 import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
 import { AdminShell } from './components/AdminShell';
+import { OfficeStatusBadge } from './components/LiveClock';
 import { BrandMark } from './components/BrandMark';
 import { InstallAppButton } from './components/InstallAppButton';
 
@@ -301,6 +302,8 @@ function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => voi
             </button>
           )}
         </p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <OfficeStatusBadge weeklyHours={WEEKLY_OFFICE_HOURS} />
         <p className="inline-flex items-center gap-1.5">
           <Cake className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
           {anniv.isToday ? (
@@ -311,6 +314,7 @@ function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => voi
             </span>
           )}
         </p>
+        </div>
       </div>
     </footer>
   );

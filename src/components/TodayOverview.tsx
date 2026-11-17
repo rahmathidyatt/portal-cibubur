@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import type { OfficeDaySchedule } from '../data/cibuburData';
-import { Cake, CalendarPlus } from 'lucide-react';
+import { Bike, Cake, CalendarPlus } from 'lucide-react';
 import { FloorTimeTodayCard } from './dashboard/FloorTimeTodayCard';
 import { DealingRoomTodayCard } from './dashboard/DealingRoomTodayCard';
 import { FEATURES } from '../data/features';
 import { OFFICE_IDENTITY } from '../data/cibuburData';
 import { AnnouncementsCard } from './AnnouncementsCard';
 import { BirthdayReminder } from './BirthdayReminder';
-import { LiveClock } from './LiveClock';
+import { DateClock } from './LiveClock';
 import { officeAnniversary } from '../utils/anniversary';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
-  formatLongDateId,
   greetingForMinutes,
   minutesNowInJakarta,
   todayInJakarta
@@ -37,26 +36,21 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
   return (
     <section id="beranda" className="scroll-mt-20 border-b border-slate-200 bg-stone-50">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500">{formatLongDateId(today)}</p>
-            <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 text-balance">
-              {greeting}, tim Brighton HUB Cibubur
-            </h1>
-            <BirthdayReminder today={today} />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <LiveClock weeklyHours={weeklyHours} />
-            {FEATURES.dealingRoom && (
+        <div>
+          <DateClock weeklyHours={weeklyHours} />
+          <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
+            {greeting}, tim Brighton HUB Cibubur
+          </h1>
+          <BirthdayReminder today={today} />
+          {FEATURES.dealingRoom && (
             <a
               href="#dealing-room"
-              className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800"
             >
               <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
               Pesan Dealing Room
             </a>
-            )}
-          </div>
+          )}
         </div>
 
         {anniv.isToday && (
@@ -79,7 +73,26 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
         <div
           className={`mt-6 grid gap-4 items-start ${cards >= 3 ? 'md:grid-cols-2 lg:grid-cols-3' : cards === 2 ? 'md:grid-cols-2' : ''}`}
         >
-          <FloorTimeTodayCard today={today} minutesNow={minutesNow} />
+          <div className="flex flex-col gap-3">
+            <FloorTimeTodayCard today={today} minutesNow={minutesNow} />
+            <a
+              href={OFFICE_IDENTITY.smartMessengerOrderUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 rounded-2xl bg-slate-950 px-4 py-3 text-white hover:bg-slate-800"
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-400 text-slate-950">
+                <Bike className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold">Order Smart Messenger</span>
+                <span className="block text-xs text-slate-400">Isi formulir order untuk kebutuhan messenger</span>
+              </span>
+              <span aria-hidden="true" className="text-amber-400 transition-transform group-hover:translate-x-0.5">
+                →
+              </span>
+            </a>
+          </div>
           {FEATURES.dealingRoom && <DealingRoomTodayCard today={today} minutesNow={minutesNow} />}
           <AnnouncementsCard onLoaded={setAnnouncementCount} />
         </div>
