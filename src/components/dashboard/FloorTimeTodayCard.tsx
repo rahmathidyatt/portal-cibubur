@@ -47,7 +47,7 @@ export const FloorTimeTodayCard: React.FC<{ today: string; minutesNow: number }>
             return (
               <div
                 key={slot.key}
-                className={`rounded-xl p-3 ring-1 ${live ? 'bg-amber-50 ring-amber-300' : 'bg-stone-50 ring-slate-200'} ${done ? 'opacity-60' : ''}`}
+                className={`rounded-xl p-3 ring-1 ${live ? 'bg-amber-50 ring-amber-300' : 'bg-stone-50 ring-slate-200'} ${done ? 'opacity-80' : ''}`}
               >
                 <p className="flex items-center justify-between gap-2 text-xs font-bold text-slate-900">
                   {slot.shiftName}
@@ -56,13 +56,13 @@ export const FloorTimeTodayCard: React.FC<{ today: string; minutesNow: number }>
                   )}
                 </p>
                 <p className="text-[11px] text-slate-500">{slot.timeLabel.replace('-', '–')}</p>
-                <ul className="mt-2 space-y-1">
+                <ul className="mt-2 grid gap-x-4 gap-y-1 @2xl:grid-cols-2">
                   {people.map((p) => (
                     <li key={p.agentId} className="truncate text-sm font-semibold text-slate-800" title={p.displayName}>
                       {p.displayName}
                     </li>
                   ))}
-                  {people.length === 0 && <li className="text-xs text-slate-400">Belum terisi</li>}
+                  {people.length === 0 && <li className="text-xs text-slate-500">Belum terisi</li>}
                 </ul>
               </div>
             );

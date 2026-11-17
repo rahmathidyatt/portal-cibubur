@@ -70,6 +70,7 @@ function createLocalStore(): ScheduleStore {
       const next: PublishedSchedule = {
         id: existing?.id ?? randomId(),
         publishedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         requestDeadline,
         data
       };
@@ -81,7 +82,12 @@ function createLocalStore(): ScheduleStore {
         SCHEDULE_KEY,
         readSchedules().map((s) =>
           s.id === id
-            ? { ...s, data: patch.data ?? s.data, requestDeadline: patch.requestDeadline ?? s.requestDeadline }
+            ? {
+                ...s,
+                data: patch.data ?? s.data,
+                requestDeadline: patch.requestDeadline ?? s.requestDeadline,
+                updatedAt: new Date().toISOString()
+              }
             : s
         )
       );
@@ -147,6 +153,7 @@ interface ScheduleRow {
   data: ScheduleData;
   request_deadline: string;
   published_at: string;
+  updated_at?: string;
 }
 
 interface RequestRow {
@@ -163,7 +170,13 @@ interface RequestRow {
 }
 
 function toSchedule(r: ScheduleRow): PublishedSchedule {
-  return { id: r.id, publishedAt: r.published_at, requestDeadline: r.request_deadline, data: r.data };
+  return {
+    id: r.id,
+    publishedAt: r.published_at,
+    updatedAt: r.updated_at ?? r.published_at,
+    requestDeadline: r.request_deadline,
+    data: r.data
+  };
 }
 
 function translate(err: unknown): never {
@@ -175,7 +188,7 @@ function translate(err: unknown): never {
 }
 
 function createSupabaseStore(config: SupabaseConfig): ScheduleStore {
-  const cols = 'id,year,month,data,request_deadline,published_at';
+  const cols = 'id,year,month,data,request_deadline,published_at,updated_at';
   return {
     async getSchedule(year, month) {
       const res = await supabaseFetch(
@@ -204,7 +217,8 @@ function createSupabaseStore(config: SupabaseConfig): ScheduleStore {
           month: data.month,
           data,
           request_deadline: requestDeadline,
-          published_at: new Date().toISOString()
+          published_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
       });
     },

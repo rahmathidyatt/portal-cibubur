@@ -50,6 +50,7 @@ test('rentang 7 hari dan pembanding periode sebelumnya', () => {
 });
 
 test('label halaman', () => {
+  assert.equal(pageLabel('floortime'), 'Floor Time');
   assert.equal(pageLabel('staf-nota'), 'Admin · Nota Messenger');
   assert.equal(pageLabel('lainnya'), 'lainnya');
 });

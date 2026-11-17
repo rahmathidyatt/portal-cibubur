@@ -65,7 +65,7 @@ export const OfficeHoursLocation: React.FC<OfficeHoursLocationProps> = ({ weekly
                       {label}
                     </span>
                     <span
-                      className={`tabular-nums whitespace-nowrap ${g.from.isClosed ? 'text-slate-400' : 'font-semibold text-slate-900'}`}
+                      className={`tabular-nums whitespace-nowrap ${g.from.isClosed ? 'text-slate-500' : 'font-semibold text-slate-900'}`}
                     >
                       {g.from.isClosed ? 'Tutup' : g.from.hours.replace(' - ', '–')}
                     </span>

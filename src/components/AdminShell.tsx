@@ -33,7 +33,7 @@ export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut,
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
         {GROUPS.map((group) => (
           <div key={group}>
-            <p className="px-2 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">{group}</p>
+            <p className="px-2 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{group}</p>
             <ul className="space-y-0.5">
               {STAFF_LINKS.filter((l) => l.group === group).map(({ href, route: r, label, hint, Icon }) => {
                 const active = r === route;

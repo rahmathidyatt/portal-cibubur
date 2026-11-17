@@ -33,7 +33,7 @@ export const DashCard: React.FC<DashCardProps> = ({ id, title, Icon, action, hea
           </a>
         ))}
     </div>
-    <div className="mt-4 flex-1">{children}</div>
+    <div className="@container mt-4 flex-1">{children}</div>
   </section>
 );
 

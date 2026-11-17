@@ -442,7 +442,7 @@ const BirthdayManager: React.FC = () => {
                 }`}
               >
                 {name.slice(0, 3)}
-                {count > 0 && <span className={active ? 'text-amber-300' : 'text-slate-400'}> · {count}</span>}
+                {count > 0 && <span className={active ? 'text-amber-300' : 'text-slate-500'}> · {count}</span>}
               </button>
             );
           })}

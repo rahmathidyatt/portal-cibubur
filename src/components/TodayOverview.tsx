@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAdmin } from '../hooks/useAdmin';
 import type { OfficeDaySchedule } from '../data/cibuburData';
 import { Cake, CalendarPlus } from 'lucide-react';
 import { FloorTimeTodayCard } from './dashboard/FloorTimeTodayCard';
@@ -29,6 +30,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
   const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
 
   const minutesNow = minutesNowInJakarta(now);
+  const { isAdmin } = useAdmin();
+  const [announcementCount, setAnnouncementCount] = useState<number>(0);
+  const showAnnouncements = isAdmin || announcementCount > 0;
+  const cards = 1 + (FEATURES.dealingRoom ? 1 : 0) + (showAnnouncements ? 1 : 0);
 
   return (
     <section id="beranda" className="scroll-mt-20 border-b border-slate-200 bg-stone-50">
@@ -84,10 +89,12 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
           </div>
         )}
 
-        <div className={`mt-6 grid gap-4 ${FEATURES.dealingRoom ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
+        <div
+          className={`mt-6 grid gap-4 items-start ${cards >= 3 ? 'md:grid-cols-2 lg:grid-cols-3' : cards === 2 ? 'md:grid-cols-2' : ''}`}
+        >
           <FloorTimeTodayCard today={today} minutesNow={minutesNow} />
           {FEATURES.dealingRoom && <DealingRoomTodayCard today={today} minutesNow={minutesNow} />}
-          <AnnouncementsCard />
+          <AnnouncementsCard onLoaded={setAnnouncementCount} />
         </div>
       </div>
     </section>

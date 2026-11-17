@@ -25,6 +25,29 @@ import { readMyAgentCode } from './mySchedule';
 
 const DAY_SHORT = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
+/** "Senin" (bukan huruf kapital semua) agar seragam di seluruh portal. */
+function dayName(iso: string): string {
+  const n = DAY_NAMES_ID[weekdayOf(iso)];
+  return n.charAt(0) + n.slice(1).toLowerCase();
+}
+
+/** "17 Nov, 15.40 WIB" */
+function formatUpdated(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+      .format(new Date(iso))
+      .concat(' WIB');
+  } catch {
+    return iso;
+  }
+}
+
 /** "16 Nov" */
 function shortDate(iso: string): string {
   const [, m, d] = iso.split('-').map(Number);
@@ -134,6 +157,7 @@ export const PublishedFloorTime: React.FC = () => {
         <div className="p-5 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-950">Jadwal Floor Time {monthLabel(data.year, data.month)}</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Diperbarui {formatUpdated(schedule.updatedAt ?? schedule.publishedAt)}</p>
             <p
               className={`mt-1 inline-flex items-center gap-1.5 text-xs font-semibold ${open ? 'text-emerald-700' : 'text-slate-500'}`}
             >
@@ -143,6 +167,20 @@ export const PublishedFloorTime: React.FC = () => {
                 : `Batas request sudah lewat (${formatDeadlineWib(schedule.requestDeadline)})`}
             </p>
           </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+          {open && (
+            <a
+              href="#request-jadwal"
+              onClick={(e) => {
+                e.preventDefault();
+                document.getElementById('request-jadwal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800"
+            >
+              <Send className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+              Ajukan perubahan
+            </a>
+          )}
           <label className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -153,6 +191,7 @@ export const PublishedFloorTime: React.FC = () => {
               className={`${input} pl-9 sm:w-64`}
             />
           </label>
+          </div>
         </div>
 
         {needle && (
@@ -215,7 +254,7 @@ export const PublishedFloorTime: React.FC = () => {
           })}
         </div>
 
-        <div className="p-4 sm:p-5 space-y-3 bg-stone-50">
+        <div className="p-3 sm:p-4 space-y-2 bg-stone-50">
           {week?.dates
             .filter((d) => weekdayOf(d) <= 5)
             .map((date) => {
@@ -228,19 +267,19 @@ export const PublishedFloorTime: React.FC = () => {
                 <article
                   key={date}
                   aria-current={isToday ? 'date' : undefined}
-                  className={`rounded-2xl border p-4 sm:p-5 grid grid-cols-1 md:grid-cols-[150px_1fr_1fr] gap-4 ${
+                  className={`rounded-xl border px-4 py-3 grid grid-cols-1 md:grid-cols-[110px_1fr_1fr] gap-x-4 gap-y-2 ${
                     holiday !== undefined
                       ? 'bg-red-50 border-red-200'
                       : isSaturday
                         ? 'bg-amber-50 border-amber-200'
                         : 'bg-white border-slate-200'
-                  } ${isToday ? 'ring-2 ring-amber-400' : ''} ${isPast && !isToday ? 'opacity-60' : ''}`}
+                  } ${isToday ? 'ring-2 ring-amber-400' : ''} ${isPast && !isToday ? 'opacity-80' : ''}`}
                 >
-                  <div className="flex md:flex-col items-baseline md:items-start gap-2 md:gap-0.5">
-                    <p className="text-lg font-extrabold tracking-wide text-slate-950">{DAY_NAMES_ID[weekdayOf(date)]}</p>
-                    <p className="text-sm text-slate-600">{formatDateId(date)}</p>
+                  <div className="flex md:flex-col items-baseline md:items-start gap-2 md:gap-0">
+                    <p className="text-base font-bold text-slate-950">{dayName(date)}</p>
+                    <p className="text-xs text-slate-600">{formatDateId(date)}</p>
                     {isToday && (
-                      <span className="md:mt-1.5 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-slate-950">
+                      <span className="md:mt-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-slate-950">
                         Hari ini
                       </span>
                     )}
@@ -252,26 +291,25 @@ export const PublishedFloorTime: React.FC = () => {
                       const entries = data.assignments[slot.key] ?? [];
                       return (
                         <div key={slot.key} className="md:border-l md:border-slate-200 md:pl-4">
-                          <p className="inline-flex items-center gap-1.5 rounded-md bg-amber-100/70 px-2 py-1 text-sm font-bold text-slate-900">
-                            <Clock className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
-                            {slot.timeLabel.replace('-', '–')}
-                            <span className="font-medium text-slate-500">· {slot.shiftName}</span>
+                          <p className="inline-flex items-center gap-1 text-xs font-bold text-amber-800">
+                            <Clock className="w-3 h-3" aria-hidden="true" />
+                            {slot.shiftName} · {slot.timeLabel.replace('-', '–')}
                           </p>
-                          <ul className="mt-2 space-y-1">
+                          <ul className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5">
                             {entries.map((e) => (
                               <li
                                 key={e.agentId}
-                                className={`flex items-center gap-2 text-sm font-semibold ${
+                                title={e.displayName}
+                                className={`truncate text-[13px] font-semibold ${
                                   matches(e.displayName)
-                                    ? 'text-slate-950 bg-amber-200 rounded px-1.5 -mx-1.5'
+                                    ? 'text-slate-950 bg-amber-200 rounded px-1 -mx-1'
                                     : 'text-slate-800'
                                 }`}
                               >
-                                <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                                 {e.displayName}
                               </li>
                             ))}
-                            {entries.length === 0 && <li className="text-xs text-slate-400">Belum terisi</li>}
+                            {entries.length === 0 && <li className="text-xs text-slate-500">Belum terisi</li>}
                           </ul>
                         </div>
                       );
@@ -282,10 +320,8 @@ export const PublishedFloorTime: React.FC = () => {
             })}
 
           {data.notes.length > 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 flex flex-col sm:flex-row gap-2 sm:gap-6">
-              <p className="text-sm font-extrabold tracking-wide text-slate-950 sm:border-r-2 sm:border-amber-500 sm:pr-6">
-                CATATAN
-              </p>
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex flex-col sm:flex-row gap-1 sm:gap-6">
+              <p className="text-sm font-bold text-slate-950 sm:border-r-2 sm:border-amber-500 sm:pr-6">Catatan</p>
               <ul className="space-y-1 text-sm text-slate-700">
                 {data.notes.map((n) => (
                   <li key={n} className="flex gap-2">

@@ -147,8 +147,13 @@ export const JinglePlayer: React.FC = () => {
     if (i === safeIndex) void tryPlay();
   };
 
+  const glass =
+    'bg-white/45 backdrop-blur-xl backdrop-saturate-150 ring-1 ring-slate-900/10 shadow-[0_8px_30px_rgba(15,23,42,0.12)]';
+  const iconBtn =
+    'grid h-7 w-7 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-slate-900/5 hover:text-slate-950 cursor-pointer';
+
   return (
-    <div ref={rootRef} className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 max-w-[calc(100vw-1.5rem)]">
+    <div ref={rootRef} className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 max-w-[calc(100vw-1.5rem)]">
       <audio
         ref={audioRef}
         preload="none"
@@ -164,22 +169,21 @@ export const JinglePlayer: React.FC = () => {
       />
 
       {listOpen && !mini && (
-        <div
-          id="jingle-list"
-          className="mb-2 w-72 max-w-full overflow-hidden rounded-2xl bg-slate-950/95 text-white shadow-2xl ring-1 ring-white/10 backdrop-blur"
-        >
-          <p className="px-4 pt-3 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-400">Jingle Brighton</p>
-          <ul className="max-h-64 overflow-y-auto pb-2">
+        <div id="jingle-list" className={`mb-2 w-60 max-w-full overflow-hidden rounded-2xl text-slate-800 ${glass}`}>
+          <p className="px-3.5 pt-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Jingle Brighton
+          </p>
+          <ul className="max-h-56 overflow-y-auto pb-1.5">
             {tracks.map((t, i) => (
               <li key={t.id}>
                 <button
                   type="button"
                   onClick={() => choose(i)}
-                  className={`flex w-full items-center gap-3 px-4 py-2 text-left text-sm cursor-pointer hover:bg-white/10 ${
-                    i === safeIndex ? 'text-amber-300 font-semibold' : 'text-slate-200'
+                  className={`flex w-full items-center gap-2.5 px-3.5 py-1.5 text-left text-xs cursor-pointer hover:bg-slate-900/5 ${
+                    i === safeIndex ? 'font-semibold text-slate-950' : 'text-slate-700'
                   }`}
                 >
-                  <span className="w-4 text-xs tabular-nums text-slate-500">{i + 1}</span>
+                  <span className="w-3 text-[10px] tabular-nums text-slate-500">{i + 1}</span>
                   <span className="truncate">{t.title}</span>
                   {i === safeIndex && playing && <Equalizer />}
                 </button>
@@ -196,91 +200,84 @@ export const JinglePlayer: React.FC = () => {
             onClick={() => setMiniMode(false)}
             aria-label={`Buka pemutar jingle${playing ? ' (sedang diputar)' : ''}`}
             title={current.title}
-            className="relative grid h-12 w-12 place-items-center rounded-full bg-slate-950/95 shadow-xl ring-1 ring-white/10 cursor-pointer"
+            className={`grid h-10 w-10 place-items-center rounded-full text-slate-700 cursor-pointer ${glass}`}
           >
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950">
-              <Disc3
-                className={`h-9 w-9 p-1 ${playing ? 'animate-[spin_3s_linear_infinite] motion-reduce:animate-none' : ''}`}
-                aria-hidden="true"
-              />
-            </span>
+            <Disc3
+              className={`h-6 w-6 ${playing ? 'animate-[spin_3s_linear_infinite] motion-reduce:animate-none' : ''}`}
+              aria-hidden="true"
+            />
           </button>
         </div>
       ) : (
-      <div className="relative flex items-center gap-2 overflow-hidden rounded-full bg-slate-950/95 py-1.5 pl-1.5 pr-2 text-white shadow-xl ring-1 ring-white/10 backdrop-blur">
-        <span
-          aria-hidden="true"
-          className="absolute bottom-0 left-0 h-0.5 bg-amber-400 transition-[width] duration-300"
-          style={{ width: `${progress * 100}%` }}
-        />
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={playing ? 'Jeda jingle' : 'Putar jingle'}
-          className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950 cursor-pointer"
-        >
-          <Disc3
-            className={`h-10 w-10 p-1 ${playing ? 'animate-[spin_3s_linear_infinite] motion-reduce:animate-none' : ''}`}
+        <div className={`relative flex items-center gap-1.5 overflow-hidden rounded-full py-1 pl-1 pr-1.5 text-slate-900 ${glass}`}>
+          <span
             aria-hidden="true"
+            className="absolute bottom-0 left-0 h-px bg-slate-900/40 transition-[width] duration-300"
+            style={{ width: `${progress * 100}%` }}
           />
-          <span className="absolute grid h-5 w-5 place-items-center rounded-full bg-slate-950 text-amber-300">
-            {playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3 translate-x-px" />}
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={playing ? 'Jeda jingle' : 'Putar jingle'}
+            className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/70 ring-1 ring-slate-900/10 text-slate-800 hover:bg-white cursor-pointer"
+          >
+            <Disc3
+              className={`absolute h-8 w-8 p-0.5 text-slate-400 ${playing ? 'animate-[spin_3s_linear_infinite] motion-reduce:animate-none' : ''}`}
+              aria-hidden="true"
+            />
+            <span className="relative grid h-4 w-4 place-items-center rounded-full bg-white text-slate-900">
+              {playing ? <Pause className="h-2.5 w-2.5" /> : <Play className="h-2.5 w-2.5 translate-x-px" />}
+            </span>
+          </button>
 
-        <div className="min-w-0 w-32 sm:w-44">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-400">
-            {playing ? 'Sedang diputar' : 'Jingle Brighton'}
-          </p>
-          <p className="truncate text-sm font-semibold" title={current.title}>
-            {current.title}
-          </p>
+          <div className="min-w-0 w-24 sm:w-32">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              {playing ? 'Sedang diputar' : 'Jingle Brighton'}
+            </p>
+            <p className="truncate text-xs font-semibold" title={current.title}>
+              {current.title}
+            </p>
+          </div>
+
+          {playing && <Equalizer />}
+
+          <button type="button" onClick={next} aria-label="Jingle berikutnya" className={iconBtn}>
+            <SkipForward className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setListOpen((o) => !o)}
+            aria-label="Daftar jingle"
+            aria-expanded={listOpen}
+            aria-controls="jingle-list"
+            className={iconBtn}
+          >
+            {listOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ListMusic className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setListOpen(false);
+              setMiniMode(true);
+            }}
+            aria-label="Kecilkan pemutar"
+            title="Kecilkan"
+            className={iconBtn}
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
         </div>
-
-        {playing && <Equalizer />}
-
-        <button
-          type="button"
-          onClick={next}
-          aria-label="Jingle berikutnya"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-300 hover:bg-white/10 hover:text-white cursor-pointer"
-        >
-          <SkipForward className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setListOpen(false);
-            setMiniMode(true);
-          }}
-          aria-label="Kecilkan pemutar"
-          title="Kecilkan"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-300 hover:bg-white/10 hover:text-white cursor-pointer"
-        >
-          <Minus className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setListOpen((o) => !o)}
-          aria-label="Daftar jingle"
-          aria-expanded={listOpen}
-          aria-controls="jingle-list"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-300 hover:bg-white/10 hover:text-white cursor-pointer"
-        >
-          {listOpen ? <ChevronDown className="h-4 w-4" /> : <ListMusic className="h-4 w-4" />}
-        </button>
-      </div>
       )}
     </div>
   );
 };
 
 const Equalizer: React.FC = () => (
-  <span aria-hidden="true" className="ml-auto flex h-3.5 items-end gap-0.5 shrink-0">
+  <span aria-hidden="true" className="ml-auto flex h-3 items-end gap-0.5 shrink-0">
     {[0, 1, 2].map((i) => (
       <span
         key={i}
-        className="w-0.5 rounded-full bg-amber-400 motion-safe:animate-[jingle-eq_0.9s_ease-in-out_infinite]"
+        className="w-0.5 rounded-full bg-slate-700 motion-safe:animate-[jingle-eq_0.9s_ease-in-out_infinite]"
         style={{ height: '100%', animationDelay: `${i * 0.18}s` }}
       />
     ))}

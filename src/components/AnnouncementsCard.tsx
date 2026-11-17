@@ -21,7 +21,10 @@ function formatDateWib(iso: string): string {
 
 const MAX_VISIBLE = 3;
 
-export const AnnouncementsCard: React.FC<{ className?: string }> = ({ className }) => {
+export const AnnouncementsCard: React.FC<{ className?: string; onLoaded?: (count: number) => void }> = ({
+  className,
+  onLoaded
+}) => {
   const { isAdmin, auth } = useAdmin();
   const toast = useToast();
   const [items, setItems] = useState<Announcement[]>([]);
@@ -32,17 +35,26 @@ export const AnnouncementsCard: React.FC<{ className?: string }> = ({ className 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
 
+  const [loaded, setLoaded] = useState<boolean>(false);
+
   const load = useCallback(async () => {
+    let list: Announcement[] = [];
     try {
-      setItems(await getContentStore().listAnnouncements());
+      list = await getContentStore().listAnnouncements();
     } catch {
-      setItems([]);
+      list = [];
     }
-  }, []);
+    setItems(list);
+    setLoaded(true);
+    onLoaded?.(list.length);
+  }, [onLoaded]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Pengunjung biasa: kartu tidak tampil bila belum ada pengumuman.
+  if (!loaded || (items.length === 0 && !isAdmin)) return null;
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,14 +148,14 @@ export const AnnouncementsCard: React.FC<{ className?: string }> = ({ className 
       )}
 
       {items.length === 0 ? (
-        <p className="mt-4 rounded-xl bg-stone-50 px-3 py-4 text-center text-sm text-slate-500">Belum ada pengumuman.</p>
+        <p className="mt-3 text-sm text-slate-500">Belum ada pengumuman. Pengunjung tidak melihat kartu ini sampai ada pengumuman.</p>
       ) : (
         <ul className="mt-3 divide-y divide-slate-100">
           {visible.map((item) => (
             <li key={item.id} className="py-3">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                <span className="text-[11px] text-slate-400 whitespace-nowrap">
+                <span className="text-[11px] text-slate-500 whitespace-nowrap">
                   {formatDateWib(item.createdAt)}
                 </span>
               </div>

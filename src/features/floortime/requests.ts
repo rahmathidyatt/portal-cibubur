@@ -39,6 +39,8 @@ export interface NewChangeRequest {
 export interface PublishedSchedule {
   id: string;
   publishedAt: string;
+  /** Terakhir diubah (terbit ulang, request disetujui, batas diubah). */
+  updatedAt?: string;
   /** Batas pengajuan request (ISO dengan zona waktu). */
   requestDeadline: string;
   data: ScheduleData;

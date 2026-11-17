@@ -343,7 +343,7 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
     setFtAdvisorName('');
   };
 
-  const pageTitle = view === 'floortime' ? 'Floortime' : 'Reservasi Dealing Room';
+  const pageTitle = view === 'floortime' ? 'Floor Time' : 'Reservasi Dealing Room';
   const pageIntro =
     view === 'floortime'
       ? 'Jadwal floor time bulanan dari kantor. Cek jadwal Anda dan ajukan perubahan sebelum batas waktu.'
@@ -364,7 +364,7 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
             </>
           )}
           <span className="font-semibold text-slate-700">
-            {view === 'floortime' ? 'Floortime' : 'Dealing Room'}
+            {view === 'floortime' ? 'Floor Time' : 'Dealing Room'}
           </span>
         </nav>
         <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">

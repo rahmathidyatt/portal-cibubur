@@ -226,7 +226,7 @@ export async function getViewStats(auth: AdminAuth, days = 14): Promise<ViewStat
 export function pageLabel(path: string): string {
   const labels: Record<string, string> = {
     beranda: 'Beranda',
-    floortime: 'Floortime',
+    floortime: 'Floor Time',
     'dealing-room': 'Dealing Room',
     'jadwal-saya': 'Jadwal saya',
     'business-manager': 'Business Manager',

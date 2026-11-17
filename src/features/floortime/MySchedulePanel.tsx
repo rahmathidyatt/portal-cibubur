@@ -123,7 +123,7 @@ export const MySchedulePanel: React.FC<{
                         isNext
                           ? 'text-slate-950'
                           : past
-                            ? 'text-slate-400 line-through'
+                            ? 'text-slate-500 line-through'
                             : 'text-slate-800 hover:bg-amber-50'
                       }`}
                     >

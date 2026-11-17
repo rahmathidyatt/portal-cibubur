@@ -15,7 +15,7 @@ const ALL_RESERVATION_LINKS = [
   {
     href: '#floortime',
     route: 'floortime' as PortalRoute,
-    label: 'Floortime',
+    label: 'Floor Time',
     hint: 'Daftar jaga kantor',
     Icon: Users
   }

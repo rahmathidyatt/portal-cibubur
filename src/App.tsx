@@ -122,16 +122,7 @@ function PortalApp() {
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Admin · Keluar
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setLoginOpen(true)}
-                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                Masuk staf
-              </button>
-            )}
+            ) : null}
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
@@ -152,7 +143,7 @@ function PortalApp() {
             <a href="#beranda" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-950">
               Beranda
             </a>
-            {RESERVATION_LINKS.length > 1 && <p className="pt-2 pb-1 text-xs font-semibold text-slate-400">Reservasi</p>}
+            {RESERVATION_LINKS.length > 1 && <p className="pt-2 pb-1 text-xs font-semibold text-slate-500">Reservasi</p>}
             {RESERVATION_LINKS.map(({ href, label, Icon }) => (
               <a
                 key={href}
@@ -201,19 +192,7 @@ function PortalApp() {
                   <LogOut className="w-4 h-4" />
                   Keluar dari mode admin
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setLoginOpen(true);
-                  }}
-                  className="py-2 text-left hover:text-slate-950 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Masuk staf
-                </button>
-              )}
+              ) : null}
             </div>
           </nav>
         )}
@@ -272,7 +251,7 @@ function PortalApp() {
 
       <LoginDialog open={loginOpen} onClose={handleCloseLogin} />
 
-      <SiteFooter />
+      <SiteFooter isAdmin={isAdmin} onLogin={() => setLoginOpen(true)} />
       <JinglePlayer />
     </div>
   );
@@ -295,14 +274,26 @@ function StaffPage({ route }: { route: PortalRoute }) {
 }
 
 /** Footer: identitas kantor + tanggal berdiri (ulang tahun kantor). */
-function SiteFooter() {
+function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => void }) {
   const today = todayInJakarta();
   const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
   return (
-    <footer className="bg-white border-t border-slate-200 pt-6 pb-24">
+    <footer className="bg-white border-t border-slate-200 pt-6 pb-20">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
-        <p>
-          © {today.slice(0, 4)} {OFFICE_IDENTITY.name} · Portal operasional internal
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>
+            © {today.slice(0, 4)} {OFFICE_IDENTITY.name} · Portal operasional internal
+          </span>
+          {!isAdmin && (
+            <button
+              type="button"
+              onClick={onLogin}
+              className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-slate-950 cursor-pointer"
+            >
+              <LogIn className="h-3.5 w-3.5" aria-hidden="true" />
+              Masuk staf
+            </button>
+          )}
         </p>
         <p className="inline-flex items-center gap-1.5">
           <Cake className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
