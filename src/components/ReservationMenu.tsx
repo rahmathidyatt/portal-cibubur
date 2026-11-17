@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Calendar, Users, CalendarRange, Receipt, LayoutDashboard, TrendingUp } from 'lucide-react';
+import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
 export const RESERVATION_LINKS = [
@@ -19,23 +19,18 @@ export const RESERVATION_LINKS = [
   }
 ];
 
-/** Alat staf: hanya tampil setelah login admin. */
+/** Menu area admin (sidebar), dikelompokkan. Hanya tampil setelah login admin. */
 export const STAFF_LINKS = [
   {
+    group: 'Ringkasan',
     href: '#staf-statistik',
     route: 'staf-statistik' as PortalRoute,
     label: 'Statistik portal',
-    hint: 'Jumlah kunjungan & grafik 14 hari',
+    hint: 'Kunjungan & grafik 14 hari',
     Icon: TrendingUp
   },
   {
-    href: '#staf-admin',
-    route: 'staf-admin' as PortalRoute,
-    label: 'Panel admin',
-    hint: 'Jingle Brighton & ulang tahun agen',
-    Icon: LayoutDashboard
-  },
-  {
+    group: 'Operasional',
     href: '#staf-floor-time',
     route: 'staf-floor-time' as PortalRoute,
     label: 'Floor Time Scheduler',
@@ -43,11 +38,28 @@ export const STAFF_LINKS = [
     Icon: CalendarRange
   },
   {
+    group: 'Operasional',
     href: '#staf-nota',
     route: 'staf-nota' as PortalRoute,
     label: 'Nota Smart Messenger',
     hint: 'Hitung & unduh nota messenger',
     Icon: Receipt
+  },
+  {
+    group: 'Konten portal',
+    href: '#staf-jingle',
+    route: 'staf-jingle' as PortalRoute,
+    label: 'Jingle Brighton',
+    hint: 'Tambah & hapus lagu',
+    Icon: Music
+  },
+  {
+    group: 'Konten portal',
+    href: '#staf-ulang-tahun',
+    route: 'staf-ulang-tahun' as PortalRoute,
+    label: 'Ulang tahun agen',
+    hint: 'Unggah data bulanan',
+    Icon: Cake
   }
 ];
 

@@ -20,7 +20,7 @@ function formatDateWib(iso: string): string {
 
 const MAX_VISIBLE = 3;
 
-export const AnnouncementsCard: React.FC = () => {
+export const AnnouncementsCard: React.FC<{ className?: string }> = ({ className }) => {
   const { isAdmin, auth } = useAdmin();
   const [items, setItems] = useState<Announcement[]>([]);
   const [showAll, setShowAll] = useState<boolean>(false);
@@ -41,9 +41,6 @@ export const AnnouncementsCard: React.FC = () => {
   useEffect(() => {
     void load();
   }, [load]);
-
-  // Tanpa pengumuman dan bukan admin: kartu tidak perlu tampil.
-  if (items.length === 0 && !isAdmin) return null;
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,11 +69,13 @@ export const AnnouncementsCard: React.FC = () => {
   return (
     <section
       aria-labelledby="pengumuman-title"
-      className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6"
+      className={`flex flex-col rounded-2xl bg-white p-5 ring-1 ring-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className ?? ''}`}
     >
       <div className="flex items-center justify-between gap-3">
-        <h2 id="pengumuman-title" className="flex items-center gap-2 text-base font-bold text-slate-950">
-          <Megaphone className="w-4 h-4 text-amber-600" />
+        <h2 id="pengumuman-title" className="flex items-center gap-2 text-sm font-bold text-slate-950">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-100 text-amber-700">
+            <Megaphone className="h-4 w-4" aria-hidden="true" />
+          </span>
           Pengumuman
         </h2>
         {isAdmin && !formOpen && (
@@ -134,7 +133,7 @@ export const AnnouncementsCard: React.FC = () => {
       )}
 
       {items.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">Belum ada pengumuman.</p>
+        <p className="mt-4 rounded-xl bg-stone-50 px-3 py-4 text-center text-sm text-slate-500">Belum ada pengumuman.</p>
       ) : (
         <ul className="mt-3 divide-y divide-slate-100">
           {visible.map((item) => (

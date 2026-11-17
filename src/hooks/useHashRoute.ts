@@ -1,8 +1,23 @@
 import { useEffect, useState } from 'react';
 
-export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota' | 'staf-admin' | 'staf-statistik';
+export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota' | 'staf-statistik' | 'staf-jingle' | 'staf-ulang-tahun';
 
-const PAGE_ROUTES: PortalRoute[] = ['dealing-room', 'floortime', 'staf-floor-time', 'staf-nota', 'staf-admin', 'staf-statistik'];
+const PAGE_ROUTES: PortalRoute[] = [
+  'dealing-room',
+  'floortime',
+  'staf-floor-time',
+  'staf-nota',
+  'staf-statistik',
+  'staf-jingle',
+  'staf-ulang-tahun'
+];
+
+/** Alamat lama yang diarahkan ke halaman baru. */
+const ALIASES: Record<string, PortalRoute> = { 'staf-admin': 'staf-statistik', admin: 'staf-statistik' };
+
+export function isStaffRoute(route: PortalRoute): boolean {
+  return route.startsWith('staf-');
+}
 
 function readHash(): string {
   try {
@@ -15,7 +30,7 @@ function readHash(): string {
 /**
  * Navigasi sederhana berbasis hash:
  * - #dealing-room dan #floortime membuka halaman reservasi masing-masing.
- * - #staf-statistik, #staf-admin, #staf-floor-time dan #staf-nota membuka alat staf (wajib login admin).
+ * - #staf-* membuka area admin (wajib login admin); #staf-admin diarahkan ke #staf-statistik.
  * - Hash lain (#beranda, #kontak-staf, #jam-operasional) membuka beranda
  *   lalu menggulir ke bagian tersebut.
  */
@@ -30,7 +45,7 @@ export function useHashRoute(): { route: PortalRoute; anchor: string } {
 
   const route: PortalRoute = (PAGE_ROUTES as string[]).includes(hash)
     ? (hash as PortalRoute)
-    : 'beranda';
+    : (ALIASES[hash] ?? 'beranda');
 
   // Setelah berpindah halaman: halaman reservasi mulai dari atas,
   // anchor beranda digulir setelah bagian tersebut ter-render.

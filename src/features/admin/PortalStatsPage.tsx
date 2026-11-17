@@ -73,7 +73,8 @@ export const PortalStatsPage: React.FC = () => {
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-950">Statistik portal</h1>
+            <p className="text-xs text-slate-500">Ringkasan</p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-950">Statistik portal</h1>
             <p className="mt-1 text-sm text-slate-600">
               Jumlah kunjungan portal. Satu kunjungan dihitung sekali per sesi browser.
             </p>

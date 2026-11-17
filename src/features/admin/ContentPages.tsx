@@ -22,18 +22,33 @@ const card = 'bg-white border border-slate-200 rounded-2xl p-5 sm:p-6';
 const primaryBtn =
   'inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg disabled:opacity-50 cursor-pointer';
 
-/** Panel admin: jingle Brighton dan data ulang tahun agen. */
-export const AdminPanelPage: React.FC = () => (
-  <section className="bg-stone-50 min-h-[60vh]">
-    <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-950">Panel admin</h1>
-        <p className="mt-1 text-sm text-slate-600">Jingle Brighton dan data ulang tahun agen.</p>
-      </div>
-      <JingleManager />
-      <BirthdayManager />
+const PageFrame: React.FC<{ title: string; description: string; children: React.ReactNode }> = ({
+  title,
+  description,
+  children
+}) => (
+  <section className="bg-stone-50 min-h-[70vh]">
+    <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <p className="text-xs text-slate-500">Konten portal</p>
+      <h1 className="mt-1 text-2xl font-bold text-slate-950">{title}</h1>
+      <p className="mt-1 text-sm text-slate-600">{description}</p>
+      <div className="mt-6">{children}</div>
     </div>
   </section>
+);
+
+/** Menu admin: daftar jingle yang diputar di portal. */
+export const JinglePage: React.FC = () => (
+  <PageFrame title="Jingle Brighton" description="Lagu di daftar ini diputar bergantian di portal. Tambahkan jingle baru atau hapus yang sudah tidak berlaku.">
+    <JingleManager />
+  </PageFrame>
+);
+
+/** Menu admin: data ulang tahun agen untuk pengingat beranda. */
+export const BirthdayPage: React.FC = () => (
+  <PageFrame title="Ulang tahun agen" description="Data untuk pengingat ulang tahun hari ini dan besok di beranda.">
+    <BirthdayManager />
+  </PageFrame>
 );
 
 /* ------------------------------------------------------------------ */
@@ -118,11 +133,8 @@ const JingleManager: React.FC = () => {
       <audio ref={previewRef} onEnded={() => setPreviewId(null)} />
       <h2 id="jingle-title" className="flex items-center gap-2 text-base font-bold text-slate-950">
         <Music className="w-4 h-4 text-amber-600" aria-hidden="true" />
-        Jingle Brighton
+        Tambah jingle
       </h2>
-      <p className="mt-1 text-sm text-slate-600">
-        Lagu di daftar ini diputar bergantian di portal. Tambahkan jingle baru atau hapus yang sudah tidak berlaku.
-      </p>
 
       <form onSubmit={handleAdd} className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end" noValidate>
         <label className="flex items-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-stone-50 px-4 py-3 cursor-pointer hover:border-amber-400">
@@ -287,7 +299,7 @@ const BirthdayManager: React.FC = () => {
     <div className={card}>
       <h2 className="flex items-center gap-2 text-base font-bold text-slate-950">
         <Cake className="w-4 h-4 text-amber-600" aria-hidden="true" />
-        Ulang tahun agen
+        Unggah data ulang tahun
       </h2>
       <p className="mt-1 text-sm text-slate-600">
         Unggah ekspor bulanan (kolom <b>Code</b>, <b>Nama Panggilan</b>, <b>Tgl Lahir</b>) dalam .csv atau .xlsx. Beranda

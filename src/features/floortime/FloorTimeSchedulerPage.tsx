@@ -160,7 +160,7 @@ export const FloorTimeSchedulerPage: React.FC = () => {
   return (
     <section className="bg-stone-50 min-h-[70vh] py-8 sm:py-12">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
-        <p className="text-xs text-slate-500">Alat staf</p>
+        <p className="text-xs text-slate-500">Operasional</p>
         <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
           Floor Time Scheduler
         </h1>
