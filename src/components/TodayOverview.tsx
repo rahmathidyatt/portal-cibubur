@@ -1,6 +1,9 @@
 import React from 'react';
 import type { OfficeDaySchedule } from '../data/cibuburData';
+import { Cake } from 'lucide-react';
+import { OFFICE_IDENTITY } from '../data/cibuburData';
 import { AnnouncementsCard } from './AnnouncementsCard';
+import { officeAnniversary } from '../utils/anniversary';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
   formatLongDateId,
@@ -19,6 +22,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
   const today = todayInJakarta(now);
   const greeting = greetingForMinutes(minutesNowInJakarta(now));
   const status = getOfficeStatus(weeklyHours, now);
+  const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
 
   return (
     <section id="beranda" className="scroll-mt-20 border-b border-slate-200 bg-stone-50">
@@ -40,6 +44,23 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
           />
           Kantor {status.label.toLowerCase()}
         </p>
+
+        {anniv.isToday && (
+          <div
+            role="status"
+            className="mt-6 max-w-3xl flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4"
+          >
+            <Cake className="w-6 h-6 shrink-0 text-amber-600" aria-hidden="true" />
+            <div>
+              <p className="text-base font-bold text-slate-950">
+                Selamat ulang tahun ke-{anniv.age}, {OFFICE_IDENTITY.name}!
+              </p>
+              <p className="mt-0.5 text-sm text-slate-700">
+                Berdiri sejak 6 Mei 2023. Terima kasih untuk seluruh tim yang sudah tumbuh bersama.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 max-w-3xl empty:hidden">
           <AnnouncementsCard />

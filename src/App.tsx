@@ -4,7 +4,9 @@
  */
 
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { Menu, X, LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, ShieldCheck, Cake } from 'lucide-react';
+import { officeAnniversary } from './utils/anniversary';
+import { todayInJakarta } from './utils/schedule';
 import {
   OFFICE_STAFF_CONTACTS,
   OFFICE_IDENTITY,
@@ -242,11 +244,32 @@ function PortalApp() {
 
       <LoginDialog open={loginOpen} onClose={handleCloseLogin} />
 
-      <footer className="bg-white border-t border-slate-200 py-6">
-        <p className="max-w-[1140px] mx-auto px-4 sm:px-6 text-xs text-slate-500">
-          © {new Date().getFullYear()} {OFFICE_IDENTITY.name} · Portal operasional internal
-        </p>
-      </footer>
+      <SiteFooter />
     </div>
+  );
+}
+
+/** Footer: identitas kantor + tanggal berdiri (ulang tahun kantor). */
+function SiteFooter() {
+  const today = todayInJakarta();
+  const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
+  return (
+    <footer className="bg-white border-t border-slate-200 py-6">
+      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
+        <p>
+          © {today.slice(0, 4)} {OFFICE_IDENTITY.name} · Portal operasional internal
+        </p>
+        <p className="inline-flex items-center gap-1.5">
+          <Cake className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
+          {anniv.isToday ? (
+            <span className="font-semibold text-amber-800">Hari ini ulang tahun ke-{anniv.age} kantor</span>
+          ) : (
+            <span>
+              Berdiri sejak 6 Mei 2023 · {anniv.age} tahun · ulang tahun ke-{anniv.nextAge} dalam {anniv.daysUntil} hari
+            </span>
+          )}
+        </p>
+      </div>
+    </footer>
   );
 }

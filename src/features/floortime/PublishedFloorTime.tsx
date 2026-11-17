@@ -6,9 +6,9 @@ import {
   DAY_NAMES_ID,
   displayName,
   formatDateId,
+  MONTH_NAMES_ID,
   monthLabel,
-  weekdayOf,
-  weekRangeLabel
+  weekdayOf
 } from './engine';
 import {
   agentSlots,
@@ -20,6 +20,24 @@ import {
   type PublishedSchedule
 } from './requests';
 import { getScheduleStore } from './scheduleStore';
+
+const DAY_SHORT = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+/** "16 Nov" */
+function shortDate(iso: string): string {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${d} ${MONTH_NAMES_ID[m - 1].slice(0, 3)}`;
+}
+
+/** "16–21 Nov" atau "26 Okt – 1 Nov" (hanya Senin–Sabtu). */
+export function shortRange(dates: string[]): string {
+  const sorted = [...dates].sort();
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  if (!first || !last) return '';
+  if (first.slice(0, 7) === last.slice(0, 7)) return `${Number(first.slice(8))}–${shortDate(last)}`;
+  return `${shortDate(first)} – ${shortDate(last)}`;
+}
 
 const input =
   'w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400';
@@ -82,11 +100,26 @@ export const PublishedFloorTime: React.FC = () => {
   const week = data.weeks.find((w) => w.weekNo === weekNo) ?? data.weeks[0];
   const open = isRequestOpen(schedule.requestDeadline);
   const needle = search.trim().toLowerCase();
+  const matches = (name: string) => needle !== '' && name.toLowerCase().includes(needle);
+
+  // Hasil pencarian: slot-slot (sebulan) yang memuat agen yang cocok.
+  const searchHits = needle
+    ? data.slots
+        .flatMap((slot) =>
+          (data.assignments[slot.key] ?? [])
+            .filter((e) => matches(e.displayName))
+            .map((e) => ({ slot, name: e.displayName }))
+        )
+        .sort((a, b) => a.slot.key.localeCompare(b.slot.key))
+    : [];
+  const hitsPerWeek = new Map<number, number>();
+  for (const h of searchHits) hitsPerWeek.set(h.slot.weekNo, (hitsPerWeek.get(h.slot.weekNo) ?? 0) + 1);
+  const hitNames = [...new Set(searchHits.map((h) => h.name))];
 
   return (
     <div className="space-y-5">
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-        <div className="p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
+        <div className="p-5 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-950">Jadwal Floor Time {monthLabel(data.year, data.month)}</h2>
             <p
@@ -98,86 +131,160 @@ export const PublishedFloorTime: React.FC = () => {
                 : `Batas request sudah lewat (${formatDeadlineWib(schedule.requestDeadline)})`}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <label className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                aria-label="Cari nama agen"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari nama / kode"
-                className={`${input} pl-9 sm:w-52`}
-              />
-            </label>
-            <select
-              aria-label="Pilih minggu"
-              value={week?.weekNo}
-              onChange={(e) => setWeekNo(Number(e.target.value))}
-              className={`${input} sm:w-auto`}
-            >
-              {data.weeks.map((w) => (
-                <option key={w.weekNo} value={w.weekNo}>
-                  {weekRangeLabel(w.dates)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <label className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              aria-label="Cari nama agen"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama / kode agen"
+              className={`${input} pl-9 sm:w-64`}
+            />
+          </label>
         </div>
 
-        <ul className="divide-y divide-slate-100">
+        {needle && (
+          <div className="mx-5 mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            {searchHits.length === 0 ? (
+              <p className="text-sm text-slate-700">Tidak ada jadwal untuk “{search.trim()}” di bulan ini.</p>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-slate-900">
+                  {hitNames.length === 1 ? hitNames[0] : `${hitNames.length} agen cocok`} · {searchHits.length} jadwal
+                  bulan ini
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {searchHits.map(({ slot, name }) => (
+                    <button
+                      key={`${slot.key}-${name}`}
+                      type="button"
+                      onClick={() => setWeekNo(slot.weekNo)}
+                      className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-800 ring-1 ring-amber-300 hover:bg-amber-100 cursor-pointer"
+                    >
+                      {DAY_SHORT[slot.weekday]} {shortDate(slot.date)} · {slot.timeLabel}
+                      {hitNames.length > 1 && <span className="text-slate-500"> · {name}</span>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        <div role="tablist" aria-label="Pilih minggu" className="flex gap-2 overflow-x-auto px-5 pb-4 border-b border-slate-200">
+          {data.weeks.map((w) => {
+            const active = w.weekNo === week?.weekNo;
+            const isCurrent = w.dates[0] <= today && today <= w.dates[w.dates.length - 1];
+            const hits = hitsPerWeek.get(w.weekNo) ?? 0;
+            return (
+              <button
+                key={w.weekNo}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setWeekNo(w.weekNo)}
+                className={`relative shrink-0 rounded-xl px-3.5 py-2 text-left cursor-pointer transition-colors ${
+                  active
+                    ? 'bg-slate-950 text-white'
+                    : 'bg-slate-50 text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span className={`block text-[11px] font-semibold ${active ? 'text-amber-300' : 'text-slate-500'}`}>
+                  {isCurrent ? 'Minggu ini' : `Minggu ${w.weekNo}`}
+                </span>
+                <span className="block text-sm font-bold whitespace-nowrap">{shortRange(w.dates)}</span>
+                {hits > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-amber-400 text-[11px] font-bold text-slate-950 grid place-items-center">
+                    {hits}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="p-4 sm:p-5 space-y-3 bg-stone-50">
           {week?.dates
             .filter((d) => weekdayOf(d) <= 5)
             .map((date) => {
               const holiday = data.holidays[date];
               const slots = data.slots.filter((s) => s.date === date).sort((a, b) => a.shiftIndex - b.shiftIndex);
               const isToday = date === today;
+              const isPast = date < today;
+              const isSaturday = weekdayOf(date) === 5;
               return (
-                <li
+                <article
                   key={date}
-                  className={`grid grid-cols-1 md:grid-cols-[160px_1fr_1fr] gap-3 p-4 ${
-                    holiday !== undefined ? 'bg-red-50' : weekdayOf(date) === 5 ? 'bg-amber-50/60' : ''
-                  }`}
+                  aria-current={isToday ? 'date' : undefined}
+                  className={`rounded-2xl border p-4 sm:p-5 grid grid-cols-1 md:grid-cols-[150px_1fr_1fr] gap-4 ${
+                    holiday !== undefined
+                      ? 'bg-red-50 border-red-200'
+                      : isSaturday
+                        ? 'bg-amber-50 border-amber-200'
+                        : 'bg-white border-slate-200'
+                  } ${isToday ? 'ring-2 ring-amber-400' : ''} ${isPast && !isToday ? 'opacity-60' : ''}`}
                 >
-                  <div>
-                    <p className="text-sm font-bold text-slate-950">
-                      {DAY_NAMES_ID[weekdayOf(date)]}
-                      {isToday && (
-                        <span className="ml-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold">Hari ini</span>
-                      )}
-                    </p>
-                    <p className="text-xs text-slate-500">{formatDateId(date)}</p>
+                  <div className="flex md:flex-col items-baseline md:items-start gap-2 md:gap-0.5">
+                    <p className="text-lg font-extrabold tracking-wide text-slate-950">{DAY_NAMES_ID[weekdayOf(date)]}</p>
+                    <p className="text-sm text-slate-600">{formatDateId(date)}</p>
+                    {isToday && (
+                      <span className="md:mt-1.5 rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-bold text-slate-950">
+                        Hari ini
+                      </span>
+                    )}
                   </div>
                   {holiday !== undefined ? (
-                    <p className="md:col-span-2 text-sm font-semibold text-red-800">{holiday}</p>
+                    <p className="md:col-span-2 self-center text-sm font-semibold text-red-800">Libur · {holiday}</p>
                   ) : (
-                    slots.map((slot) => (
-                      <div key={slot.key}>
-                        <p className="text-xs font-bold text-amber-800">
-                          {slot.shiftName} · {slot.timeLabel}
-                        </p>
-                        <ul className="mt-1 space-y-0.5">
-                          {(data.assignments[slot.key] ?? []).map((e) => {
-                            const hit = needle && e.displayName.toLowerCase().includes(needle);
-                            return (
+                    slots.map((slot) => {
+                      const entries = data.assignments[slot.key] ?? [];
+                      return (
+                        <div key={slot.key} className="md:border-l md:border-slate-200 md:pl-4">
+                          <p className="inline-flex items-center gap-1.5 rounded-md bg-amber-100/70 px-2 py-1 text-sm font-bold text-slate-900">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
+                            {slot.timeLabel.replace('-', '–')}
+                            <span className="font-medium text-slate-500">· {slot.shiftName}</span>
+                          </p>
+                          <ul className="mt-2 space-y-1">
+                            {entries.map((e) => (
                               <li
                                 key={e.agentId}
-                                className={`text-sm ${hit ? 'font-bold text-slate-950 bg-amber-100 rounded px-1 -mx-1' : 'text-slate-800'}`}
+                                className={`flex items-center gap-2 text-sm font-semibold ${
+                                  matches(e.displayName)
+                                    ? 'text-slate-950 bg-amber-200 rounded px-1.5 -mx-1.5'
+                                    : 'text-slate-800'
+                                }`}
                               >
+                                <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                                 {e.displayName}
                               </li>
-                            );
-                          })}
-                          {(data.assignments[slot.key] ?? []).length === 0 && (
-                            <li className="text-xs text-slate-400">Belum terisi</li>
-                          )}
-                        </ul>
-                      </div>
-                    ))
+                            ))}
+                            {entries.length === 0 && <li className="text-xs text-slate-400">Belum terisi</li>}
+                          </ul>
+                        </div>
+                      );
+                    })
                   )}
-                </li>
+                </article>
               );
             })}
-        </ul>
+
+          {data.notes.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 flex flex-col sm:flex-row gap-2 sm:gap-6">
+              <p className="text-sm font-extrabold tracking-wide text-slate-950 sm:border-r-2 sm:border-amber-500 sm:pr-6">
+                CATATAN
+              </p>
+              <ul className="space-y-1 text-sm text-slate-700">
+                {data.notes.map((n) => (
+                  <li key={n} className="flex gap-2">
+                    <span aria-hidden="true" className="mt-2 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                    {n}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
 
       <RequestForm schedule={schedule} open={open} onSubmitted={load} />

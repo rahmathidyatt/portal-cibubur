@@ -58,7 +58,9 @@ export const OFFICE_IDENTITY = {
   address: 'Jl. Canadian Broadway Blok CBB 30–31, Kota Wisata Cibubur',
   phoneDisplay: '021 3873 9073',
   phoneHref: 'tel:02138739073',
-  mapsUrl: 'https://maps.app.goo.gl/fbFsEzTkC3Jp9HEY6'
+  mapsUrl: 'https://maps.app.goo.gl/fbFsEzTkC3Jp9HEY6',
+  /** Tanggal berdiri kantor (YYYY-MM-DD), dipakai untuk ulang tahun kantor. */
+  foundedDate: '2023-05-06'
 };
 
 export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
