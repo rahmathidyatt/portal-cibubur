@@ -13,6 +13,7 @@ import {
   INITIAL_FLOORTIME_SHIFTS
 } from './data/cibuburData';
 import { TodayOverview } from './components/TodayOverview';
+import { BusinessManagers } from './components/BusinessManagers';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
 import { ReservationPage } from './components/ReservationPage';
@@ -27,6 +28,7 @@ const HOURS_SUMMARY = buildHoursSummary(WEEKLY_OFFICE_HOURS);
 
 const NAV_LINKS = [
   { href: '#beranda', label: 'Beranda' },
+  { href: '#business-manager', label: 'Business Manager' },
   { href: '#kontak-staf', label: 'Kontak staf' },
   { href: '#jam-operasional', label: 'Jam & lokasi' }
 ];
@@ -70,7 +72,7 @@ function PortalApp() {
 
           <nav
             aria-label="Navigasi utama"
-            className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600"
+            className="hidden lg:flex items-center gap-5 text-sm font-semibold text-slate-600"
           >
             <a href={NAV_LINKS[0].href} className="hover:text-slate-950 transition-colors">
               {NAV_LINKS[0].label}
@@ -88,7 +90,7 @@ function PortalApp() {
               href={opsWhatsAppUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
+              className="hidden xl:inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               Chat Operasional
@@ -98,7 +100,7 @@ function PortalApp() {
                 type="button"
                 onClick={() => void signOut()}
                 title={`Masuk sebagai ${session?.email ?? 'admin'}`}
-                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 ring-1 ring-emerald-200 rounded-lg transition-colors cursor-pointer"
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 ring-1 ring-emerald-200 rounded-lg transition-colors cursor-pointer"
               >
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Admin · Keluar
@@ -107,7 +109,7 @@ function PortalApp() {
               <button
                 type="button"
                 onClick={() => setLoginOpen(true)}
-                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 Masuk staf
@@ -118,7 +120,7 @@ function PortalApp() {
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-expanded={mobileMenuOpen}
               aria-label={mobileMenuOpen ? 'Tutup menu' : 'Buka menu'}
-              className="md:hidden p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              className="lg:hidden p-2 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -128,7 +130,7 @@ function PortalApp() {
         {mobileMenuOpen && (
           <nav
             aria-label="Navigasi seluler"
-            className="md:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col text-sm font-semibold text-slate-700"
+            className="lg:hidden border-t border-slate-200 bg-white px-4 py-3 flex flex-col text-sm font-semibold text-slate-700"
           >
             <a href="#beranda" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-950">
               Beranda
@@ -193,6 +195,7 @@ function PortalApp() {
         {route === 'beranda' ? (
           <>
             <TodayOverview weeklyHours={WEEKLY_OFFICE_HOURS} />
+            <BusinessManagers />
             <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
             <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
           </>

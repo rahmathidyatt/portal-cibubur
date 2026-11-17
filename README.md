@@ -9,6 +9,7 @@ Fitur:
   - `#dealing-room` — Dealing Room 1 & 2 per tanggal dan jam.
   - `#floortime` — pendaftaran jaga kantor (kuota 3 advisor per sesi).
   Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
+- **Business Manager**: 9 BM Brighton HUB Cibubur dengan foto, kode, dan level (data di `src/data/businessManagers.ts`, foto di `src/assets/managers/`).
 - **Kontak staf**: OPERASIONAL, FINANCE, MESSENGER — nama, nomor telepon, dan tombol chat WhatsApp.
 - **Jam & lokasi**: jadwal mingguan, alamat, tautan Google Maps, telepon kantor.
 
