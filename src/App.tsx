@@ -299,7 +299,7 @@ function SiteFooter() {
   const today = todayInJakarta();
   const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
   return (
-    <footer className="bg-white border-t border-slate-200 py-6">
+    <footer className="bg-white border-t border-slate-200 pt-6 pb-24">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
         <p>
           © {today.slice(0, 4)} {OFFICE_IDENTITY.name} · Portal operasional internal

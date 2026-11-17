@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CalendarCheck, CalendarPlus, UserRound } from 'lucide-react';
+import { ArrowLeftRight, CalendarCheck, CalendarPlus, Plus, UserRound } from 'lucide-react';
 import { OFFICE_IDENTITY } from '../../data/cibuburData';
 import { minutesNowInJakarta } from '../../utils/schedule';
 import { DAY_NAMES_ID, displayName, formatDateId, weekdayOf } from './engine';
@@ -22,11 +22,15 @@ function downloadText(text: string, fileName: string, type: string): void {
 }
 
 /** "Jadwal saya": agen memilih namanya, melihat jadwalnya, dan menyimpannya ke kalender HP. */
-export const MySchedulePanel: React.FC<{ schedule: PublishedSchedule; today: string; onJump: (weekNo: number) => void }> = ({
-  schedule,
-  today,
-  onJump
-}) => {
+export const MySchedulePanel: React.FC<{
+  schedule: PublishedSchedule;
+  today: string;
+  onJump: (weekNo: number) => void;
+  /** Request perubahan masih dibuka (sebelum batas waktu). */
+  requestOpen: boolean;
+  /** Buka form request yang sudah terisi nama (dan jadwal asal untuk pindah). */
+  onRequest: (agentId: string, kind: 'move' | 'add', fromSlot?: string) => void;
+}> = ({ schedule, today, onJump, requestOpen, onRequest }) => {
   const data = schedule.data;
   const [code, setCode] = useState<string>(() => {
     const saved = readMyAgentCode();
@@ -72,7 +76,18 @@ export const MySchedulePanel: React.FC<{ schedule: PublishedSchedule; today: str
           beranda.
         </p>
       ) : slots.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">{displayName(agent)} tidak mendapat jadwal floor time bulan ini.</p>
+        <p className="mt-3 text-sm text-slate-500">
+          {displayName(agent)} tidak mendapat jadwal floor time bulan ini.{' '}
+          {requestOpen && (
+            <button
+              type="button"
+              onClick={() => onRequest(agent.id, 'add')}
+              className="font-bold text-slate-800 underline underline-offset-2 hover:text-amber-700 cursor-pointer"
+            >
+              Ajukan tambah jadwal
+            </button>
+          )}
+        </p>
       ) : (
         <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
           <div>
@@ -91,26 +106,69 @@ export const MySchedulePanel: React.FC<{ schedule: PublishedSchedule; today: str
               {slots.map((s) => {
                 const isNext = next?.key === s.key;
                 const past = !isNext && s.date <= today && (!next || s.key < next.key);
+                const label = `${titleCase(DAY_NAMES_ID[weekdayOf(s.date)]).slice(0, 3)} ${Number(s.date.slice(8))} · ${s.shiftName}`;
+                const canMove = requestOpen && !past && s.date >= today;
                 return (
-                  <li key={s.key}>
+                  <li
+                    key={s.key}
+                    className={`inline-flex items-stretch overflow-hidden rounded-full ring-1 ${
+                      isNext ? 'bg-amber-400 ring-amber-400' : past ? 'bg-slate-50 ring-slate-200' : 'bg-white ring-slate-200'
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => onJump(s.weekNo)}
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 cursor-pointer ${
+                      title="Lihat di jadwal mingguan"
+                      className={`px-2.5 py-1 text-xs font-semibold cursor-pointer ${
                         isNext
-                          ? 'bg-amber-400 text-slate-950 ring-amber-400'
+                          ? 'text-slate-950'
                           : past
-                            ? 'bg-slate-50 text-slate-400 ring-slate-200 line-through'
-                            : 'bg-white text-slate-800 ring-slate-200 hover:bg-amber-50'
+                            ? 'text-slate-400 line-through'
+                            : 'text-slate-800 hover:bg-amber-50'
                       }`}
                     >
-                      {titleCase(DAY_NAMES_ID[weekdayOf(s.date)]).slice(0, 3)} {Number(s.date.slice(8))} · {s.shiftName}
+                      {label}
                     </button>
+                    {canMove && (
+                      <button
+                        type="button"
+                        onClick={() => onRequest(agent.id, 'move', s.key)}
+                        aria-label={`Ajukan pindah jadwal ${label}`}
+                        title="Ajukan pindah jadwal ini"
+                        className={`inline-flex items-center gap-1 border-l px-2 text-[11px] font-bold cursor-pointer ${
+                          isNext
+                            ? 'border-amber-500/40 text-slate-900 hover:bg-amber-300'
+                            : 'border-slate-200 text-amber-700 hover:bg-amber-50'
+                        }`}
+                      >
+                        <ArrowLeftRight className="h-3 w-3" aria-hidden="true" />
+                        Pindah
+                      </button>
+                    )}
                   </li>
                 );
               })}
             </ul>
-            <p className="mt-2 text-xs text-slate-500">{slots.length} jadwal bulan ini</p>
+            <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+              <span>{slots.length} jadwal bulan ini</span>
+              {requestOpen ? (
+                <>
+                  <span>
+                    Tekan <b className="text-amber-700">Pindah</b> untuk mengajukan perubahan.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRequest(agent.id, 'add')}
+                    className="inline-flex items-center gap-1 font-bold text-slate-800 underline underline-offset-2 hover:text-amber-700 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3" aria-hidden="true" />
+                    Ajukan tambah jadwal
+                  </button>
+                </>
+              ) : (
+                <span>Batas request perubahan sudah lewat.</span>
+              )}
+            </p>
           </div>
           <button
             type="button"

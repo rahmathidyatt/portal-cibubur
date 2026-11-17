@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, Disc3, ListMusic, Pause, Play, SkipForward } from 'lucide-react';
+import { ChevronDown, Disc3, ListMusic, Minus, Pause, Play, SkipForward } from 'lucide-react';
 import { resolveJingleUrl, type Jingle } from '../data/jingles';
 import { getJingleStore, JINGLES_CHANGED_EVENT } from '../services/jingleStore';
 
@@ -9,29 +9,43 @@ function baseUrl(): string {
 }
 
 const PAUSED_KEY = 'portal-cibubur:jingle-paused';
+const MINI_KEY = 'portal-cibubur:jingle-mini';
+const VOLUME = 0.3;
 
-function userPausedBefore(): boolean {
+function readFlag(key: string): boolean {
   try {
-    return window.sessionStorage.getItem(PAUSED_KEY) === '1';
+    return window.localStorage.getItem(key) === '1';
   } catch {
     return false;
   }
 }
 
-function rememberPaused(paused: boolean): void {
+function writeFlag(key: string, on: boolean): void {
   try {
-    if (paused) window.sessionStorage.setItem(PAUSED_KEY, '1');
-    else window.sessionStorage.removeItem(PAUSED_KEY);
+    if (on) window.localStorage.setItem(key, '1');
+    else window.localStorage.removeItem(key);
   } catch {
     // diabaikan
   }
 }
 
+/** Jeda yang dipilih pengunjung diingat seterusnya di perangkat ini. */
+const rememberPaused = (paused: boolean) => writeFlag(PAUSED_KEY, paused);
+
+/** HP/tablet: jangan memutar otomatis (hemat kuota & tidak mengagetkan). */
+function isTouchDevice(): boolean {
+  try {
+    return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Pemutar jingle Brighton: langsung memutar saat portal dibuka dan lanjut
- * bergantian tanpa henti. Bila browser menahan suara otomatis (kebijakan
- * autoplay), lagu langsung mulai pada sentuhan/klik/tombol pertama di halaman.
- * Pengunjung tetap bisa menjeda atau memilih lagu.
+ * Pemutar jingle Brighton: di komputer langsung memutar (volume pelan) saat
+ * portal dibuka dan lanjut bergantian. Bila browser menahan autoplay, lagu
+ * mulai pada sentuhan/klik/tombol pertama. Di HP/tablet tidak diputar otomatis.
+ * Jeda dan mode ringkas diingat di perangkat ini.
  */
 export const JinglePlayer: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -42,7 +56,13 @@ export const JinglePlayer: React.FC = () => {
   const [waiting, setWaiting] = useState<boolean>(false);
   const [listOpen, setListOpen] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
-  const userPaused = useRef<boolean>(userPausedBefore());
+  // Tidak diputar otomatis bila pernah dijeda, atau di HP/tablet.
+  const userPaused = useRef<boolean>(readFlag(PAUSED_KEY) || isTouchDevice());
+  const [mini, setMini] = useState<boolean>(() => readFlag(MINI_KEY));
+  const setMiniMode = (on: boolean) => {
+    setMini(on);
+    writeFlag(MINI_KEY, on);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -82,7 +102,7 @@ export const JinglePlayer: React.FC = () => {
     const audio = audioRef.current;
     if (!audio || !current) return;
     audio.src = resolveJingleUrl(current.url, baseUrl());
-    audio.volume = 0.5;
+    audio.volume = VOLUME;
     setProgress(0);
     if (!userPaused.current) void tryPlay();
   }, [current, tryPlay]);
@@ -131,7 +151,7 @@ export const JinglePlayer: React.FC = () => {
     <div ref={rootRef} className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 max-w-[calc(100vw-1.5rem)]">
       <audio
         ref={audioRef}
-        preload="auto"
+        preload="none"
         loop={tracks.length === 1}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
@@ -143,7 +163,7 @@ export const JinglePlayer: React.FC = () => {
         }}
       />
 
-      {listOpen && (
+      {listOpen && !mini && (
         <div
           id="jingle-list"
           className="mb-2 w-72 max-w-full overflow-hidden rounded-2xl bg-slate-950/95 text-white shadow-2xl ring-1 ring-white/10 backdrop-blur"
@@ -169,6 +189,24 @@ export const JinglePlayer: React.FC = () => {
         </div>
       )}
 
+      {mini ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setMiniMode(false)}
+            aria-label={`Buka pemutar jingle${playing ? ' (sedang diputar)' : ''}`}
+            title={current.title}
+            className="relative grid h-12 w-12 place-items-center rounded-full bg-slate-950/95 shadow-xl ring-1 ring-white/10 cursor-pointer"
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-slate-950">
+              <Disc3
+                className={`h-9 w-9 p-1 ${playing ? 'animate-[spin_3s_linear_infinite] motion-reduce:animate-none' : ''}`}
+                aria-hidden="true"
+              />
+            </span>
+          </button>
+        </div>
+      ) : (
       <div className="relative flex items-center gap-2 overflow-hidden rounded-full bg-slate-950/95 py-1.5 pl-1.5 pr-2 text-white shadow-xl ring-1 ring-white/10 backdrop-blur">
         <span
           aria-hidden="true"
@@ -211,6 +249,18 @@ export const JinglePlayer: React.FC = () => {
         </button>
         <button
           type="button"
+          onClick={() => {
+            setListOpen(false);
+            setMiniMode(true);
+          }}
+          aria-label="Kecilkan pemutar"
+          title="Kecilkan"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-300 hover:bg-white/10 hover:text-white cursor-pointer"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
           onClick={() => setListOpen((o) => !o)}
           aria-label="Daftar jingle"
           aria-expanded={listOpen}
@@ -220,6 +270,7 @@ export const JinglePlayer: React.FC = () => {
           {listOpen ? <ChevronDown className="h-4 w-4" /> : <ListMusic className="h-4 w-4" />}
         </button>
       </div>
+      )}
     </div>
   );
 };

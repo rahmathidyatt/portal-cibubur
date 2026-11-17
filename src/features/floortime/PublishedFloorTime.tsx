@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Clock, Search, Send } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { todayInJakarta } from '../../utils/schedule';
@@ -21,6 +21,7 @@ import {
 } from './requests';
 import { getScheduleStore } from './scheduleStore';
 import { MySchedulePanel } from './MySchedulePanel';
+import { readMyAgentCode } from './mySchedule';
 
 const DAY_SHORT = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
@@ -54,6 +55,7 @@ export const PublishedFloorTime: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [weekNo, setWeekNo] = useState<number>(1);
   const [search, setSearch] = useState<string>('');
+  const [prefill, setPrefill] = useState<RequestPrefill | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,7 +121,15 @@ export const PublishedFloorTime: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      <MySchedulePanel schedule={schedule} today={today} onJump={setWeekNo} />
+      <MySchedulePanel
+        schedule={schedule}
+        today={today}
+        onJump={setWeekNo}
+        requestOpen={open}
+        onRequest={(agentId, kind, fromSlot) =>
+          setPrefill((p) => ({ agentId, kind, fromSlot: fromSlot ?? '', nonce: (p?.nonce ?? 0) + 1 }))
+        }
+      />
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="p-5 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
           <div>
@@ -289,7 +299,7 @@ export const PublishedFloorTime: React.FC = () => {
         </div>
       </div>
 
-      <RequestForm schedule={schedule} open={open} onSubmitted={load} />
+      <RequestForm schedule={schedule} open={open} onSubmitted={load} prefill={prefill} />
 
       {requests.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5">
@@ -320,13 +330,28 @@ export const PublishedFloorTime: React.FC = () => {
   );
 };
 
-const RequestForm: React.FC<{ schedule: PublishedSchedule; open: boolean; onSubmitted: () => void }> = ({
-  schedule,
-  open,
-  onSubmitted
-}) => {
+export interface RequestPrefill {
+  agentId: string;
+  kind: 'move' | 'add';
+  fromSlot: string;
+  /** Berubah setiap kali tombol "Ajukan" ditekan agar form terisi ulang. */
+  nonce: number;
+}
+
+const RequestForm: React.FC<{
+  schedule: PublishedSchedule;
+  open: boolean;
+  onSubmitted: () => void;
+  prefill: RequestPrefill | null;
+}> = ({ schedule, open, onSubmitted, prefill }) => {
   const data = schedule.data;
-  const [agentId, setAgentId] = useState<string>('');
+  const toRef = useRef<HTMLSelectElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  // Bawaan: nama yang dipilih di "Jadwal saya".
+  const [agentId, setAgentId] = useState<string>(() => {
+    const code = readMyAgentCode();
+    return data.agents.find((a) => code && a.code === code)?.id ?? '';
+  });
   const [kind, setKind] = useState<'move' | 'add'>('move');
   const [fromSlot, setFromSlot] = useState<string>('');
   const [toSlot, setToSlot] = useState<string>('');
@@ -336,6 +361,18 @@ const RequestForm: React.FC<{ schedule: PublishedSchedule; open: boolean; onSubm
 
   const agents = useMemo(() => [...data.agents].sort((a, b) => a.name.localeCompare(b.name, 'id')), [data.agents]);
   const mine = agentId ? agentSlots(data, agentId) : [];
+
+  // Diisi dari tombol "Ajukan pindah / tambah" di Jadwal saya.
+  useEffect(() => {
+    if (!prefill) return;
+    setAgentId(prefill.agentId);
+    setKind(prefill.kind);
+    setFromSlot(prefill.fromSlot);
+    setToSlot('');
+    setFeedback(null);
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => toRef.current?.focus({ preventScroll: true }), 400);
+  }, [prefill]);
   const targets = data.slots.filter((s) => s.date >= todayInJakarta());
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -374,7 +411,13 @@ const RequestForm: React.FC<{ schedule: PublishedSchedule; open: boolean; onSubm
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4" noValidate>
+    <form
+      id="request-jadwal"
+      ref={formRef}
+      onSubmit={handleSubmit}
+      className="scroll-mt-24 bg-white border border-slate-200 rounded-2xl p-5 space-y-4"
+      noValidate
+    >
       <div>
         <p className="text-sm font-bold text-slate-950">Request perubahan jadwal</p>
         <p className="text-xs text-slate-500">
@@ -437,7 +480,7 @@ const RequestForm: React.FC<{ schedule: PublishedSchedule; open: boolean; onSubm
         )}
         <label className="text-xs font-semibold text-slate-700">
           {kind === 'move' ? 'Pindah ke' : 'Tanggal & shift tambahan'}
-          <select value={toSlot} onChange={(e) => setToSlot(e.target.value)} className={`${input} mt-1`}>
+          <select ref={toRef} value={toSlot} onChange={(e) => setToSlot(e.target.value)} className={`${input} mt-1`}>
             <option value="">Pilih tanggal & shift…</option>
             {targets.map((s) => (
               <option key={s.key} value={s.key}>
