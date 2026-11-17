@@ -63,11 +63,6 @@ export const OfficeHoursLocation: React.FC<OfficeHoursLocationProps> = ({ weekly
                   >
                     <span className={isToday ? 'font-bold text-slate-950' : 'text-slate-700'}>
                       {label}
-                      {isToday && (
-                        <span className="ml-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-slate-950">
-                          Hari ini
-                        </span>
-                      )}
                     </span>
                     <span
                       className={`tabular-nums whitespace-nowrap ${g.from.isClosed ? 'text-slate-400' : 'font-semibold text-slate-900'}`}

@@ -11,8 +11,8 @@ Fitur:
 - **Reservasi** (menu header, halaman terpisah):
   - `#dealing-room` — Dealing Room 1 & 2 per tanggal dan jam.
   - `#floortime` — jadwal Floor Time bulanan yang diterbitkan staf + request pindah/tambah jadwal
-    sampai batas waktu (bawaan: Minggu 23:59 WIB pada minggu tayang), serta pendaftaran jaga harian
-    (kuota 3 advisor per sesi).
+    sampai batas waktu (bawaan: Minggu 23:59 WIB pada minggu tayang). Pendaftaran jaga harian
+    (kuota 3 advisor per sesi) disembunyikan lewat `FEATURES.floortimeRegistration`.
   Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
 - **Business Manager**: BM Brighton HUB Cibubur dengan foto, kode, dan level. Admin bisa menambah (termasuk unggah foto) dan menghapus BM dari portal. Daftar awal ada di `src/data/businessManagers.ts`, foto bawaan di `src/assets/managers/`.
 - **Area admin** (link di header setelah login; sidebar di desktop, tab geser di HP) — `#staf-admin` diarahkan ke Statistik portal:

@@ -26,6 +26,7 @@ import { BookingConflictError, getBookingStore, isOwnBooking } from '../services
 import { useAdmin } from '../hooks/useAdmin';
 import { ConfirmCancelButton } from './ConfirmCancelButton';
 import { PublishedFloorTime } from '../features/floortime/PublishedFloorTime';
+import { FEATURES } from '../data/features';
 
 type BookingTab = 'dealing-room-1' | 'dealing-room-2' | 'floortime';
 
@@ -345,7 +346,7 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
   const pageTitle = view === 'floortime' ? 'Floortime' : 'Reservasi Dealing Room';
   const pageIntro =
     view === 'floortime'
-      ? 'Lihat jadwal floor time bulanan, ajukan perubahan sebelum batas waktu, atau daftar jaga harian.'
+      ? 'Jadwal floor time bulanan dari kantor. Cek jadwal Anda dan ajukan perubahan sebelum batas waktu.'
       : 'Pesan ruang diskusi klien per sesi 2 jam.';
 
   return (
@@ -356,8 +357,12 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
             Beranda
           </a>
           <span className="mx-1.5">/</span>
-          <span>Reservasi</span>
-          <span className="mx-1.5">/</span>
+          {view !== 'floortime' && (
+            <>
+              <span>Reservasi</span>
+              <span className="mx-1.5">/</span>
+            </>
+          )}
           <span className="font-semibold text-slate-700">
             {view === 'floortime' ? 'Floortime' : 'Dealing Room'}
           </span>
@@ -372,11 +377,16 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
             <div className="mt-6">
               <PublishedFloorTime />
             </div>
-            <h2 className="mt-10 text-lg font-bold text-slate-950">Pendaftaran jaga harian</h2>
-            <p className="text-sm text-slate-600">Maksimal 3 advisor per sesi.</p>
+            {FEATURES.floortimeRegistration && (
+              <>
+                <h2 className="mt-10 text-lg font-bold text-slate-950">Pendaftaran jaga harian</h2>
+                <p className="text-sm text-slate-600">Maksimal 3 advisor per sesi.</p>
+              </>
+            )}
           </>
         )}
 
+        {(view !== 'floortime' || FEATURES.floortimeRegistration) && (
         <div className="mt-6 bg-white border border-slate-200 rounded-2xl overflow-hidden">
             {/* Modal Sub-Header: 3 Tabs (Dealing Room 1, Dealing Room 2, Floortime Request) + Date Picker */}
             <div className="px-6 py-3.5 bg-stone-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -855,6 +865,7 @@ export const ReservationPage: React.FC<ReservationPageProps> = ({
               )}
             </div>
         </div>
+        )}
       </div>
     </section>
   );
