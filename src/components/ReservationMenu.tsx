@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
-export const RESERVATION_LINKS = [
+import { FEATURES } from '../data/features';
+
+const ALL_RESERVATION_LINKS = [
   {
     href: '#dealing-room',
     route: 'dealing-room' as PortalRoute,
@@ -19,6 +21,9 @@ export const RESERVATION_LINKS = [
   }
 ];
 
+/** Menu reservasi yang aktif (Dealing Room bisa disembunyikan lewat FEATURES). */
+export const RESERVATION_LINKS = ALL_RESERVATION_LINKS.filter((l) => FEATURES.dealingRoom || l.route !== 'dealing-room');
+
 /** Menu area admin (sidebar), dikelompokkan. Hanya tampil setelah login admin. */
 export const STAFF_LINKS = [
   {
@@ -26,7 +31,7 @@ export const STAFF_LINKS = [
     href: '#staf-statistik',
     route: 'staf-statistik' as PortalRoute,
     label: 'Statistik portal',
-    hint: 'Kunjungan & grafik 14 hari',
+    hint: 'Kunjungan, halaman, jam & perangkat',
     Icon: TrendingUp
   },
   {
@@ -63,12 +68,21 @@ export const STAFF_LINKS = [
   }
 ];
 
-type MenuLink = (typeof RESERVATION_LINKS)[number];
+type MenuLink = (typeof ALL_RESERVATION_LINKS)[number];
 
 /** Menu "Reservasi" di header dengan sub menu Dealing Room & Floortime. */
-export const ReservationMenu: React.FC<{ route: PortalRoute }> = ({ route }) => (
-  <NavMenu label="Reservasi" links={RESERVATION_LINKS} route={route} />
-);
+export const ReservationMenu: React.FC<{ route: PortalRoute }> = ({ route }) =>
+  RESERVATION_LINKS.length === 1 ? (
+    <a
+      href={RESERVATION_LINKS[0].href}
+      aria-current={route === RESERVATION_LINKS[0].route ? 'page' : undefined}
+      className={`transition-colors hover:text-slate-950 ${route === RESERVATION_LINKS[0].route ? 'text-slate-950' : ''}`}
+    >
+      {RESERVATION_LINKS[0].label}
+    </a>
+  ) : (
+    <NavMenu label="Reservasi" links={RESERVATION_LINKS} route={route} />
+  );
 
 /** Dropdown navigasi header dengan beberapa sub menu. */
 export const NavMenu: React.FC<{ label: string; links: MenuLink[]; route: PortalRoute }> = ({

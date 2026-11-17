@@ -3,10 +3,10 @@ import type { OfficeDaySchedule } from '../data/cibuburData';
 import { Cake, CalendarPlus } from 'lucide-react';
 import { FloorTimeTodayCard } from './dashboard/FloorTimeTodayCard';
 import { DealingRoomTodayCard } from './dashboard/DealingRoomTodayCard';
-import { OfficeTodayCard } from './dashboard/OfficeTodayCard';
+import { FEATURES } from '../data/features';
 import { OFFICE_IDENTITY } from '../data/cibuburData';
 import { AnnouncementsCard } from './AnnouncementsCard';
-import { BirthdayReminderCard } from './BirthdayReminderCard';
+import { BirthdayReminder } from './BirthdayReminder';
 import { officeAnniversary } from '../utils/anniversary';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
@@ -39,6 +39,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
             <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 text-balance">
               {greeting}, tim Brighton HUB Cibubur
             </h1>
+            <BirthdayReminder today={today} />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <p
@@ -54,6 +55,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
               />
               Kantor {status.label.toLowerCase()}
             </p>
+            {FEATURES.dealingRoom && (
             <a
               href="#dealing-room"
               className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800"
@@ -61,6 +63,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
               <CalendarPlus className="h-3.5 w-3.5" aria-hidden="true" />
               Pesan Dealing Room
             </a>
+            )}
           </div>
         </div>
 
@@ -81,12 +84,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
           </div>
         )}
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className={`mt-6 grid gap-4 ${FEATURES.dealingRoom ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2'}`}>
           <FloorTimeTodayCard today={today} minutesNow={minutesNow} />
-          <DealingRoomTodayCard today={today} minutesNow={minutesNow} />
-          <OfficeTodayCard today={today} status={status} />
-          <AnnouncementsCard className="md:col-span-2" />
-          <BirthdayReminderCard today={today} />
+          {FEATURES.dealingRoom && <DealingRoomTodayCard today={today} minutesNow={minutesNow} />}
+          <AnnouncementsCard />
         </div>
       </div>
     </section>

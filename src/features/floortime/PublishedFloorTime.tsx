@@ -20,6 +20,7 @@ import {
   type PublishedSchedule
 } from './requests';
 import { getScheduleStore } from './scheduleStore';
+import { MySchedulePanel } from './MySchedulePanel';
 
 const DAY_SHORT = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
@@ -118,6 +119,7 @@ export const PublishedFloorTime: React.FC = () => {
 
   return (
     <div className="space-y-5">
+      <MySchedulePanel schedule={schedule} today={today} onJump={setWeekNo} />
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="p-5 flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
           <div>

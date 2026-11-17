@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
+import { FEATURES } from '../data/features';
 
 export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota' | 'staf-statistik' | 'staf-jingle' | 'staf-ulang-tahun';
 
 const PAGE_ROUTES: PortalRoute[] = [
-  'dealing-room',
+  ...(FEATURES.dealingRoom ? (['dealing-room'] as PortalRoute[]) : []),
   'floortime',
   'staf-floor-time',
   'staf-nota',

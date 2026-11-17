@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Cake, Music, Pause, Play, Plus, Upload } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
+import { useToast } from '../../hooks/useToast';
 import { getJingleStore, JINGLES_CHANGED_EVENT } from '../../services/jingleStore';
 import { resolveJingleUrl, titleFromFileName, validateJingleFile, type Jingle } from '../../data/jingles';
 import { getBirthdayStore } from '../../services/birthdayStore';
@@ -55,6 +56,7 @@ export const BirthdayPage: React.FC = () => (
 
 const JingleManager: React.FC = () => {
   const { auth } = useAdmin();
+  const toast = useToast();
   const store = getJingleStore();
   const [tracks, setTracks] = useState<Jingle[]>([]);
   const [file, setFile] = useState<File | null>(null);
@@ -80,7 +82,8 @@ const JingleManager: React.FC = () => {
   const changed = async (text: string) => {
     await load();
     window.dispatchEvent(new Event(JINGLES_CHANGED_EVENT));
-    setMessage({ ok: true, text });
+    setMessage(null);
+    toast(text);
   };
 
   const pickFile = (f: File | undefined) => {
@@ -227,6 +230,7 @@ const JingleManager: React.FC = () => {
 
 const BirthdayManager: React.FC = () => {
   const { auth } = useAdmin();
+  const toast = useToast();
   const store = getBirthdayStore();
   const currentMonth = Number(todayInJakarta().slice(5, 7));
   const [month, setMonth] = useState<number>(currentMonth);
@@ -254,7 +258,7 @@ const BirthdayManager: React.FC = () => {
     try {
       await fn();
       await load();
-      setMessage({ ok: true, text: success });
+      toast(success);
     } catch (err) {
       setMessage({ ok: false, text: err instanceof Error ? err.message : 'Gagal menyimpan.' });
     } finally {

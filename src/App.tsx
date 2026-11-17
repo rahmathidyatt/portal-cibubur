@@ -23,6 +23,8 @@ import { JinglePlayer } from './components/JinglePlayer';
 import { ReservationPage } from './components/ReservationPage';
 import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
 import { AdminShell } from './components/AdminShell';
+import { BrandMark } from './components/BrandMark';
+import { InstallAppButton } from './components/InstallAppButton';
 
 // Alat staf dimuat terpisah agar halaman publik tetap ringan (PDF/ZIP/Excel hanya untuk staf).
 const FloorTimeSchedulerPage = lazy(() =>
@@ -36,6 +38,7 @@ const NotaMessengerPage = lazy(() =>
 );
 import { LoginDialog } from './components/LoginDialog';
 import { AdminProvider, useAdmin } from './hooks/useAdmin';
+import { ToastProvider } from './hooks/useToast';
 import { isStaffRoute, useHashRoute, type PortalRoute } from './hooks/useHashRoute';
 
 const NAV_LINKS = [
@@ -48,7 +51,9 @@ const NAV_LINKS = [
 export default function App() {
   return (
     <AdminProvider>
-      <PortalApp />
+      <ToastProvider>
+        <PortalApp />
+      </ToastProvider>
     </AdminProvider>
   );
 }
@@ -63,10 +68,10 @@ function PortalApp() {
   // Tutup menu HP setiap kali berpindah halaman.
   useEffect(() => setMobileMenuOpen(false), [route]);
 
-  // Catat satu kunjungan per sesi browser (untuk statistik di Panel admin).
+  // Statistik: catat halaman yang dibuka (sekali per halaman per sesi browser).
   useEffect(() => {
-    void recordVisit(window.location.hash.replace(/^#/, '') || 'beranda');
-  }, []);
+    void recordVisit(route);
+  }, [route]);
 
   const opsStaff = OFFICE_STAFF_CONTACTS[0];
 
@@ -74,16 +79,8 @@ function PortalApp() {
     <div className="min-h-screen flex flex-col bg-white text-slate-900">
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
         <div className="max-w-[1140px] mx-auto flex items-center justify-between gap-4 px-4 sm:px-6 py-3">
-          <a href="#beranda" className="flex items-center gap-2.5 shrink-0">
-            <span
-              aria-hidden="true"
-              className="grid place-items-center w-8 h-8 rounded-lg bg-amber-400 text-sm font-bold text-slate-950 font-display"
-            >
-              B
-            </span>
-            <span className="text-base font-bold tracking-tight text-slate-950 font-display whitespace-nowrap">
-              Brighton HUB Cibubur
-            </span>
+          <a href="#beranda" aria-label="Brighton HUB Cibubur — beranda" className="shrink-0">
+            <BrandMark />
           </a>
 
           <nav
@@ -114,6 +111,7 @@ function PortalApp() {
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
+            <InstallAppButton className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 rounded-lg ring-1 ring-slate-200 hover:bg-slate-100 cursor-pointer" />
             {isAdmin ? (
               <button
                 type="button"
@@ -154,13 +152,13 @@ function PortalApp() {
             <a href="#beranda" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-950">
               Beranda
             </a>
-            <p className="pt-2 pb-1 text-xs font-semibold text-slate-400">Reservasi</p>
+            {RESERVATION_LINKS.length > 1 && <p className="pt-2 pb-1 text-xs font-semibold text-slate-400">Reservasi</p>}
             {RESERVATION_LINKS.map(({ href, label, Icon }) => (
               <a
                 key={href}
                 href={href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-2 pl-3 inline-flex items-center gap-2 hover:text-slate-950"
+                className={`py-2 inline-flex items-center gap-2 hover:text-slate-950 ${RESERVATION_LINKS.length > 1 ? 'pl-3' : ''}`}
               >
                 <Icon className="w-4 h-4 text-amber-600" />
                 {label}
@@ -187,6 +185,10 @@ function PortalApp() {
               </a>
             )}
             <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col">
+              <InstallAppButton
+                onDone={() => setMobileMenuOpen(false)}
+                className="py-2 text-left hover:text-slate-950 inline-flex items-center gap-1.5 cursor-pointer"
+              />
               {isAdmin ? (
                 <button
                   type="button"

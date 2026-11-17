@@ -1,0 +1,16 @@
+{
+  "name": "Brighton HUB Cibubur — Portal Operasional",
+  "short_name": "Brighton Cibubur",
+  "description": "Ringkasan hari ini, jadwal floor time, pengumuman, dan info kantor Brighton HUB Cibubur.",
+  "lang": "id",
+  "start_url": "/#beranda",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#0b1120",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -4,7 +4,10 @@ Portal operasional kantor Brighton HUB Cibubur untuk property advisor dan staf.
 
 Fitur:
 
-- **Beranda (dashboard "Hari ini")**: sapaan dan status kantor, lalu grid kartu: Floor Time hari ini (dari jadwal terbit, shift yang berjalan ditandai), sisa slot Dealing Room hari ini, kantor hari ini (jam buka, chat Operasional, petunjuk arah), pengumuman, dan ulang tahun agen (hari ini & besok). Pemutar **jingle Brighton** mengambang di pojok kanan bawah, langsung memutar saat portal dibuka (atau pada sentuhan pertama bila browser menahan autoplay) dan lanjut bergantian; bisa dijeda dan dipilih lagunya (lagu bawaan di `public/jingles/`). Footer menampilkan tanggal berdiri kantor (6 Mei 2023) dan ucapan setiap 6 Mei.
+- **Beranda (dashboard "Hari ini")**: sapaan, pengingat ulang tahun agen (hari ini & besok) tepat di bawahnya, status kantor, lalu kartu Floor Time hari ini (shift berjalan ditandai + jadwal saya berikutnya) dan pengumuman.
+- **Saklar fitur** `src/data/features.ts`: Dealing Room sedang disembunyikan (`dealingRoom: false`); ubah ke `true` untuk menampilkannya lagi.
+- **Floortime → Jadwal saya**: agen memilih namanya (diingat di perangkat), melihat jadwal berikutnya, dan menyimpan seluruh jadwal ke kalender HP (.ics, pengingat 1 jam sebelumnya).
+- **PWA**: portal bisa dipasang di layar utama HP (manifest, ikon, service worker; tombol *Pasang aplikasi* muncul bila browser mendukung). Pratinjau tautan WhatsApp memakai `public/og-image.png`. Pemutar **jingle Brighton** mengambang di pojok kanan bawah, langsung memutar saat portal dibuka (atau pada sentuhan pertama bila browser menahan autoplay) dan lanjut bergantian; bisa dijeda dan dipilih lagunya (lagu bawaan di `public/jingles/`). Footer menampilkan tanggal berdiri kantor (6 Mei 2023) dan ucapan setiap 6 Mei.
 - **Reservasi** (menu header, halaman terpisah):
   - `#dealing-room` — Dealing Room 1 & 2 per tanggal dan jam.
   - `#floortime` — jadwal Floor Time bulanan yang diterbitkan staf + request pindah/tambah jadwal
@@ -13,7 +16,7 @@ Fitur:
   Pemesan bisa membatalkan reservasinya sendiri dari perangkat yang sama; admin bisa membatalkan semuanya.
 - **Business Manager**: BM Brighton HUB Cibubur dengan foto, kode, dan level. Admin bisa menambah (termasuk unggah foto) dan menghapus BM dari portal. Daftar awal ada di `src/data/businessManagers.ts`, foto bawaan di `src/assets/managers/`.
 - **Area admin** (link di header setelah login; sidebar di desktop, tab geser di HP) — `#staf-admin` diarahkan ke Statistik portal:
-  - *Statistik portal* (`#staf-statistik`): total kunjungan, pengunjung unik, hari ini, 7 hari (dibanding 7 hari sebelumnya), grafik 14 hari. Khusus admin.
+  - *Statistik portal* (`#staf-statistik`): rentang 7/30/90 hari, kunjungan (dibanding periode sebelumnya), pengunjung unik, halaman terpopuler, jam paling ramai, perangkat (HP/komputer/tablet). Khusus admin.
   - *Jingle Brighton* (`#staf-jingle`): unggah lagu baru ke Storage bucket `jingles`, dengarkan, hapus.
   - *Ulang tahun agen* (`#staf-ulang-tahun`): data ulang tahun agen — unggah ekspor bulanan .csv/.xlsx (kolom `Code`, `Nama Panggilan`, `Tgl Lahir`), tambah manual, hapus per agen/per bulan. Tahun lahir tidak disimpan.
   - `#staf-floor-time` — **Floor Time Scheduler** (port dari repo `floor-time`): unggah data agen

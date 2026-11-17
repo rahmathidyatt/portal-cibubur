@@ -7,6 +7,7 @@ import {
 } from '../services/contentStore';
 import { useAdmin } from '../hooks/useAdmin';
 import { ConfirmCancelButton } from './ConfirmCancelButton';
+import { useToast } from '../hooks/useToast';
 
 function formatDateWib(iso: string): string {
   return new Intl.DateTimeFormat('id-ID', {
@@ -22,6 +23,7 @@ const MAX_VISIBLE = 3;
 
 export const AnnouncementsCard: React.FC<{ className?: string }> = ({ className }) => {
   const { isAdmin, auth } = useAdmin();
+  const toast = useToast();
   const [items, setItems] = useState<Announcement[]>([]);
   const [showAll, setShowAll] = useState<boolean>(false);
   const [formOpen, setFormOpen] = useState<boolean>(false);
@@ -57,6 +59,7 @@ export const AnnouncementsCard: React.FC<{ className?: string }> = ({ className 
       setBody('');
       setFormOpen(false);
       await load();
+      toast('Pengumuman diterbitkan.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan pengumuman.');
     } finally {

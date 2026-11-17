@@ -25,48 +25,54 @@ export const OfficeHoursLocation: React.FC<OfficeHoursLocationProps> = ({ weekly
     setTimeout(() => setCopied(false), 2000);
   };
 
-  return (
-    <section id="jam-operasional" className="scroll-mt-20 py-12 sm:py-16 bg-stone-50 border-b border-slate-200">
-      <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-          Jam operasional & lokasi
-        </h2>
+  // Hari berurutan dengan jam sama digabung: "Senin – Jumat 08:00–17:00".
+  const groups: { from: OfficeDaySchedule; to: OfficeDaySchedule; ids: string[] }[] = [];
+  for (const day of days) {
+    const last = groups[groups.length - 1];
+    if (last && last.to.hours === day.hours && last.to.isClosed === day.isClosed) {
+      last.to = day;
+      last.ids.push(day.dayId);
+    } else {
+      groups.push({ from: day, to: day, ids: [day.dayId] });
+    }
+  }
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Jadwal mingguan */}
-          <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
-            <h3 className="flex items-center gap-2 text-base font-bold text-slate-950">
+  return (
+    <section id="jam-operasional" className="scroll-mt-20 py-8 sm:py-10 bg-stone-50 border-b border-slate-200">
+      <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
+        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-950">Jam operasional & lokasi</h2>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+          <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-4">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-950">
               <Clock className="w-4 h-4 text-slate-500" />
               Jam layanan kantor
-              <span className="ml-auto text-xs font-medium text-slate-500">WIB</span>
+              <span className="ml-auto text-[11px] font-medium text-slate-500">WIB</span>
             </h3>
-            <ul className="mt-4 divide-y divide-slate-100">
-              {days.map((day) => {
-                const isToday = day.dayId === todayId;
+            <ul className="mt-2 space-y-0.5">
+              {groups.map((g) => {
+                const isToday = todayId !== undefined && g.ids.includes(todayId);
+                const label =
+                  g.from.dayId === g.to.dayId ? g.from.dayNameId : `${g.from.dayNameId} – ${g.to.dayNameId}`;
                 return (
                   <li
-                    key={day.dayId}
-                    className={`flex items-start justify-between gap-4 py-2.5 px-2 -mx-2 rounded-lg ${
+                    key={g.from.dayId}
+                    className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-sm ${
                       isToday ? 'bg-amber-50' : ''
                     }`}
                   >
-                    <div>
-                      <span className={`text-sm ${isToday ? 'font-bold text-slate-950' : 'text-slate-800'}`}>
-                        {day.dayNameId}
-                      </span>
+                    <span className={isToday ? 'font-bold text-slate-950' : 'text-slate-700'}>
+                      {label}
                       {isToday && (
-                        <span className="ml-2 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-slate-950">
+                        <span className="ml-2 rounded-full bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-slate-950">
                           Hari ini
                         </span>
                       )}
-                      {day.note && <p className="text-xs text-slate-500 mt-0.5">{day.note}</p>}
-                    </div>
+                    </span>
                     <span
-                      className={`font-mono text-sm whitespace-nowrap ${
-                        day.isClosed ? 'text-slate-400' : 'text-slate-900 font-semibold'
-                      }`}
+                      className={`tabular-nums whitespace-nowrap ${g.from.isClosed ? 'text-slate-400' : 'font-semibold text-slate-900'}`}
                     >
-                      {day.isClosed ? 'Tutup' : day.hours.replace(' - ', ' – ')}
+                      {g.from.isClosed ? 'Tutup' : g.from.hours.replace(' - ', '–')}
                     </span>
                   </li>
                 );
@@ -74,61 +80,38 @@ export const OfficeHoursLocation: React.FC<OfficeHoursLocationProps> = ({ weekly
             </ul>
           </div>
 
-          {/* Kantor */}
-          <div className="lg:col-span-6 bg-white border border-slate-200 rounded-2xl">
-            <div className="p-5 sm:p-6 space-y-4">
-              <h3 className="flex items-center gap-2 text-base font-bold text-slate-950">
-                <MapPin className="w-4 h-4 text-slate-500" />
-                Alamat kantor
-              </h3>
-              <p className="text-sm text-slate-700">
-                <span>
-                  {OFFICE_IDENTITY.address}
-                  <a
-                    href={OFFICE_IDENTITY.mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 flex items-center gap-1 text-xs font-bold text-slate-900 hover:text-amber-700"
-                  >
-                    Buka di Google Maps
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </span>
-              </p>
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 border border-slate-200 px-4 py-3">
-                <p className="flex items-center gap-2.5">
-                  <Phone className="w-4 h-4 text-slate-500 shrink-0" />
-                  <span className="font-mono text-base font-semibold text-slate-950">
-                    {OFFICE_IDENTITY.phoneDisplay}
-                  </span>
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCopyPhone}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg cursor-pointer"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        Tersalin
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        Salin
-                      </>
-                    )}
-                  </button>
-                  <a
-                    href={OFFICE_IDENTITY.phoneHref}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    Telepon
-                  </a>
-                </div>
-              </div>
+          <div className="bg-white ring-1 ring-slate-200 rounded-2xl p-4 flex flex-col gap-3">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-950">
+              <MapPin className="w-4 h-4 text-slate-500" />
+              Alamat kantor
+            </h3>
+            <p className="text-sm text-slate-700">{OFFICE_IDENTITY.address}</p>
+            <div className="mt-auto flex flex-wrap items-center gap-2">
+              <a
+                href={OFFICE_IDENTITY.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Google Maps
+              </a>
+              <a
+                href={OFFICE_IDENTITY.phoneHref}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-800 bg-white ring-1 ring-slate-300 hover:bg-slate-50 rounded-lg"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                {OFFICE_IDENTITY.phoneDisplay}
+              </a>
+              <button
+                type="button"
+                onClick={handleCopyPhone}
+                aria-label="Salin nomor telepon kantor"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-950 cursor-pointer"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Tersalin' : 'Salin'}
+              </button>
             </div>
           </div>
         </div>

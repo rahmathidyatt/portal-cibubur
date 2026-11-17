@@ -527,3 +527,117 @@ create policy "admin delete jingle files" on storage.objects
 drop policy if exists "admin read jingle files" on storage.objects;
 create policy "admin read jingle files" on storage.objects
   for select to authenticated using (bucket_id = 'jingles' and public.is_portal_admin());
+
+-- ---------------------------------------------------------------------
+-- Statistik v2: sesi, perangkat, halaman. Satu baris = satu halaman yang
+-- dibuka dalam satu sesi; kunjungan = jumlah sesi.
+-- ---------------------------------------------------------------------
+alter table public.page_views add column if not exists session_id text
+  check (session_id is null or char_length(session_id) between 8 and 64);
+alter table public.page_views add column if not exists device text
+  check (device is null or device in ('mobile', 'tablet', 'desktop'));
+create index if not exists page_views_session_idx on public.page_views (session_id);
+
+drop function if exists public.record_page_view(text, text);
+create or replace function public.record_page_view(
+  p_visitor text,
+  p_path text default '',
+  p_session text default null,
+  p_device text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_visitor is null or char_length(p_visitor) not between 8 and 64 then
+    return;
+  end if;
+  if (select count(*) from public.page_views
+      where visitor_id = p_visitor and viewed_at > now() - interval '1 day') >= 300 then
+    return;
+  end if;
+  insert into public.page_views (visitor_id, path, session_id, device)
+  values (
+    p_visitor,
+    left(coalesce(p_path, ''), 64),
+    case when char_length(p_session) between 8 and 64 then p_session end,
+    case when p_device in ('mobile', 'tablet', 'desktop') then p_device end
+  );
+end;
+$$;
+revoke all on function public.record_page_view(text, text, text, text) from public;
+grant execute on function public.record_page_view(text, text, text, text) to anon, authenticated;
+
+create or replace function public.page_view_stats(p_days int default 14)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'Asia/Jakarta')::date;
+  v_days int := least(greatest(coalesce(p_days, 14), 1), 365);
+  v_from date := v_today - (v_days - 1);
+  v_result jsonb;
+begin
+  if not public.is_portal_admin() then
+    raise exception 'Statistik hanya untuk admin portal';
+  end if;
+  with hits as (
+    select visitor_id,
+           coalesce(session_id, 'row-' || id::text) as sid,
+           nullif(path, '') as path,
+           device,
+           viewed_at at time zone 'Asia/Jakarta' as local_at,
+           (viewed_at at time zone 'Asia/Jakarta')::date as d
+    from public.page_views
+  ),
+  sessions as (
+    select sid, min(visitor_id) as visitor_id, min(local_at) as started, min(d) as d,
+           max(device) as device
+    from hits group by sid
+  ),
+  days as (
+    select generate_series(v_from, v_today, interval '1 day')::date as d
+  ),
+  daily as (
+    select days.d, count(s.sid) as visits, count(distinct s.visitor_id) as visitors
+    from days left join sessions s on s.d = days.d
+    group by days.d
+  )
+  select jsonb_build_object(
+    'rangeDays', v_days,
+    'totalViews', (select count(*) from sessions),
+    'uniqueVisitors', (select count(distinct visitor_id) from sessions),
+    'todayViews', (select count(*) from sessions where d = v_today),
+    'todayVisitors', (select count(distinct visitor_id) from sessions where d = v_today),
+    'last7Views', (select count(*) from sessions where d > v_today - 7),
+    'rangeViews', (select count(*) from sessions where d >= v_from),
+    'rangeVisitors', (select count(distinct visitor_id) from sessions where d >= v_from),
+    'prevRangeViews', (select count(*) from sessions where d >= v_from - v_days and d < v_from),
+    'pageViews', (select count(*) from hits where d >= v_from),
+    'daily', (select coalesce(jsonb_agg(jsonb_build_object(
+                'date', to_char(d, 'YYYY-MM-DD'), 'views', visits, 'visitors', visitors) order by d), '[]'::jsonb)
+              from daily),
+    'topPages', (select coalesce(jsonb_agg(jsonb_build_object('path', path, 'views', n) order by n desc, path), '[]'::jsonb)
+                 from (select coalesce(path, 'beranda') as path, count(*) as n from hits
+                       where d >= v_from group by 1 order by 2 desc, 1 limit 8) t),
+    'hours', (select jsonb_agg(coalesce(n, 0) order by h)
+              from generate_series(0, 23) h
+              left join (select extract(hour from started)::int as hr, count(*) as n
+                         from sessions where d >= v_from group by 1) x on x.hr = h),
+    'devices', (select jsonb_build_object(
+                  'mobile', count(*) filter (where device = 'mobile'),
+                  'tablet', count(*) filter (where device = 'tablet'),
+                  'desktop', count(*) filter (where device = 'desktop'),
+                  'unknown', count(*) filter (where device is null))
+                from sessions where d >= v_from)
+  ) into v_result;
+  return v_result;
+end;
+$$;
+revoke all on function public.page_view_stats(int) from public, anon;
+grant execute on function public.page_view_stats(int) to authenticated;

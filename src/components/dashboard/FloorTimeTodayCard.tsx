@@ -3,6 +3,8 @@ import { Users } from 'lucide-react';
 import { getScheduleStore } from '../../features/floortime/scheduleStore';
 import type { PublishedSchedule } from '../../features/floortime/requests';
 import { CardSkeleton, DashCard, EmptyNote } from './DashCard';
+import { DAY_NAMES_ID, displayName, formatDateId, weekdayOf } from '../../features/floortime/engine';
+import { nextSlot, readMyAgentCode, slotsForAgentCode } from '../../features/floortime/mySchedule';
 
 /** Siapa yang jaga Floor Time hari ini (dari jadwal bulanan yang terbit). */
 export const FloorTimeTodayCard: React.FC<{ today: string; minutesNow: number }> = ({ today, minutesNow }) => {
@@ -69,9 +71,34 @@ export const FloorTimeTodayCard: React.FC<{ today: string; minutesNow: number }>
       );
   }
 
+  // Jadwal pribadi (bila pengunjung sudah memilih namanya di "Jadwal saya").
+  const myCode = readMyAgentCode();
+  const me = schedule && myCode ? schedule.data.agents.find((a) => a.code === myCode) : undefined;
+  const myNext = schedule && me ? nextSlot(slotsForAgentCode(schedule.data, me.code), today, minutesNow) : null;
+
   return (
     <DashCard id="ft-today" title="Floor Time hari ini" Icon={Users} action={{ href: '#floortime', label: 'Jadwal lengkap' }}>
       {body}
+      {schedule && (
+        <a
+          href="#floortime"
+          className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-slate-950 px-3 py-2.5 text-xs text-white hover:bg-slate-800"
+        >
+          {me ? (
+            <span className="min-w-0">
+              <span className="block text-[11px] text-slate-400">Jadwal {displayName(me)} berikutnya</span>
+              <span className="block truncate font-semibold">
+                {myNext
+                  ? `${DAY_NAMES_ID[weekdayOf(myNext.date)].charAt(0)}${DAY_NAMES_ID[weekdayOf(myNext.date)].slice(1).toLowerCase()}, ${formatDateId(myNext.date)} · ${myNext.shiftName} ${myNext.timeLabel.replace('-', '–')}`
+                  : 'Tidak ada lagi bulan ini'}
+              </span>
+            </span>
+          ) : (
+            <span className="font-semibold">Lihat jadwal saya &amp; simpan ke kalender</span>
+          )}
+          <span aria-hidden="true" className="text-amber-400">→</span>
+        </a>
+      )}
     </DashCard>
   );
 };
