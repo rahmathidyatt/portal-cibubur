@@ -24,6 +24,11 @@ import { Minbur } from './features/minbur/Minbur';
 import { MinburAdminPage } from './features/minbur/MinburAdminPage';
 import { BrightDayPage } from './features/brightday/BrightDayPage';
 import { AttendancePage } from './features/brightday/AttendancePage';
+import { ClosingAdminPage } from './features/closing/ClosingAdminPage';
+import { WofPage } from './features/wof/WofPage';
+import { TrackingPage } from './features/training/TrackingPage';
+import { ClosingRecapPage } from './features/closing/ClosingRecapPage';
+import { MedproRecapPage } from './features/medpro/MedproRecapPage';
 import { ReservationPage } from './components/ReservationPage';
 import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
 import { AdminShell } from './components/AdminShell';
@@ -280,6 +285,16 @@ function StaffPage({ route }: { route: PortalRoute }) {
       return <BrightDayPage />;
     case 'staf-bright-day-hadir':
       return <AttendancePage />;
+    case 'staf-closing':
+      return <ClosingAdminPage />;
+    case 'staf-wof':
+      return <WofPage />;
+    case 'staf-training-tracking':
+      return <TrackingPage />;
+    case 'staf-closing-rekap':
+      return <ClosingRecapPage />;
+    case 'staf-medpro-rekap':
+      return <MedproRecapPage />;
     default:
       return <PortalStatsPage />;
   }
@@ -294,7 +309,7 @@ function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => voi
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
-            © {today.slice(0, 4)} {OFFICE_IDENTITY.name} · Portal operasional internal
+            © {today.slice(0, 4)} {OFFICE_IDENTITY.name} · Centrum Cibubur
           </span>
           {!isAdmin && (
             <button

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle, ClipboardCheck } from 'lucide-react';
+import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle, ClipboardCheck, Trophy, Gift, FileSearch } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
 import { FEATURES } from '../data/features';
@@ -35,6 +35,24 @@ export const STAFF_LINKS = [
     Icon: TrendingUp
   },
   {
+    group: 'Ringkasan',
+    parent: 'Analisis',
+    href: '#staf-closing-rekap',
+    route: 'staf-closing-rekap' as PortalRoute,
+    label: 'Rekap Closing',
+    hint: 'Grafik & Excel per tahun',
+    Icon: Trophy
+  },
+  {
+    group: 'Ringkasan',
+    parent: 'Analisis',
+    href: '#staf-medpro-rekap',
+    route: 'staf-medpro-rekap' as PortalRoute,
+    label: 'Rekap Medpro',
+    hint: 'Biaya banner, branding & drop',
+    Icon: Flag
+  },
+  {
     group: 'Operasional',
     href: '#staf-floor-time',
     route: 'staf-floor-time' as PortalRoute,
@@ -52,11 +70,21 @@ export const STAFF_LINKS = [
   },
   {
     group: 'Operasional',
+    parent: 'Training Brighton',
     href: '#staf-training',
     route: 'staf-training' as PortalRoute,
-    label: 'Training Brighton',
+    label: 'Rekap nilai & BC',
     hint: 'Rekap nilai & BC pengingat',
     Icon: GraduationCap
+  },
+  {
+    group: 'Operasional',
+    parent: 'Training Brighton',
+    href: '#staf-training-tracking',
+    route: 'staf-training-tracking' as PortalRoute,
+    label: 'Tracking Nilai',
+    hint: 'Cocokkan nilai dari rekap pusat',
+    Icon: FileSearch
   },
   {
     group: 'Operasional',
@@ -65,6 +93,22 @@ export const STAFF_LINKS = [
     label: 'Nota Medpro',
     hint: 'Banner, alat branding & drop',
     Icon: Flag
+  },
+  {
+    group: 'Operasional',
+    href: '#staf-closing',
+    route: 'staf-closing' as PortalRoute,
+    label: 'Closing',
+    hint: 'Flyer & info closing',
+    Icon: Trophy
+  },
+  {
+    group: 'Operasional',
+    href: '#staf-wof',
+    route: 'staf-wof' as PortalRoute,
+    label: 'WOF',
+    hint: 'Closing di bulan ulang tahun',
+    Icon: Gift
   },
   {
     group: 'Operasional',

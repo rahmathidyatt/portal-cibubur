@@ -241,7 +241,12 @@ export function pageLabel(path: string): string {
     'staf-ulang-tahun': 'Admin · Ulang tahun',
     'staf-minbur': 'Admin · Minbur',
     'staf-bright-day': 'Admin · Bright Day · Report',
-    'staf-bright-day-hadir': 'Admin · Bright Day · Daftar hadir'
+    'staf-bright-day-hadir': 'Admin · Bright Day · Daftar hadir',
+    'staf-closing': 'Admin · Closing',
+    'staf-wof': 'Admin · WOF',
+    'staf-training-tracking': 'Admin · Training · Tracking Nilai',
+    'staf-closing-rekap': 'Admin · Analisis · Rekap Closing',
+    'staf-medpro-rekap': 'Admin · Analisis · Rekap Medpro'
   };
   return labels[path] ?? path;
 }

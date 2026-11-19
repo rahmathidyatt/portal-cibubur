@@ -162,7 +162,7 @@ export const BrightDayPage: React.FC = () => {
     if (files.length === 0) return;
     setBusy('photo');
     try {
-      const { compressPhoto } = await import('./brightDayPdf');
+      const { compressPhoto } = await import('../../utils/image');
       const added: { id: string; dataUrl: string }[] = [];
       for (const file of files) {
         try {

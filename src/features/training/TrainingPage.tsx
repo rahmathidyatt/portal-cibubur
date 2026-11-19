@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Award, CalendarPlus, FileSpreadsheet, Plus, Search, Trash2, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Award, CalendarPlus, CalendarX, FileSpreadsheet, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useToast } from '../../hooks/useToast';
 import { ConfirmCancelButton } from '../../components/ConfirmCancelButton';
@@ -12,6 +12,9 @@ import {
   agentStatus,
   buildTrainingBc,
   buildAgentTrainingBc,
+  buildReminderBc,
+  cancelAllPending,
+  reminderAgents,
   defaultDeadline,
   greetingForHour,
   registeredAgents,
@@ -80,11 +83,12 @@ export const TrainingPage: React.FC = () => {
   const [batchOpen, setBatchOpen] = useState<boolean>(false);
   const [newName, setNewName] = useState<string>('');
   const [bcBatch, setBcBatch] = useState<string>('__all');
-  const [bcMode, setBcMode] = useState<'grup' | 'agen'>('grup');
+  const [bcMode, setBcMode] = useState<'grup' | 'pengingat' | 'konfirmasi'>('grup');
   const [bcAgentId, setBcAgentId] = useState<string>('');
   const [deadline, setDeadline] = useState<string>('');
   const [deadlineTime, setDeadlineTime] = useState<string>('17.00');
   const [registering, setRegistering] = useState<TrainingAgent | null>(null);
+  const [reminderId, setReminderId] = useState<string>('');
 
   const load = useCallback(async () => {
     try {
@@ -131,9 +135,16 @@ export const TrainingPage: React.FC = () => {
     greeting: greetingForHour(Number(new Date().toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false })))
   };
   const bcRegistered = registeredAgents(list, bcBatchDate);
+  const reminders = reminderAgents(list);
   const bcAgent = bcRegistered.find((r) => r.agent.id === bcAgentId)?.agent ?? bcRegistered[0]?.agent;
   const bcText =
-    bcMode === 'grup' ? buildTrainingBc(list, bcOpts) : bcAgent ? buildAgentTrainingBc(bcAgent, bcOpts) : '';
+    bcMode === 'grup'
+      ? buildTrainingBc(list, bcOpts)
+      : bcMode === 'pengingat'
+        ? buildReminderBc(list, bcOpts, reminderId || undefined)
+        : bcAgent
+          ? buildAgentTrainingBc(bcAgent, bcOpts)
+          : '';
   const editAgent = editing ? list.find((a) => a.id === editing.agentId) : undefined;
   const editModule = editing ? TRAINING_MODULES.find((m) => m.id === editing.moduleId) : undefined;
 
@@ -157,8 +168,8 @@ export const TrainingPage: React.FC = () => {
       <div className="max-w-[1180px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs text-slate-500">Operasional</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-950">Training Brighton</h1>
+            <p className="text-xs text-slate-500">Training Brighton</p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-950">Rekap nilai & BC</h1>
             <p className="mt-1 text-sm text-slate-600">
               Rekap nilai {TRAINING_MODULES.length} sesi training. Nilai minimal kelulusan {PASS_SCORE}.
             </p>
@@ -284,7 +295,7 @@ export const TrainingPage: React.FC = () => {
                           );
                         })}
                         <td className="pr-1">
-                          <AgentMenu agent={a} onRegister={() => setRegistering(a)} onToggleGraduate={(g) => void saveAgent({ ...a, graduated: g }, g ? `${a.name} ditetapkan lulus.` : `Penetapan lulus ${a.name} dibatalkan.`)} onDelete={async () => {
+                          <AgentMenu agent={a} onRegister={() => setRegistering(a)} onNotAttending={() => void saveAgent(cancelAllPending(a), `Pendaftaran ${a.name} dibatalkan (tidak mengikuti).`)} onToggleGraduate={(g) => void saveAgent({ ...a, graduated: g }, g ? `${a.name} ditetapkan lulus.` : `Penetapan lulus ${a.name} dibatalkan.`)} onDelete={async () => {
                             try {
                               await store.remove(a.id, auth);
                               setAgents((l) => l?.filter((x) => x.id !== a.id) ?? null);
@@ -320,11 +331,15 @@ export const TrainingPage: React.FC = () => {
           <aside className="grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
             <div className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
               <div>
-                <p className="text-sm font-bold text-slate-950">BC pengingat training</p>
-                <p className="mt-0.5 text-xs text-slate-500">Dari agen yang sudah didaftarkan dan nilainya masih kosong.</p>
+                <p className="text-sm font-bold text-slate-950">BC training</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {bcMode === 'pengingat'
+                    ? 'Agen dengan sesi yang belum diikuti atau belum lulus.'
+                    : 'Dari agen yang sudah didaftarkan dan nilainya masih kosong.'}
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-1 rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Jenis BC">
-                {(['grup', 'agen'] as const).map((m) => (
+              <div className="grid grid-cols-3 gap-1 rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Jenis BC">
+                {(['grup', 'pengingat', 'konfirmasi'] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -333,10 +348,29 @@ export const TrainingPage: React.FC = () => {
                     onClick={() => setBcMode(m)}
                     className={`rounded-lg px-2 py-1.5 text-xs font-bold cursor-pointer ${bcMode === m ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}
                   >
-                    {m === 'grup' ? 'BC grup' : 'BC per agen'}
+                    {m === 'grup' ? 'BC Group' : m === 'pengingat' ? 'BC Pengingat' : 'BC Konfirmasi'}
                   </button>
                 ))}
               </div>
+              {bcMode === 'pengingat' && (
+                <label className="block text-xs font-semibold text-slate-700">
+                  Agen ({reminders.length})
+                  <select
+                    aria-label="Agen untuk BC pengingat"
+                    value={reminderId}
+                    onChange={(e) => setReminderId(e.target.value)}
+                    className={`${input} mt-1`}
+                  >
+                    <option value="">Semua agen (untuk grup)</option>
+                    {reminders.map((r) => (
+                      <option key={r.agent.id} value={r.agent.id}>
+                        {r.agent.name} · {r.modules.length} sesi
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {bcMode !== 'pengingat' && (
               <label className="block text-xs font-semibold text-slate-700">
                 Batch
                 <select aria-label="Batch untuk BC" value={bcBatch} onChange={(e) => setBcBatch(e.target.value)} className={`${input} mt-1`}>
@@ -348,7 +382,8 @@ export const TrainingPage: React.FC = () => {
                   ))}
                 </select>
               </label>
-              {bcMode === 'agen' && (
+              )}
+              {bcMode === 'konfirmasi' && (
                 <label className="block text-xs font-semibold text-slate-700">
                   Agen ({bcRegistered.length})
                   <select
@@ -366,6 +401,7 @@ export const TrainingPage: React.FC = () => {
                   </select>
                 </label>
               )}
+              {bcMode !== 'pengingat' && (
               <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">
                 <label className="block text-xs font-semibold text-slate-700">
                   Batas pendaftaran
@@ -388,11 +424,18 @@ export const TrainingPage: React.FC = () => {
                   />
                 </label>
               </div>
+              )}
             </div>
             <CopyTextBlock
               text={bcText}
-              label={bcMode === 'grup' ? 'Teks BC grup' : `Teks BC ${bcAgent?.name ?? 'agen'}`}
-              emptyText="Belum ada agen yang didaftarkan dan menunggu nilai."
+              label={
+                bcMode === 'grup'
+                  ? 'Teks BC Group'
+                  : bcMode === 'pengingat'
+                    ? 'Teks BC Pengingat'
+                    : `Teks BC Konfirmasi ${bcAgent?.name ?? 'agen'}`
+              }
+              emptyText={bcMode === 'pengingat' ? 'Semua agen sudah lulus atau sedang terdaftar.' : 'Belum ada agen yang didaftarkan dan menunggu nilai.'}
               rows={16}
             />
           </aside>
@@ -448,28 +491,67 @@ export const TrainingPage: React.FC = () => {
 const AgentMenu: React.FC<{
   agent: TrainingAgent;
   onRegister: () => void;
+  onNotAttending: () => void;
   onToggleGraduate: (g: boolean) => void;
   onDelete: () => Promise<void>;
 }> = ({
   agent,
   onRegister,
+  onNotAttending,
   onToggleGraduate,
   onDelete
 }) => {
   const [open, setOpen] = useState<boolean>(false);
+  const [pos, setPos] = useState<{ top: number; right: number; up: boolean }>({ top: 0, right: 0, up: false });
+  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const toggle = () => {
+    if (!open && btnRef.current) {
+      // Menu memakai posisi tetap (fixed) agar tidak terpotong tabel; buka ke atas bila ruang di bawah sempit.
+      const r = btnRef.current.getBoundingClientRect();
+      const up = window.innerHeight - r.bottom < 230;
+      setPos({ top: up ? r.top - 4 : r.bottom + 4, right: window.innerWidth - r.right, up });
+    }
+    setOpen((o) => !o);
+  };
+  // Tutup otomatis saat klik di luar menu, pindah tab, atau tekan Esc.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onBlur = () => setOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('blur', onBlur);
+    window.addEventListener('scroll', onBlur, true);
+    window.addEventListener('resize', onBlur);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('scroll', onBlur, true);
+      window.removeEventListener('resize', onBlur);
+    };
+  }, [open]);
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       <button
         type="button"
         aria-label={`Menu ${agent.name}`}
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        ref={btnRef}
+        onClick={toggle}
         className="grid h-7 w-7 place-items-center rounded-md text-slate-500 hover:bg-slate-100 cursor-pointer"
       >
         ⋯
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-slate-200">
+        <div
+          className="fixed z-40 w-52 rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-slate-200"
+          style={{ top: pos.top, right: pos.right, transform: pos.up ? 'translateY(-100%)' : undefined }}
+        >
           {outstandingModules(agent).length > 0 && (
             <button
               type="button"
@@ -481,6 +563,19 @@ const AgentMenu: React.FC<{
             >
               <CalendarPlus className="h-4 w-4 text-amber-600" />
               Daftarkan sesi
+            </button>
+          )}
+          {Object.keys(agent.pending).length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onNotAttending();
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 cursor-pointer"
+            >
+              <CalendarX className="h-4 w-4 text-red-600" />
+              Tidak mengikuti
             </button>
           )}
           <button

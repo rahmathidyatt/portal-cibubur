@@ -5,13 +5,14 @@ import { parseCsv } from '../floortime/spreadsheet';
 import { birthdayReminders, birthdaysOn, parseBirthDate, parseBirthdayRows } from './birthdays';
 
 test('format tanggal lahir yang didukung', () => {
-  assert.deepEqual(parseBirthDate('15-Nov-79'), { month: 11, day: 15 });
-  assert.deepEqual(parseBirthDate('4-Nov-76'), { month: 11, day: 4 });
-  assert.deepEqual(parseBirthDate('6 Mei 1990'), { month: 5, day: 6 });
-  assert.deepEqual(parseBirthDate('17 Agustus 1985'), { month: 8, day: 17 });
-  assert.deepEqual(parseBirthDate('15/11/1979'), { month: 11, day: 15 });
-  assert.deepEqual(parseBirthDate('1979-11-15'), { month: 11, day: 15 });
-  assert.deepEqual(parseBirthDate('29221'), { month: 1, day: 1 }); // seri Excel 1980-01-01
+  assert.deepEqual(parseBirthDate('15-Nov-79'), { month: 11, day: 15, year: 1979 });
+  assert.deepEqual(parseBirthDate('4-Nov-76'), { month: 11, day: 4, year: 1976 });
+  assert.deepEqual(parseBirthDate('6 Mei 1990'), { month: 5, day: 6, year: 1990 });
+  assert.deepEqual(parseBirthDate('17 Agustus 1985'), { month: 8, day: 17, year: 1985 });
+  assert.deepEqual(parseBirthDate('15/11/1979'), { month: 11, day: 15, year: 1979 });
+  assert.deepEqual(parseBirthDate('1979-11-15'), { month: 11, day: 15, year: 1979 });
+  assert.deepEqual(parseBirthDate('29221'), { month: 1, day: 1, year: 1980 }); // seri Excel 1980-01-01
+  assert.deepEqual(parseBirthDate('15 Nov'), { month: 11, day: 15 });
   assert.equal(parseBirthDate('31-Nov-79'), null);
   assert.equal(parseBirthDate('abc'), null);
 });
@@ -22,8 +23,10 @@ test('file ekspor contoh (14 agen November)', () => {
   assert.equal(entries.length, 14);
   assert.equal(skipped.length, 0);
   assert.ok(entries.every((e) => e.month === 11));
-  assert.deepEqual(entries[0], { code: 'OGVA', name: 'DIDIT (OGVA)', month: 11, day: 1 });
-  assert.ok(!('year' in entries[0]));
+  assert.equal(entries[0].code, 'OGVA');
+  assert.equal(entries[0].name, 'DIDIT (OGVA)');
+  assert.deepEqual([entries[0].month, entries[0].day], [11, 1]);
+  assert.equal(typeof entries[0].year, 'number');
 });
 
 test('baris bermasalah dilewati dengan alasan', () => {

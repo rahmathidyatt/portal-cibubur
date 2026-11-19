@@ -1,7 +1,7 @@
 import type { AdminAuth } from '../../services/bookingStore';
 import { getSupabaseConfig, readLocal, supabaseFetch, writeLocal, type SupabaseConfig } from '../../services/supabaseClient';
 import { RETENTION_DAYS, isExpired, type BrightDayPhoto, type BrightDayReport } from './brightDay';
-import { dataUrlBytes } from './brightDayPdf';
+import { dataUrlBytes } from '../../utils/image';
 
 /**
  * Penyimpanan Report Bright Day (khusus admin). Laporan & fotonya hanya disimpan

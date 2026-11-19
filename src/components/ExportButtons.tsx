@@ -8,9 +8,11 @@ import { buildReportXlsx, type ReportDoc } from '../utils/report';
 export const ExportButtons: React.FC<{
   fileBase: string;
   disabled?: boolean;
+  /** Tampilkan tombol PDF (bawaan: ya). */
+  pdf?: boolean;
   /** Dipanggil saat tombol ditekan agar data yang dipakai selalu yang terbaru. */
   build: () => { name: string; doc: ReportDoc }[];
-}> = ({ fileBase, disabled, build }) => {
+}> = ({ fileBase, disabled, pdf = true, build }) => {
   const toast = useToast();
   const [busy, setBusy] = useState<'xlsx' | 'pdf' | null>(null);
   const run = async (kind: 'xlsx' | 'pdf') => {
@@ -50,10 +52,12 @@ export const ExportButtons: React.FC<{
         <FileDown className="h-4 w-4 text-green-700" />
         {busy === 'xlsx' ? 'Membuat…' : 'Unduh Excel'}
       </button>
-      <button type="button" disabled={disabled || busy !== null} onClick={() => void run('pdf')} className={cls}>
-        <FileDown className="h-4 w-4 text-red-700" />
-        {busy === 'pdf' ? 'Membuat…' : 'Unduh PDF'}
-      </button>
+      {pdf && (
+        <button type="button" disabled={disabled || busy !== null} onClick={() => void run('pdf')} className={cls}>
+          <FileDown className="h-4 w-4 text-red-700" />
+          {busy === 'pdf' ? 'Membuat…' : 'Unduh PDF'}
+        </button>
+      )}
     </>
   );
 };

@@ -9,6 +9,7 @@ import { OFFICE_IDENTITY } from '../data/cibuburData';
 import { AnnouncementsCard } from './AnnouncementsCard';
 import { BirthdayReminder } from './BirthdayReminder';
 import { DateClock } from './LiveClock';
+import { ClosingShowcase } from '../features/closing/ClosingShowcase';
 import { officeAnniversary } from '../utils/anniversary';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
@@ -52,6 +53,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
             </a>
           )}
         </div>
+
+        <ClosingShowcase />
 
         {anniv.isToday && (
           <div

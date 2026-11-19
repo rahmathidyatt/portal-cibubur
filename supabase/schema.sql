@@ -788,3 +788,44 @@ drop policy if exists "admin bright-day objects" on storage.objects;
 create policy "admin bright-day objects" on storage.objects for all to authenticated
   using (bucket_id = 'bright-day' and public.is_portal_admin())
   with check (bucket_id = 'bright-day' and public.is_portal_admin());
+
+-- ------------------------------------------------------------------
+-- Closing agen: tampil di beranda (dibaca publik), diubah admin.
+-- Flyer disimpan di bucket publik "closing-flyers".
+-- ------------------------------------------------------------------
+create table if not exists public.closings (
+  id uuid primary key,
+  closing_date date not null,
+  created_at timestamptz not null default now(),
+  data jsonb not null check (octet_length(data::text) <= 20000)
+);
+create index if not exists closings_date_idx on public.closings (closing_date);
+grant select on public.closings to anon, authenticated;
+grant insert, update, delete on public.closings to authenticated;
+alter table public.closings enable row level security;
+drop policy if exists "read closings" on public.closings;
+create policy "read closings" on public.closings for select to anon, authenticated using (true);
+drop policy if exists "admin all closings" on public.closings;
+create policy "admin all closings" on public.closings for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('closing-flyers', 'closing-flyers', true, 5242880, array['image/jpeg'])
+on conflict (id) do nothing;
+drop policy if exists "admin closing-flyers objects" on storage.objects;
+create policy "admin closing-flyers objects" on storage.objects for all to authenticated
+  using (bucket_id = 'closing-flyers' and public.is_portal_admin())
+  with check (bucket_id = 'closing-flyers' and public.is_portal_admin());
+
+-- Tahun lahir agen: terpisah dari agent_birthdays (publik) dan hanya bisa dibaca admin (BC WOF).
+create table if not exists public.agent_birth_years (
+  code text primary key check (code ~ '^[A-Z0-9]{2,12}$'),
+  birth_year smallint not null check (birth_year between 1900 and 2100),
+  updated_at timestamptz not null default now()
+);
+revoke all on public.agent_birth_years from anon;
+grant select, insert, update, delete on public.agent_birth_years to authenticated;
+alter table public.agent_birth_years enable row level security;
+drop policy if exists "admin all agent_birth_years" on public.agent_birth_years;
+create policy "admin all agent_birth_years" on public.agent_birth_years for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());

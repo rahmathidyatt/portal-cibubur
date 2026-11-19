@@ -1,14 +1,16 @@
 import type { Row } from '../floortime/spreadsheet';
 
 /**
- * Data ulang tahun agen. Tahun lahir sengaja tidak disimpan:
- * portal hanya butuh tanggal & bulan untuk pengingat.
+ * Data ulang tahun agen. Tanggal & bulan dipakai pengingat publik; tahun lahir
+ * disimpan terpisah dan hanya bisa dibaca admin (untuk BC WOF).
  */
 export interface AgentBirthday {
   code: string;
   name: string;
   month: number; // 1-12
   day: number; // 1-31
+  /** Tahun lahir (khusus admin; tidak ikut data publik). */
+  year?: number;
 }
 
 export interface ParseResult {
@@ -44,22 +46,35 @@ function valid(month: number, day: number): { month: number; day: number } | nul
  * Membaca tanggal lahir dalam format yang umum dipakai:
  * "15-Nov-79", "15 November 1979", "15/11/1979", "1979-11-15", atau nomor seri tanggal Excel.
  */
-export function parseBirthDate(raw: string): { month: number; day: number } | null {
+/** "79" → 1979, "05" → 2005 (dua digit di atas tahun ini dianggap 19xx). */
+function fullYear(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  let y = Number(raw);
+  if (!Number.isInteger(y)) return undefined;
+  if (raw.length <= 2) y += y > new Date().getUTCFullYear() % 100 ? 1900 : 2000;
+  return y >= 1900 && y <= 2100 ? y : undefined;
+}
+
+function withYear(md: { month: number; day: number } | null, year: number | undefined) {
+  return md ? (year ? { ...md, year } : md) : null;
+}
+
+export function parseBirthDate(raw: string): { month: number; day: number; year?: number } | null {
   const s = raw.trim();
   if (!s) return null;
   // Nomor seri Excel (hari sejak 1899-12-30).
   if (/^\d{4,5}(\.\d+)?$/.test(s)) {
     const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(Number(s)) * 86_400_000);
-    return valid(d.getUTCMonth() + 1, d.getUTCDate());
+    return withYear(valid(d.getUTCMonth() + 1, d.getUTCDate()), d.getUTCFullYear());
   }
   let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-  if (m) return valid(Number(m[2]), Number(m[3]));
+  if (m) return withYear(valid(Number(m[2]), Number(m[3])), fullYear(m[1]));
   m = s.match(/^(\d{1,2})[-/. ](\d{1,2})(?:[-/. ](\d{2,4}))?$/);
-  if (m) return valid(Number(m[2]), Number(m[1]));
+  if (m) return withYear(valid(Number(m[2]), Number(m[1])), fullYear(m[3]));
   m = s.match(/^(\d{1,2})[-/. ]+([A-Za-z]+)\.?(?:[-/., ]+(\d{2,4}))?$/);
   if (m) {
     const month = MONTHS[m[2].toLowerCase()];
-    return month ? valid(month, Number(m[1])) : null;
+    return month ? withYear(valid(month, Number(m[1])), fullYear(m[3])) : null;
   }
   return null;
 }

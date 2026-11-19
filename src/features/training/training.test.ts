@@ -103,3 +103,48 @@ test('impor rekap memakai warna: hijau lulus, merah menunggu nilai', () => {
   assert.deepEqual(Object.keys(i.pending), ['primary-secondary']);
   assert.equal(i.scores['dokumen-kepemilikan'], 100);
 });
+
+import { codeTokens, matchRecap, splitAgentName } from './tracking';
+
+test('tracking: kode dari kolom berantakan & pencocokan', () => {
+  assert.deepEqual(codeTokens('Rohim (TOHB) | Brighton Shine Cengkareng'), ['TOHB']);
+  assert.deepEqual(codeTokens('𝙉𝙏𝘿𝙓'), ['NTDX']);
+  assert.deepEqual(codeTokens('Bviw'), ['BVIW']);
+  assert.deepEqual(splitAgentName('VERA MARSELLA (GFQG)'), { name: 'VERA MARSELLA', code: 'GFQG' });
+  const agents: TrainingAgent[] = [
+    { id: 'a', name: 'AYU (HAYP)', scores: { 'bisnis-bersama': 100 }, pending: { 'alur-transaksi': '2026-11-09' } },
+    { id: 'b', name: 'URIP (XJTA)', scores: {}, pending: {} },
+    { id: 'c', name: 'ZED (ZZZZ)', scores: {}, pending: {} }
+  ];
+  const row = (moduleId: string, score: number, name: string, unit: string, rawCode: string, location: string) => ({ moduleId, score, name, unit, rawCode, location, date: '2026-11-11' });
+  const res = matchRecap(agents, {
+    sessions: [],
+    rows: [
+      row('alur-transaksi', 80, 'AYU', 'Brighton Warrior', 'HAYP', 'Cibubur'),
+      row('alur-transaksi', 40, 'Ayu Lestari', 'Brighton Warrior', '', 'Cibubur'),
+      row('bisnis-bersama', 100, 'AYU', 'Brighton Warrior', 'HAYP', 'Cibubur'),
+      row('negosiasi', 60, 'Urip', 'Brighton Vision', '-', 'Bekasi'),
+      row('negosiasi', 60, 'Zed', 'Brighton Crown', '-', 'Solo')
+    ]
+  });
+  assert.deepEqual(res.map((r) => [r.agent.id, r.level, r.findings.map((f) => `${f.moduleId}:${f.row.score}`).join()]), [
+    ['a', 'kode', 'alur-transaksi:80'],
+    ['b', 'nama', 'negosiasi:60']
+  ]);
+});
+
+import { buildReminderBc, cancelAllPending } from './training';
+
+test('BC pengingat sesi belum diikuti/lulus', () => {
+  const agents: TrainingAgent[] = [
+    { id: 'a', name: 'AYU (HAYP)', scores: Object.fromEntries(['bisnis-bersama','etika-pelayanan','tentang-bisnis','kebiasaan-sukses','listing-modal','primary-secondary','dokumen-kepemilikan','alur-transaksi','branding-expose'].map((k) => [k, 80])), pending: { negosiasi: '2026-11-20' } },
+    { id: 'b', name: 'URIP (XJTA)', scores: { 'bisnis-bersama': 40 }, pending: {} }
+  ];
+  agents[0].scores['dokumen-kepemilikan'] = 20;
+  const bc = buildReminderBc(agents, { greeting: 'Selamat pagi' });
+  assert.match(bc, /\*AYU \(HAYP\)\*\n- Dokumen Kepemilikan Properti \(belum lulus\)\n- Klien Percaya, Bisnis Berkembang \(belum mengikuti\)\n\n\*URIP/);
+  assert.ok(!bc.split('*URIP')[0].includes('Negosiasi'), 'menunggu nilai tidak diingatkan');
+  assert.match(bc, /WAJIB menuliskan Nama dan Kode Agen yang sesuai/);
+  assert.match(buildReminderBc(agents, { greeting: 'Selamat pagi' }, 'b'), /^Selamat pagi, Bapak\/Ibu URIP \(XJTA\)\./);
+  assert.deepEqual(cancelAllPending(agents[0]).pending, {});
+});

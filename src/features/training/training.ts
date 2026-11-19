@@ -310,3 +310,56 @@ export function importTrainingSheet(sheet: GridSheet): TrainingImportResult {
   }
   return { agents, sheetName: sheet.name };
 }
+
+/** Agen yang masih punya sesi belum diikuti / belum lulus (tidak termasuk yang menunggu nilai). */
+export function reminderAgents(agents: TrainingAgent[]): { agent: TrainingAgent; modules: { module: TrainingModule; status: 'belum' | 'tidak-lulus' }[] }[] {
+  return agents
+    .filter((a) => !a.graduated)
+    .map((agent) => ({
+      agent,
+      modules: TRAINING_MODULES.map((module) => ({ module, status: moduleStatus(agent, module.id) }))
+        .filter((x): x is { module: TrainingModule; status: 'belum' | 'tidak-lulus' } => x.status === 'belum' || x.status === 'tidak-lulus')
+    }))
+    .filter((r) => r.modules.length > 0)
+    .sort((a, b) => a.agent.name.localeCompare(b.agent.name));
+}
+
+/** BC pengingat sesi yang belum diikuti / belum lulus (semua agen, atau satu agen). */
+export function buildReminderBc(agents: TrainingAgent[], opts: Pick<TrainingBcOptions, 'greeting'>, agentId?: string): string {
+  const rows = reminderAgents(agents).filter((r) => !agentId || r.agent.id === agentId);
+  if (rows.length === 0) return '';
+  const single = !!agentId;
+  const label = (s: 'belum' | 'tidak-lulus') => (s === 'belum' ? 'belum mengikuti' : 'belum lulus');
+  const body = single
+    ? [
+        `${opts.greeting}, Bapak/Ibu ${rows[0].agent.name}.`,
+        '',
+        'Kami ingatkan bahwa masih ada sesi Training Bright On yang belum diikuti atau belum lulus:',
+        '',
+        ...rows[0].modules.map((m) => `- ${m.module.title} (${label(m.status)})`)
+      ]
+    : [
+        `${opts.greeting}, Bapak/Ibu.`,
+        '',
+        'Berikut kami informasikan Property Advisor (PA) yang masih memiliki sesi Training Bright On yang belum diikuti atau belum lulus:',
+        '',
+        ...rows.flatMap((r) => [`*${r.agent.name}*`, ...r.modules.map((m) => `- ${m.module.title} (${label(m.status)})`), ''])
+      ];
+  if (!single) body.pop();
+  return [
+    ...body,
+    '',
+    '📌 PENTING UNTUK DIPERHATIKAN',
+    '- Mohon mengikuti sesi tersebut pada batch Training Bright On berikutnya.',
+    '- Saat mengisi absensi & kuis, WAJIB menuliskan Nama dan Kode Agen yang sesuai.',
+    '- Kesalahan penulisan nama dan kode agen bukan menjadi tanggung jawab Admin apabila nilai tidak terekam.',
+    `- Nilai minimal kelulusan adalah ${PASS_SCORE}.`,
+    '',
+    'Terima kasih atas perhatian dan kerja samanya.'
+  ].join('\n');
+}
+
+/** "Tidak mengikuti": batalkan seluruh pendaftaran sesi yang masih menunggu nilai. */
+export function cancelAllPending(agent: TrainingAgent): TrainingAgent {
+  return { ...agent, pending: {} };
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CalendarCheck, ChevronDown, GraduationCap, TrendingUp, ChevronLeft, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 import { STAFF_LINKS } from './ReservationMenu';
 
@@ -13,6 +13,17 @@ interface AdminShellProps {
 const GROUPS = [...new Set(STAFF_LINKS.map((l) => l.group))];
 
 type StaffLink = (typeof STAFF_LINKS)[number];
+
+const PARENT_ICONS: Record<string, React.FC<{ className?: string }>> = {
+  'Bright Day': CalendarCheck,
+  'Training Brighton': GraduationCap,
+  Analisis: TrendingUp
+};
+
+const ParentIcon: React.FC<{ name: string; className?: string }> = ({ name, className }) => {
+  const Icon = PARENT_ICONS[name] ?? CalendarCheck;
+  return <Icon className={className} aria-hidden="true" />;
+};
 
 const SidebarLink: React.FC<{ link: StaffLink; route: PortalRoute }> = ({ link, route }) => {
   const { href, route: r, label, hint, Icon } = link;
@@ -58,20 +69,12 @@ function readBackupDismissed(): boolean {
 /** Pengingat ringan (tidak wajib) untuk mengunduh cadangan data, muncul sekali per bulan. */
 const BackupReminder: React.FC = () => {
   const [hidden, setHidden] = useState<boolean>(readBackupDismissed);
-  if (hidden) return null;
+  // Hanya di awal bulan (tanggal 1–3).
+  const dayOfMonth = new Date(Date.now() + 7 * 3_600_000).getUTCDate();
+  if (hidden || dayOfMonth > 3) return null;
   return (
     <div className="mx-4 mt-4 sm:mx-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-amber-50 px-4 py-2.5 text-xs text-amber-900 ring-1 ring-amber-200">
-      <span>
-        Pengingat: sesekali unduh data sebagai cadangan —{' '}
-        <a href="#staf-training" className="font-bold underline underline-offset-2">
-          Training Brighton
-        </a>{' '}
-        dan{' '}
-        <a href="#staf-medpro" className="font-bold underline underline-offset-2">
-          Nota Medpro
-        </a>{' '}
-        (tombol Unduh Excel). Tidak wajib.
-      </span>
+      <span>Pengingat sesekali unduh data sebagai cadangan</span>
       <button
         type="button"
         onClick={() => {
@@ -176,9 +179,9 @@ export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut,
                         childActive ? 'text-slate-950' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
                       }`}
                     >
-                      <CalendarCheck
+                      <ParentIcon
+                        name={link.parent!}
                         className={`h-4 w-4 shrink-0 ${childActive ? 'text-amber-600' : 'text-slate-400 group-hover:text-amber-600'}`}
-                        aria-hidden="true"
                       />
                       <span className="min-w-0 flex-1 text-sm font-semibold">{link.parent}</span>
                       <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
