@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CalendarCheck, ChevronDown, ChevronLeft, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 import { STAFF_LINKS } from './ReservationMenu';
 
@@ -12,7 +12,83 @@ interface AdminShellProps {
 
 const GROUPS = [...new Set(STAFF_LINKS.map((l) => l.group))];
 
+type StaffLink = (typeof STAFF_LINKS)[number];
+
+const SidebarLink: React.FC<{ link: StaffLink; route: PortalRoute }> = ({ link, route }) => {
+  const { href, route: r, label, hint, Icon } = link;
+  const active = r === route;
+  return (
+    <li>
+      <a
+        href={href}
+        aria-current={active ? 'page' : undefined}
+        className={`group flex items-start gap-2.5 rounded-lg px-2 py-2 transition-colors ${
+          active ? 'bg-slate-950 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
+        }`}
+      >
+        <Icon
+          className={`mt-0.5 h-4 w-4 shrink-0 ${active ? 'text-amber-400' : 'text-slate-400 group-hover:text-amber-600'}`}
+          aria-hidden="true"
+        />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold">{label}</span>
+          <span className={`block truncate text-[11px] ${active ? 'text-slate-300' : 'text-slate-500'}`}>{hint}</span>
+        </span>
+      </a>
+    </li>
+  );
+};
+
 const COLLAPSE_KEY = 'portal-cibubur:admin-sidebar-collapsed';
+
+const BACKUP_KEY = 'portal-cibubur:backup-reminder-dismissed';
+
+function currentMonthKey(): string {
+  return new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 7);
+}
+
+function readBackupDismissed(): boolean {
+  try {
+    return window.localStorage.getItem(BACKUP_KEY) === currentMonthKey();
+  } catch {
+    return false;
+  }
+}
+
+/** Pengingat ringan (tidak wajib) untuk mengunduh cadangan data, muncul sekali per bulan. */
+const BackupReminder: React.FC = () => {
+  const [hidden, setHidden] = useState<boolean>(readBackupDismissed);
+  if (hidden) return null;
+  return (
+    <div className="mx-4 mt-4 sm:mx-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-amber-50 px-4 py-2.5 text-xs text-amber-900 ring-1 ring-amber-200">
+      <span>
+        Pengingat: sesekali unduh data sebagai cadangan —{' '}
+        <a href="#staf-training" className="font-bold underline underline-offset-2">
+          Training Brighton
+        </a>{' '}
+        dan{' '}
+        <a href="#staf-medpro" className="font-bold underline underline-offset-2">
+          Nota Medpro
+        </a>{' '}
+        (tombol Unduh Excel). Tidak wajib.
+      </span>
+      <button
+        type="button"
+        onClick={() => {
+          setHidden(true);
+          try {
+            window.localStorage.setItem(BACKUP_KEY, currentMonthKey());
+          } catch {
+            /* penyimpanan tidak tersedia */
+          }
+        }}
+        className="ml-auto font-bold text-amber-800 hover:text-amber-950 cursor-pointer"
+      >
+        Tutup
+      </button>
+    </div>
+  );
+};
 
 function readCollapsed(): boolean {
   try {
@@ -25,6 +101,14 @@ function readCollapsed(): boolean {
 /** Tata letak area admin: sidebar di desktop (bisa disembunyikan), tab menu geser di HP. */
 export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut, children }) => {
   const [collapsed, setCollapsedState] = useState<boolean>(readCollapsed);
+  const [openParents, setOpenParents] = useState<Set<string>>(new Set());
+  const toggleParent = (name: string) =>
+    setOpenParents((s) => {
+      const next = new Set(s);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
   const setCollapsed = (v: boolean) => {
     setCollapsedState(v);
     try {
@@ -76,26 +160,36 @@ export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut,
           <div key={group}>
             <p className="px-2 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{group}</p>
             <ul className="space-y-0.5">
-              {STAFF_LINKS.filter((l) => l.group === group).map(({ href, route: r, label, hint, Icon }) => {
-                const active = r === route;
+              {STAFF_LINKS.filter((l) => l.group === group).map((link, i, list) => {
+                if (!link.parent) return <SidebarLink key={link.href} link={link} route={route} />;
+                if (list.findIndex((l) => l.parent === link.parent) !== i) return null;
+                const children = list.filter((l) => l.parent === link.parent);
+                const childActive = children.some((c) => c.route === route);
+                const open = childActive || openParents.has(link.parent);
                 return (
-                  <li key={href}>
-                    <a
-                      href={href}
-                      aria-current={active ? 'page' : undefined}
-                      className={`group flex items-start gap-2.5 rounded-lg px-2 py-2 transition-colors ${
-                        active ? 'bg-slate-950 text-white' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
+                  <li key={`parent-${link.parent}`}>
+                    <button
+                      type="button"
+                      onClick={() => toggleParent(link.parent!)}
+                      aria-expanded={open}
+                      className={`group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors cursor-pointer ${
+                        childActive ? 'text-slate-950' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
                       }`}
                     >
-                      <Icon
-                        className={`mt-0.5 h-4 w-4 shrink-0 ${active ? 'text-amber-400' : 'text-slate-400 group-hover:text-amber-600'}`}
+                      <CalendarCheck
+                        className={`h-4 w-4 shrink-0 ${childActive ? 'text-amber-600' : 'text-slate-400 group-hover:text-amber-600'}`}
                         aria-hidden="true"
                       />
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold">{label}</span>
-                        <span className={`block truncate text-[11px] ${active ? 'text-slate-300' : 'text-slate-500'}`}>{hint}</span>
-                      </span>
-                    </a>
+                      <span className="min-w-0 flex-1 text-sm font-semibold">{link.parent}</span>
+                      <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+                    </button>
+                    {open && (
+                      <ul className="ml-4 mt-0.5 space-y-0.5 border-l border-slate-200 pl-2">
+                        {children.map((c) => (
+                          <SidebarLink key={c.href} link={c} route={route} />
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 );
               })}
@@ -126,7 +220,8 @@ export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut,
       aria-label="Menu admin"
       className="lg:hidden sticky top-[57px] z-30 flex gap-1.5 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2"
     >
-      {STAFF_LINKS.map(({ href, route: r, label, Icon }) => {
+      {STAFF_LINKS.map(({ href, route: r, label: base, parent, Icon }) => {
+        const label = parent ? `${parent} · ${base}` : base;
         const active = r === route;
         return (
           <a
@@ -144,7 +239,10 @@ export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut,
       })}
     </nav>
 
-    <div className="min-w-0 flex-1">{children}</div>
+    <div className="min-w-0 flex-1">
+      <BackupReminder />
+      {children}
+    </div>
   </div>
   );
 };

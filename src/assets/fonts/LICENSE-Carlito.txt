@@ -1,0 +1,4 @@
+Carlito (Regular, Bold) — Copyright (c) 2010-2013 by tyPoland Lukasz Dziedzic, licensed under the SIL Open Font License 1.1.
+
+Full license text: https://openfontlicense.org
+Used for rendering the Report Bright Day PDF.

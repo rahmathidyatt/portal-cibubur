@@ -762,3 +762,29 @@ end;
 $$;
 revoke all on function public.record_minbur_question(text) from public;
 grant execute on function public.record_minbur_question(text) to anon, authenticated;
+
+-- ------------------------------------------------------------------
+-- Report Bright Day (khusus admin). Laporan & foto disimpan 7 hari,
+-- yang lebih lama dibersihkan otomatis saat admin membuka menu.
+-- ------------------------------------------------------------------
+create table if not exists public.bright_day_reports (
+  id uuid primary key,
+  created_at timestamptz not null default now(),
+  event_date date,
+  report jsonb not null check (octet_length(report::text) <= 100000)
+);
+create index if not exists bright_day_reports_created_idx on public.bright_day_reports (created_at);
+revoke all on public.bright_day_reports from anon;
+grant select, insert, update, delete on public.bright_day_reports to authenticated;
+alter table public.bright_day_reports enable row level security;
+drop policy if exists "admin all bright_day_reports" on public.bright_day_reports;
+create policy "admin all bright_day_reports" on public.bright_day_reports for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('bright-day', 'bright-day', false, 5242880, array['image/jpeg'])
+on conflict (id) do nothing;
+drop policy if exists "admin bright-day objects" on storage.objects;
+create policy "admin bright-day objects" on storage.objects for all to authenticated
+  using (bucket_id = 'bright-day' and public.is_portal_admin())
+  with check (bucket_id = 'bright-day' and public.is_portal_admin());

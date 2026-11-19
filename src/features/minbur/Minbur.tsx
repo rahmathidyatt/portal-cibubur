@@ -10,7 +10,6 @@ import { getMinburStore, MINBUR_FAQ_CHANGED, type MinburFaq } from '../../servic
 import { addDaysIso } from '../birthdays/birthdays';
 import { todayInJakarta } from '../../utils/schedule';
 import {
-  INSTALL_ANSWER,
   NAVIGATION_ANSWER,
   QUICK_QUESTIONS,
   answerAnniversary,
@@ -173,8 +172,6 @@ export const Minbur: React.FC = () => {
       }
       case 'usia-kantor':
         return answerAnniversary(OFFICE_IDENTITY.foundedDate, today);
-      case 'install':
-        return INSTALL_ANSWER;
       case 'navigasi':
         return NAVIGATION_ANSWER;
       case 'floortime-saya':

@@ -20,6 +20,7 @@ import {
   type PublishedSchedule
 } from './requests';
 import { getScheduleStore } from './scheduleStore';
+import { FEATURES } from '../../data/features';
 import { MySchedulePanel } from './MySchedulePanel';
 import { readMyAgentCode } from './mySchedule';
 
@@ -123,7 +124,10 @@ export const PublishedFloorTime: React.FC = () => {
   }
 
   const data = schedule.data;
-  const week = data.weeks.find((w) => w.weekNo === weekNo) ?? data.weeks[0];
+  // Minggu yang sudah berlalu tidak ditampilkan (kecuali seluruh bulan sudah lewat).
+  const upcomingWeeks = data.weeks.filter((w) => w.dates[w.dates.length - 1] >= today);
+  const weeks = upcomingWeeks.length > 0 ? upcomingWeeks : data.weeks;
+  const week = weeks.find((w) => w.weekNo === weekNo) ?? weeks[0];
   const open = isRequestOpen(schedule.requestDeadline);
   const needle = search.trim().toLowerCase();
   const matches = (name: string) => needle !== '' && name.toLowerCase().includes(needle);
@@ -131,6 +135,7 @@ export const PublishedFloorTime: React.FC = () => {
   // Hasil pencarian: slot-slot (sebulan) yang memuat agen yang cocok.
   const searchHits = needle
     ? data.slots
+        .filter((slot) => upcomingWeeks.length === 0 || slot.date >= today)
         .flatMap((slot) =>
           (data.assignments[slot.key] ?? [])
             .filter((e) => matches(e.displayName))
@@ -223,7 +228,7 @@ export const PublishedFloorTime: React.FC = () => {
         )}
 
         <div role="tablist" aria-label="Pilih minggu" className="flex gap-2 overflow-x-auto px-5 pb-4 border-b border-slate-200">
-          {data.weeks.map((w) => {
+          {weeks.map((w) => {
             const active = w.weekNo === week?.weekNo;
             const isCurrent = w.dates[0] <= today && today <= w.dates[w.dates.length - 1];
             const hits = hitsPerWeek.get(w.weekNo) ?? 0;
@@ -402,7 +407,7 @@ const RequestForm: React.FC<{
   useEffect(() => {
     if (!prefill) return;
     setAgentId(prefill.agentId);
-    setKind(prefill.kind);
+    setKind(FEATURES.floortimeAddRequest ? prefill.kind : 'move');
     setFromSlot(prefill.fromSlot);
     setToSlot('');
     setFeedback(null);
@@ -479,6 +484,7 @@ const RequestForm: React.FC<{
             ))}
           </select>
         </label>
+        {FEATURES.floortimeAddRequest && (
         <div className="text-xs font-semibold text-slate-700">
           Jenis request
           <div className="mt-1 flex gap-1">
@@ -501,6 +507,7 @@ const RequestForm: React.FC<{
             ))}
           </div>
         </div>
+        )}
         {kind === 'move' && (
           <label className="text-xs font-semibold text-slate-700">
             Jadwal asal

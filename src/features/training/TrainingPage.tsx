@@ -213,18 +213,23 @@ export const TrainingPage: React.FC = () => {
               </label>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
-              <table className="w-full min-w-[760px] border-collapse text-sm">
+            <div className="max-lg:overflow-x-auto lg:overflow-clip rounded-2xl bg-white ring-1 ring-slate-200">
+              <table className="w-full max-lg:min-w-[900px] table-fixed border-collapse text-sm">
                 <thead>
                   <tr className="bg-stone-50 text-left">
-                    <th className="sticky left-0 z-10 bg-stone-50 px-3 py-2 text-xs font-bold text-slate-700">Property advisor</th>
-                    {TRAINING_MODULES.map((m, i) => (
-                      <th key={m.id} title={m.title} className="px-1 pt-0 pb-2 text-center align-top">
+                    <th className="sticky left-0 lg:top-[57px] z-20 w-[165px] bg-stone-50 px-2 py-2 align-bottom text-[11px] font-bold text-slate-700 shadow-[0_1px_0_#e2e8f0]">
+                      Property advisor
+                    </th>
+                    {TRAINING_MODULES.map((m) => (
+                      <th
+                        key={m.id}
+                        className="lg:sticky lg:top-[57px] z-10 bg-stone-50 px-0.5 pt-0 pb-1.5 text-center align-top shadow-[0_1px_0_#e2e8f0]"
+                      >
                         <span className={`block h-1.5 ${STAGE_COLOR[m.stage]}`} />
-                        <span className="mt-1.5 block text-xs font-bold text-slate-700">{i + 1}</span>
+                        <span className="mt-1 block text-[9.5px] font-semibold leading-[1.15] text-slate-700">{m.title}</span>
                       </th>
                     ))}
-                    <th className="w-8" />
+                    <th className="lg:sticky lg:top-[57px] z-10 w-7 bg-stone-50 shadow-[0_1px_0_#e2e8f0]" />
                   </tr>
                 </thead>
                 <tbody>
@@ -246,13 +251,13 @@ export const TrainingPage: React.FC = () => {
                     const status = agentStatus(a);
                     return (
                       <tr key={a.id} className="border-t border-slate-100">
-                        <td className="sticky left-0 z-10 bg-white px-3 py-1.5">
-                          <span className="flex items-center gap-2">
+                        <td className="sticky left-0 z-[5] bg-white px-2 py-1">
+                          <span className="flex min-w-0 items-center gap-1.5">
                             <span
                               title={STATUS_META[status].label}
                               className={`h-2.5 w-2.5 shrink-0 rounded-full ${STATUS_META[status].dot}`}
                             />
-                            <span className="truncate font-semibold text-slate-900 max-w-[190px]" title={a.name}>
+                            <span className="min-w-0 truncate text-xs font-semibold text-slate-900" title={a.name}>
                               {a.name}
                             </span>
                             {a.graduated && (
@@ -266,19 +271,19 @@ export const TrainingPage: React.FC = () => {
                           const st = moduleStatus(a, m.id);
                           const score = a.scores[m.id];
                           return (
-                            <td key={m.id} className="p-0.5">
+                            <td key={m.id} className="px-[1px] py-0.5">
                               <button
                                 type="button"
                                 onClick={() => setEditing({ agentId: a.id, moduleId: m.id })}
                                 aria-label={`${a.name} · ${m.title}: ${score ?? 'kosong'}${st === 'menunggu' ? ', menunggu nilai' : ''}`}
-                                className={`h-8 w-full min-w-[40px] rounded-md text-xs font-bold tabular-nums hover:ring-2 hover:ring-amber-400 cursor-pointer ${CELL_STYLE[st]}`}
+                                className={`h-7 w-full rounded-md text-xs font-bold tabular-nums hover:ring-2 hover:ring-amber-400 cursor-pointer ${CELL_STYLE[st]}`}
                               >
                                 {st === 'menunggu' ? (score !== undefined ? <s className="opacity-60">{score}</s> : 'Daftar') : (score ?? '–')}
                               </button>
                             </td>
                           );
                         })}
-                        <td className="pr-2">
+                        <td className="pr-1">
                           <AgentMenu agent={a} onRegister={() => setRegistering(a)} onToggleGraduate={(g) => void saveAgent({ ...a, graduated: g }, g ? `${a.name} ditetapkan lulus.` : `Penetapan lulus ${a.name} dibatalkan.`)} onDelete={async () => {
                             try {
                               await store.remove(a.id, auth);
@@ -310,7 +315,6 @@ export const TrainingPage: React.FC = () => {
               </button>
             </form>
 
-            <ModuleLegend />
           </div>
 
           <aside className="grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
@@ -440,27 +444,6 @@ export const TrainingPage: React.FC = () => {
     </section>
   );
 };
-
-const ModuleLegend: React.FC = () => (
-  <details className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
-    <summary className="cursor-pointer text-sm font-bold text-slate-900">Daftar sesi & keterangan warna</summary>
-    <ol className="mt-3 grid gap-x-6 gap-y-1 text-sm text-slate-700 sm:grid-cols-2">
-      {TRAINING_MODULES.map((m, i) => (
-        <li key={m.id} className="flex items-center gap-2">
-          <span className={`h-3 w-1.5 rounded-sm ${STAGE_COLOR[m.stage]}`} />
-          <span className="w-5 text-right font-bold tabular-nums">{i + 1}.</span>
-          {m.title}
-        </li>
-      ))}
-    </ol>
-    <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-600">
-      <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 rounded bg-green-100" /> Lulus (≥ {PASS_SCORE})</span>
-      <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 rounded bg-red-100 ring-1 ring-red-300" /> Didaftarkan, menunggu nilai</span>
-      <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 rounded bg-slate-200" /> Belum lulus (&lt; {PASS_SCORE})</span>
-      <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 rounded bg-white ring-1 ring-slate-200" /> Belum ikut</span>
-    </div>
-  </details>
-);
 
 const AgentMenu: React.FC<{
   agent: TrainingAgent;

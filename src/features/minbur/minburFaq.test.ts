@@ -42,7 +42,6 @@ test('intent tambahan dari data portal', () => {
     ['business manager unit priority', 'bm'],
     ['siapa yang ulang tahun hari ini', 'ulang-tahun'],
     ['kantor berdiri sejak kapan', 'usia-kantor'],
-    ['cara install aplikasi portal', 'install'],
     ['siapa jaga besok', 'floortime-besok'],
     ['kapan tanggal merah bulan ini', 'libur'],
     ['portal ini ada fitur apa saja', 'navigasi'],

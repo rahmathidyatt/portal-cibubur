@@ -22,12 +22,13 @@ import { OfficeHoursLocation } from './components/OfficeHoursLocation';
 import { JinglePlayer } from './components/JinglePlayer';
 import { Minbur } from './features/minbur/Minbur';
 import { MinburAdminPage } from './features/minbur/MinburAdminPage';
+import { BrightDayPage } from './features/brightday/BrightDayPage';
+import { AttendancePage } from './features/brightday/AttendancePage';
 import { ReservationPage } from './components/ReservationPage';
 import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
 import { AdminShell } from './components/AdminShell';
 import { OfficeStatusBadge } from './components/LiveClock';
 import { BrandMark } from './components/BrandMark';
-import { InstallAppButton } from './components/InstallAppButton';
 
 // Alat staf dimuat terpisah agar halaman publik tetap ringan (PDF/ZIP/Excel hanya untuk staf).
 const FloorTimeSchedulerPage = lazy(() =>
@@ -116,7 +117,6 @@ function PortalApp() {
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
-            <InstallAppButton className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 rounded-lg ring-1 ring-slate-200 hover:bg-slate-100 cursor-pointer" />
             {isAdmin ? (
               <button
                 type="button"
@@ -181,10 +181,6 @@ function PortalApp() {
               </a>
             )}
             <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col">
-              <InstallAppButton
-                onDone={() => setMobileMenuOpen(false)}
-                className="py-2 text-left hover:text-slate-950 inline-flex items-center gap-1.5 cursor-pointer"
-              />
               {isAdmin ? (
                 <button
                   type="button"
@@ -280,6 +276,10 @@ function StaffPage({ route }: { route: PortalRoute }) {
       return <BirthdayPage />;
     case 'staf-minbur':
       return <MinburAdminPage />;
+    case 'staf-bright-day':
+      return <BrightDayPage />;
+    case 'staf-bright-day-hadir':
+      return <AttendancePage />;
     default:
       return <PortalStatsPage />;
   }

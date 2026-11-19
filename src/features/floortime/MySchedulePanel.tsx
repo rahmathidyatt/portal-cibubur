@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeftRight, CalendarCheck, CalendarPlus, Plus, UserRound } from 'lucide-react';
 import { OFFICE_IDENTITY } from '../../data/cibuburData';
+import { FEATURES } from '../../data/features';
 import { minutesNowInJakarta } from '../../utils/schedule';
 import { DAY_NAMES_ID, displayName, formatDateId, weekdayOf } from './engine';
 import { buildIcs, nextSlot, readMyAgentCode, saveMyAgentCode, slotsForAgentCode } from './mySchedule';
@@ -78,7 +79,7 @@ export const MySchedulePanel: React.FC<{
       ) : slots.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">
           {displayName(agent)} tidak mendapat jadwal floor time bulan ini.{' '}
-          {requestOpen && (
+          {requestOpen && FEATURES.floortimeAddRequest && (
             <button
               type="button"
               onClick={() => onRequest(agent.id, 'add')}
@@ -156,6 +157,7 @@ export const MySchedulePanel: React.FC<{
                   <span>
                     Tekan <b className="text-amber-700">Pindah</b> untuk mengajukan perubahan.
                   </span>
+                  {FEATURES.floortimeAddRequest && (
                   <button
                     type="button"
                     onClick={() => onRequest(agent.id, 'add')}
@@ -164,6 +166,7 @@ export const MySchedulePanel: React.FC<{
                     <Plus className="h-3 w-3" aria-hidden="true" />
                     Ajukan tambah jadwal
                   </button>
+                  )}
                 </>
               ) : (
                 <span>Batas request perubahan sudah lewat.</span>

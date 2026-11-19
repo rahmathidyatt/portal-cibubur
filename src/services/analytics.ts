@@ -239,7 +239,9 @@ export function pageLabel(path: string): string {
     'staf-medpro': 'Admin · Nota Medpro',
     'staf-jingle': 'Admin · Jingle',
     'staf-ulang-tahun': 'Admin · Ulang tahun',
-    'staf-minbur': 'Admin · Minbur'
+    'staf-minbur': 'Admin · Minbur',
+    'staf-bright-day': 'Admin · Bright Day · Report',
+    'staf-bright-day-hadir': 'Admin · Bright Day · Daftar hadir'
   };
   return labels[path] ?? path;
 }

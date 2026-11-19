@@ -24,7 +24,6 @@ export type MinburIntent =
   | 'pengumuman'
   | 'usia-kantor'
   | 'ulang-tahun'
-  | 'install'
   | 'floortime-besok'
   | 'libur'
   | 'bm'
@@ -62,7 +61,6 @@ const RULES: { intent: MinburIntent; test: (t: string) => boolean }[] = [
     test: (t) => has(t, ['berdiri', 'sejak kapan', 'umur kantor', 'usia kantor', 'ulang tahun kantor', 'ultah kantor', 'anniversary'])
   },
   { intent: 'ulang-tahun', test: (t) => has(t, ['ulang tahun', 'ulangtahun', 'ultah', 'birthday', 'hbd']) },
-  { intent: 'install', test: (t) => has(t, ['aplikasi', 'install', 'instal', 'layar utama', 'home screen', 'app\\b']) },
   {
     intent: 'floortime-tukar',
     test: (t) => has(t, ['tukar', 'pindah', 'ganti', 'ubah', 'izin', 'request', 'ajukan', 'berhalangan', 'tidak bisa hadir', 'gak bisa', 'ga bisa'])
@@ -246,15 +244,6 @@ export function answerAnniversary(foundedIso: string, today: string): MinburAnsw
       : [`Brighton HUB Cibubur berdiri sejak ${since}, sekarang berusia ${a.age} tahun.`, `Ulang tahun ke-${a.nextAge} tinggal ${a.daysUntil} hari lagi.`]
   };
 }
-
-export const INSTALL_ANSWER: MinburAnswer = {
-  lines: [
-    'Portal ini bisa dipasang seperti aplikasi di HP:',
-    '• Android (Chrome): ketuk menu ⋮ → "Tambahkan ke layar utama" / "Instal aplikasi".',
-    '• iPhone (Safari): ketuk tombol Bagikan → "Tambah ke Layar Utama".',
-    'Setelah itu portal bisa dibuka langsung dari ikon Brighton di layar HP.'
-  ]
-};
 
 export const NAVIGATION_ANSWER: MinburAnswer = {
   lines: [

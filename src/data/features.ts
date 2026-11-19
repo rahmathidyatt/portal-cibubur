@@ -6,5 +6,7 @@ export const FEATURES = {
   /** Reservasi Dealing Room (menu, halaman #dealing-room, kartu beranda). */
   dealingRoom: false,
   /** Pendaftaran jaga harian Floortime (jadwal kini ditentukan kantor lewat Floor Time Scheduler). */
-  floortimeRegistration: false
+  floortimeRegistration: false,
+  /** Request "Tambah jadwal" floor time (sementara hanya "Pindah jadwal"). */
+  floortimeAddRequest: false
 } as const;
