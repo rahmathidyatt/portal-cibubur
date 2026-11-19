@@ -238,7 +238,8 @@ export function pageLabel(path: string): string {
     'staf-training': 'Admin · Training Brighton',
     'staf-medpro': 'Admin · Nota Medpro',
     'staf-jingle': 'Admin · Jingle',
-    'staf-ulang-tahun': 'Admin · Ulang tahun'
+    'staf-ulang-tahun': 'Admin · Ulang tahun',
+    'staf-minbur': 'Admin · Minbur'
   };
   return labels[path] ?? path;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FEATURES } from '../data/features';
 
-export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota' | 'staf-statistik' | 'staf-jingle' | 'staf-ulang-tahun' | 'staf-training' | 'staf-medpro';
+export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota' | 'staf-statistik' | 'staf-jingle' | 'staf-ulang-tahun' | 'staf-training' | 'staf-medpro' | 'staf-minbur';
 
 const PAGE_ROUTES: PortalRoute[] = [
   ...(FEATURES.dealingRoom ? (['dealing-room'] as PortalRoute[]) : []),
@@ -12,7 +12,8 @@ const PAGE_ROUTES: PortalRoute[] = [
   'staf-jingle',
   'staf-ulang-tahun',
   'staf-training',
-  'staf-medpro'
+  'staf-medpro',
+  'staf-minbur'
 ];
 
 /** Alamat lama yang diarahkan ke halaman baru. */

@@ -5,10 +5,21 @@ import { getScheduleStore } from '../floortime/scheduleStore';
 import type { ScheduleData } from '../floortime/engine';
 import { readMyAgentCode, saveMyAgentCode } from '../floortime/mySchedule';
 import { getContentStore } from '../../services/contentStore';
+import { getBirthdayStore } from '../../services/birthdayStore';
+import { getMinburStore, MINBUR_FAQ_CHANGED, type MinburFaq } from '../../services/minburStore';
+import { addDaysIso } from '../birthdays/birthdays';
 import { todayInJakarta } from '../../utils/schedule';
 import {
+  INSTALL_ANSWER,
+  NAVIGATION_ANSWER,
   QUICK_QUESTIONS,
+  answerAnniversary,
   answerAnnouncements,
+  answerBirthdays,
+  answerBusinessManagers,
+  answerFromTaught,
+  answerHolidays,
+  matchTaughtFaq,
   answerFloorToday,
   answerHours,
   answerMySchedule,
@@ -33,7 +44,7 @@ const WELCOME: ChatMessage = {
   from: 'minbur',
   lines: [
     'Halo! Saya Minbur, admin Cibubur 👋',
-    'Saya bisa bantu soal floor time, jam kantor, order messenger, pengumuman, dan kontak staf. Pilih pertanyaan di bawah atau ketik saja.'
+    'Tanya apa saja seputar kantor: floor time, jam kantor, Business Manager, ulang tahun, pengumuman, order messenger, kontak staf, dan lainnya. Pilih pertanyaan di bawah atau ketik saja.'
   ]
 };
 
@@ -54,7 +65,8 @@ export const Minbur: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
-  const scheduleRef = useRef<Promise<ScheduleData | null> | null>(null);
+  const schedulesRef = useRef<Map<string, Promise<ScheduleData | null>>>(new Map());
+  const faqRef = useRef<Promise<MinburFaq[]> | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
@@ -67,24 +79,49 @@ export const Minbur: React.FC = () => {
     if (open) inputRef.current?.focus();
   }, [open]);
 
-  const loadSchedule = (): Promise<ScheduleData | null> => {
-    if (!scheduleRef.current) {
-      const [y, m] = todayInJakarta().split('-').map(Number);
-      scheduleRef.current = getScheduleStore()
+  useEffect(() => {
+    const reset = () => {
+      faqRef.current = null;
+    };
+    window.addEventListener(MINBUR_FAQ_CHANGED, reset);
+    return () => window.removeEventListener(MINBUR_FAQ_CHANGED, reset);
+  }, []);
+
+  const loadSchedule = (iso: string): Promise<ScheduleData | null> => {
+    const key = iso.slice(0, 7);
+    let p = schedulesRef.current.get(key);
+    if (!p) {
+      const [y, m] = key.split('-').map(Number);
+      p = getScheduleStore()
         .getSchedule(y, m)
         .then((s) => s?.data ?? null)
         .catch(() => null);
+      schedulesRef.current.set(key, p);
     }
-    return scheduleRef.current;
+    return p;
+  };
+
+  const loadFaq = (): Promise<MinburFaq[]> => {
+    if (!faqRef.current) {
+      faqRef.current = getMinburStore()
+        .listFaq()
+        .catch(() => []);
+    }
+    return faqRef.current;
   };
 
   const answer = async (text: string): Promise<MinburAnswer> => {
     const now = new Date();
     const today = todayInJakarta(now);
+    // 1) Jawaban yang diajarkan admin lebih diutamakan.
+    const taught = matchTaughtFaq(text, await loadFaq());
+    if (taught) return answerFromTaught(taught);
+
     const intent = detectIntent(text);
 
     // Kode agen di pertanyaan (mis. "ADOL") langsung dianggap tanya jadwal.
-    const data = intent === null || intent === 'floortime-saya' || intent === 'floortime-hari-ini' ? await loadSchedule() : null;
+    const needsSchedule = intent === null || intent === 'floortime-saya' || intent === 'floortime-hari-ini' || intent === 'libur';
+    const data = needsSchedule ? await loadSchedule(today) : null;
     const code = data ? findAgentCode(text, data.agents.map((a) => a.code)) : null;
     if (code && (intent === null || intent === 'floortime-saya')) {
       saveMyAgentCode(code);
@@ -116,6 +153,30 @@ export const Minbur: React.FC = () => {
         };
       case 'floortime-hari-ini':
         return answerFloorToday(data, today);
+      case 'floortime-besok': {
+        const tomorrow = addDaysIso(today, 1);
+        return answerFloorToday(await loadSchedule(tomorrow), tomorrow, 'besok');
+      }
+      case 'libur':
+        return answerHolidays(data, today, WEEKLY_OFFICE_HOURS);
+      case 'bm': {
+        const list = await getContentStore()
+          .listBusinessManagers()
+          .catch(() => []);
+        return answerBusinessManagers(list, text);
+      }
+      case 'ulang-tahun': {
+        const list = await getBirthdayStore()
+          .list()
+          .catch(() => []);
+        return answerBirthdays(list, today);
+      }
+      case 'usia-kantor':
+        return answerAnniversary(OFFICE_IDENTITY.foundedDate, today);
+      case 'install':
+        return INSTALL_ANSWER;
+      case 'navigasi':
+        return NAVIGATION_ANSWER;
       case 'floortime-saya':
         return answerMySchedule(data, readMyAgentCode(), today);
       case 'floortime-tukar':
@@ -165,10 +226,13 @@ export const Minbur: React.FC = () => {
         };
       }
       default:
+        void getMinburStore()
+          .recordUnanswered(text)
+          .catch(() => undefined);
         return {
           lines: [
             'Maaf, Minbur belum paham pertanyaan itu 🙏',
-            'Coba tanya soal floor time, jam kantor, pengumuman, order messenger, atau kontak staf. Untuk hal lain, langsung hubungi tim operasional.'
+            'Pertanyaan ini sudah Minbur catat supaya admin bisa mengajarkan jawabannya. Sementara itu, silakan hubungi tim operasional.'
           ],
           links: [{ label: 'WhatsApp Operasional', href: waLink(ops), external: true }]
         };

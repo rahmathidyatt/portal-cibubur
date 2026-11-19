@@ -21,6 +21,7 @@ import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
 import { JinglePlayer } from './components/JinglePlayer';
 import { Minbur } from './features/minbur/Minbur';
+import { MinburAdminPage } from './features/minbur/MinburAdminPage';
 import { ReservationPage } from './components/ReservationPage';
 import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
 import { AdminShell } from './components/AdminShell';
@@ -277,6 +278,8 @@ function StaffPage({ route }: { route: PortalRoute }) {
       return <JinglePage />;
     case 'staf-ulang-tahun':
       return <BirthdayPage />;
+    case 'staf-minbur':
+      return <MinburAdminPage />;
     default:
       return <PortalStatsPage />;
   }

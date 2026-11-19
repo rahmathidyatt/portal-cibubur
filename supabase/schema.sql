@@ -701,3 +701,64 @@ end $$;
 -- Pengumuman "Co-Broking Day" (setiap Senin) diisi sekali lewat migrasi dan bisa dihapus admin.
 alter table public.announcements add column if not exists repeat_weekday smallint
   check (repeat_weekday is null or repeat_weekday between 1 and 7);
+
+-- ------------------------------------------------------------------
+-- Minbur (bot FAQ "admin cibubur")
+-- minbur_faq: tanya-jawab yang diajarkan admin (dibaca semua orang).
+-- minbur_unanswered: pertanyaan yang belum bisa dijawab (dicatat lewat fungsi, dibaca admin).
+-- ------------------------------------------------------------------
+create table if not exists public.minbur_faq (
+  id uuid primary key default gen_random_uuid(),
+  keywords text not null check (char_length(keywords) between 2 and 300),
+  answer text not null check (char_length(answer) between 2 and 1500),
+  link_label text check (link_label is null or char_length(link_label) <= 60),
+  link_url text check (link_url is null or (char_length(link_url) <= 500 and link_url ~ '^(https?://|#)')),
+  created_at timestamptz not null default now()
+);
+grant select on public.minbur_faq to anon, authenticated;
+grant insert, update, delete on public.minbur_faq to authenticated;
+alter table public.minbur_faq enable row level security;
+drop policy if exists "read minbur_faq" on public.minbur_faq;
+create policy "read minbur_faq" on public.minbur_faq for select to anon, authenticated using (true);
+drop policy if exists "admin all minbur_faq" on public.minbur_faq;
+create policy "admin all minbur_faq" on public.minbur_faq for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+create table if not exists public.minbur_unanswered (
+  id bigint generated always as identity primary key,
+  question text not null check (char_length(question) between 1 and 200),
+  asked_at timestamptz not null default now()
+);
+create index if not exists minbur_unanswered_asked_idx on public.minbur_unanswered (asked_at);
+revoke all on public.minbur_unanswered from anon;
+grant select, delete on public.minbur_unanswered to authenticated;
+alter table public.minbur_unanswered enable row level security;
+drop policy if exists "admin all minbur_unanswered" on public.minbur_unanswered;
+create policy "admin all minbur_unanswered" on public.minbur_unanswered for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+create or replace function public.record_minbur_question(p_question text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_q text := left(btrim(coalesce(p_question, '')), 200);
+begin
+  if char_length(v_q) < 2 then
+    return;
+  end if;
+  -- Pertanyaan sama dalam 7 hari terakhir tidak dicatat ulang; batas wajar 300 per hari.
+  if exists (select 1 from public.minbur_unanswered
+             where lower(question) = lower(v_q) and asked_at > now() - interval '7 days') then
+    return;
+  end if;
+  if (select count(*) from public.minbur_unanswered where asked_at > now() - interval '1 day') >= 300 then
+    return;
+  end if;
+  insert into public.minbur_unanswered (question) values (v_q);
+end;
+$$;
+revoke all on function public.record_minbur_question(text) from public;
+grant execute on function public.record_minbur_question(text) to anon, authenticated;

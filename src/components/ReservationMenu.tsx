@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag } from 'lucide-react';
+import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
 import { FEATURES } from '../data/features';
@@ -81,6 +81,14 @@ export const STAFF_LINKS = [
     label: 'Ulang tahun agen',
     hint: 'Unggah data bulanan',
     Icon: Cake
+  },
+  {
+    group: 'Konten portal',
+    href: '#staf-minbur',
+    route: 'staf-minbur' as PortalRoute,
+    label: 'Minbur',
+    hint: 'Ajari bot & pertanyaan baru',
+    Icon: MessageCircle
   }
 ];
 
