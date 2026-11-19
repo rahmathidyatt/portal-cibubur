@@ -4,7 +4,7 @@
  */
 
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { Menu, X, LogIn, LogOut, ShieldCheck, Cake, LayoutDashboard } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, ShieldCheck, LayoutDashboard } from 'lucide-react';
 import { officeAnniversary } from './utils/anniversary';
 import { recordVisit } from './services/analytics';
 import { todayInJakarta } from './utils/schedule';
@@ -20,6 +20,7 @@ import { BusinessManagers } from './components/BusinessManagers';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
 import { JinglePlayer } from './components/JinglePlayer';
+import { Minbur } from './features/minbur/Minbur';
 import { ReservationPage } from './components/ReservationPage';
 import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
 import { AdminShell } from './components/AdminShell';
@@ -256,6 +257,7 @@ function PortalApp() {
 
       <SiteFooter isAdmin={isAdmin} onLogin={() => setLoginOpen(true)} />
       <JinglePlayer />
+      {!isStaffRoute(route) && <Minbur />}
     </div>
   );
 }
@@ -305,12 +307,11 @@ function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => voi
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <OfficeStatusBadge weeklyHours={WEEKLY_OFFICE_HOURS} />
         <p className="inline-flex items-center gap-1.5">
-          <Cake className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
           {anniv.isToday ? (
             <span className="font-semibold text-amber-800">Hari ini ulang tahun ke-{anniv.age} kantor</span>
           ) : (
             <span>
-              Berdiri sejak 6 Mei 2023 · {anniv.age} tahun · ulang tahun ke-{anniv.nextAge} dalam {anniv.daysUntil} hari
+              Berdiri sejak 3 Mei 2023 · {anniv.age} tahun
             </span>
           )}
         </p>

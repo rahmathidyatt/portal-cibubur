@@ -60,7 +60,7 @@ export const OFFICE_IDENTITY = {
   phoneHref: 'tel:02138739073',
   mapsUrl: 'https://maps.app.goo.gl/fbFsEzTkC3Jp9HEY6',
   /** Tanggal berdiri kantor (YYYY-MM-DD), dipakai untuk ulang tahun kantor. */
-  foundedDate: '2023-05-06',
+  foundedDate: '2023-05-03',
   /** Formulir order Smart Messenger (Google Form via bit.ly). */
   smartMessengerOrderUrl: 'https://bit.ly/FormOrderSmartMessengerHubCibubur'
 };

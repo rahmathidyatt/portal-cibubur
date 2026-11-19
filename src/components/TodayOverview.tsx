@@ -64,7 +64,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
                 Selamat ulang tahun ke-{anniv.age}, {OFFICE_IDENTITY.name}!
               </p>
               <p className="mt-0.5 text-sm text-slate-700">
-                Berdiri sejak 6 Mei 2023. Terima kasih untuk seluruh tim yang sudah tumbuh bersama.
+                Berdiri sejak 3 Mei 2023. Terima kasih untuk seluruh tim yang sudah tumbuh bersama.
               </p>
             </div>
           </div>

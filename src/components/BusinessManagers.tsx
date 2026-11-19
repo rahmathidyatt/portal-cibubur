@@ -290,9 +290,12 @@ export const BusinessManagers: React.FC = () => {
     <section id="business-manager" className="scroll-mt-20 py-12 sm:py-16 bg-white border-b border-slate-200">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-            Pimpinan & Business Manager
-          </h2>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">Business Manager</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              {bms.length} BM · {units.length} unit
+            </p>
+          </div>
           {isAdmin && !formOpen && (
             <button
               type="button"
@@ -319,17 +322,18 @@ export const BusinessManagers: React.FC = () => {
         )}
         {error && <p className="mt-4 text-xs font-semibold text-red-700">{error}</p>}
 
+        {principals.length > 0 && (
         <PrincipalSection
           principals={principals}
           isAdmin={isAdmin}
           renderCard={renderCard}
           onAdd={() => setFormOpen(true, 'Principal')}
         />
+        )}
 
-        <div className="mt-10 flex items-baseline justify-between gap-3">
-          <h3 className="text-xl font-bold tracking-tight text-slate-950">Business Manager per unit</h3>
-          <p className="text-xs text-slate-500">{bms.length} BM · {units.length} unit</p>
-        </div>
+        {principals.length > 0 && (
+          <h3 className="mt-10 text-xl font-bold tracking-tight text-slate-950">Business Manager per unit</h3>
+        )}
         {bms.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">Belum ada Business Manager.</p>
         ) : (
