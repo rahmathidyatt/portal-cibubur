@@ -11,6 +11,10 @@ import {
   TRAINING_MODULES,
   agentStatus,
   buildTrainingBc,
+  buildAgentTrainingBc,
+  defaultDeadline,
+  greetingForHour,
+  registeredAgents,
   cancelPending,
   findTrainingSheet,
   formatBatchDate,
@@ -18,7 +22,6 @@ import {
   moduleStatus,
   normalizeAgentName,
   outstandingModules,
-  passedCount,
   pendingBatches,
   registerToBatch,
   setScore,
@@ -77,6 +80,11 @@ export const TrainingPage: React.FC = () => {
   const [batchOpen, setBatchOpen] = useState<boolean>(false);
   const [newName, setNewName] = useState<string>('');
   const [bcBatch, setBcBatch] = useState<string>('__all');
+  const [bcMode, setBcMode] = useState<'grup' | 'agen'>('grup');
+  const [bcAgentId, setBcAgentId] = useState<string>('');
+  const [deadline, setDeadline] = useState<string>('');
+  const [deadlineTime, setDeadlineTime] = useState<string>('17.00');
+  const [registering, setRegistering] = useState<TrainingAgent | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -115,7 +123,17 @@ export const TrainingPage: React.FC = () => {
     .filter((a) => !needle || a.name.includes(needle));
 
   const batches = pendingBatches(list);
-  const bcText = buildTrainingBc(list, bcBatch === '__all' ? undefined : bcBatch);
+  const bcBatchDate = bcBatch === '__all' ? undefined : bcBatch;
+  const bcOpts = {
+    batchDate: bcBatchDate,
+    deadline: deadline || defaultDeadline(bcBatchDate || undefined, todayInJakarta()),
+    deadlineTime: deadlineTime.trim() || '17.00',
+    greeting: greetingForHour(Number(new Date().toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false })))
+  };
+  const bcRegistered = registeredAgents(list, bcBatchDate);
+  const bcAgent = bcRegistered.find((r) => r.agent.id === bcAgentId)?.agent ?? bcRegistered[0]?.agent;
+  const bcText =
+    bcMode === 'grup' ? buildTrainingBc(list, bcOpts) : bcAgent ? buildAgentTrainingBc(bcAgent, bcOpts) : '';
   const editAgent = editing ? list.find((a) => a.id === editing.agentId) : undefined;
   const editModule = editing ? TRAINING_MODULES.find((m) => m.id === editing.moduleId) : undefined;
 
@@ -206,7 +224,6 @@ export const TrainingPage: React.FC = () => {
                         <span className="mt-1.5 block text-xs font-bold text-slate-700">{i + 1}</span>
                       </th>
                     ))}
-                    <th className="px-2 py-2 text-center text-xs font-bold text-slate-700">Lulus</th>
                     <th className="w-8" />
                   </tr>
                 </thead>
@@ -261,11 +278,8 @@ export const TrainingPage: React.FC = () => {
                             </td>
                           );
                         })}
-                        <td className="px-2 text-center text-xs font-semibold tabular-nums text-slate-700">
-                          {passedCount(a)}/{TRAINING_MODULES.length}
-                        </td>
                         <td className="pr-2">
-                          <AgentMenu agent={a} onToggleGraduate={(g) => void saveAgent({ ...a, graduated: g }, g ? `${a.name} ditetapkan lulus.` : `Penetapan lulus ${a.name} dibatalkan.`)} onDelete={async () => {
+                          <AgentMenu agent={a} onRegister={() => setRegistering(a)} onToggleGraduate={(g) => void saveAgent({ ...a, graduated: g }, g ? `${a.name} ditetapkan lulus.` : `Penetapan lulus ${a.name} dibatalkan.`)} onDelete={async () => {
                             try {
                               await store.remove(a.id, auth);
                               setAgents((l) => l?.filter((x) => x.id !== a.id) ?? null);
@@ -300,24 +314,83 @@ export const TrainingPage: React.FC = () => {
           </div>
 
           <aside className="grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
-            <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
-              <p className="text-sm font-bold text-slate-950">BC pengingat training</p>
-              <p className="mt-0.5 text-xs text-slate-500">Untuk agen yang sudah didaftarkan dan nilainya masih kosong.</p>
-              <select
-                aria-label="Batch untuk BC"
-                value={bcBatch}
-                onChange={(e) => setBcBatch(e.target.value)}
-                className={`${input} mt-3`}
-              >
-                <option value="__all">Semua yang menunggu nilai</option>
-                {batches.map((b) => (
-                  <option key={b || 'none'} value={b}>
-                    {b ? `Batch ${formatBatchDate(b)}` : 'Tanpa tanggal batch'}
-                  </option>
+            <div className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+              <div>
+                <p className="text-sm font-bold text-slate-950">BC pengingat training</p>
+                <p className="mt-0.5 text-xs text-slate-500">Dari agen yang sudah didaftarkan dan nilainya masih kosong.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-1 rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Jenis BC">
+                {(['grup', 'agen'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="tab"
+                    aria-selected={bcMode === m}
+                    onClick={() => setBcMode(m)}
+                    className={`rounded-lg px-2 py-1.5 text-xs font-bold cursor-pointer ${bcMode === m ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}
+                  >
+                    {m === 'grup' ? 'BC grup' : 'BC per agen'}
+                  </button>
                 ))}
-              </select>
+              </div>
+              <label className="block text-xs font-semibold text-slate-700">
+                Batch
+                <select aria-label="Batch untuk BC" value={bcBatch} onChange={(e) => setBcBatch(e.target.value)} className={`${input} mt-1`}>
+                  <option value="__all">Semua yang menunggu nilai</option>
+                  {batches.map((b) => (
+                    <option key={b || 'none'} value={b}>
+                      {b ? `Batch ${formatBatchDate(b)}` : 'Tanpa tanggal batch'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {bcMode === 'agen' && (
+                <label className="block text-xs font-semibold text-slate-700">
+                  Agen ({bcRegistered.length})
+                  <select
+                    aria-label="Agen untuk BC"
+                    value={bcAgent?.id ?? ''}
+                    onChange={(e) => setBcAgentId(e.target.value)}
+                    className={`${input} mt-1`}
+                    disabled={bcRegistered.length === 0}
+                  >
+                    {bcRegistered.map((r) => (
+                      <option key={r.agent.id} value={r.agent.id}>
+                        {r.agent.name} · {r.modules.length} sesi
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Batas pendaftaran
+                  <input
+                    type="date"
+                    aria-label="Batas pendaftaran"
+                    value={bcOpts.deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className={`${input} mt-1`}
+                  />
+                </label>
+                <label className="block text-xs font-semibold text-slate-700">
+                  Pukul
+                  <input
+                    aria-label="Jam batas pendaftaran"
+                    value={deadlineTime}
+                    onChange={(e) => setDeadlineTime(e.target.value)}
+                    placeholder="17.00"
+                    className={`${input} mt-1`}
+                  />
+                </label>
+              </div>
             </div>
-            <CopyTextBlock text={bcText} label="Teks BC" emptyText="Tidak ada agen yang menunggu nilai." rows={14} />
+            <CopyTextBlock
+              text={bcText}
+              label={bcMode === 'grup' ? 'Teks BC grup' : `Teks BC ${bcAgent?.name ?? 'agen'}`}
+              emptyText="Belum ada agen yang didaftarkan dan menunggu nilai."
+              rows={16}
+            />
           </aside>
         </div>
       </div>
@@ -330,6 +403,18 @@ export const TrainingPage: React.FC = () => {
           onSave={(next, msg) => {
             void saveAgent(next, msg);
             setEditing(null);
+          }}
+        />
+      )}
+
+      {registering && (
+        <RegisterAgentDialog
+          agent={registering}
+          onClose={() => setRegistering(null)}
+          onSave={(next, date) => {
+            setRegistering(null);
+            setBcBatch(date);
+            void saveAgent(next, `${next.name} didaftarkan ke batch ${formatBatchDate(date)}.`);
           }}
         />
       )}
@@ -377,8 +462,14 @@ const ModuleLegend: React.FC = () => (
   </details>
 );
 
-const AgentMenu: React.FC<{ agent: TrainingAgent; onToggleGraduate: (g: boolean) => void; onDelete: () => Promise<void> }> = ({
+const AgentMenu: React.FC<{
+  agent: TrainingAgent;
+  onRegister: () => void;
+  onToggleGraduate: (g: boolean) => void;
+  onDelete: () => Promise<void>;
+}> = ({
   agent,
+  onRegister,
   onToggleGraduate,
   onDelete
 }) => {
@@ -396,6 +487,19 @@ const AgentMenu: React.FC<{ agent: TrainingAgent; onToggleGraduate: (g: boolean)
       </button>
       {open && (
         <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl bg-white p-1.5 shadow-lg ring-1 ring-slate-200">
+          {outstandingModules(agent).length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onRegister();
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-slate-800 hover:bg-slate-50 cursor-pointer"
+            >
+              <CalendarPlus className="h-4 w-4 text-amber-600" />
+              Daftarkan sesi
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -413,6 +517,37 @@ const AgentMenu: React.FC<{ agent: TrainingAgent; onToggleGraduate: (g: boolean)
         </div>
       )}
     </div>
+  );
+};
+
+/** Daftarkan semua sesi yang belum diikuti / belum lulus dari satu agen sekaligus. */
+const RegisterAgentDialog: React.FC<{
+  agent: TrainingAgent;
+  onClose: () => void;
+  onSave: (next: TrainingAgent, date: string) => void;
+}> = ({ agent, onClose, onSave }) => {
+  const [date, setDate] = useState<string>(todayInJakarta());
+  const out = outstandingModules(agent);
+  return (
+    <Dialog title={`Daftarkan sesi · ${agent.name}`} onClose={onClose}>
+      <p className="text-sm text-slate-600">
+        {out.length} sesi yang belum diikuti atau belum lulus akan ditandai <b className="text-red-700">menunggu nilai</b> sekaligus:
+      </p>
+      <ol className="mt-2 space-y-0.5 text-sm text-slate-800">
+        {out.map((m) => (
+          <li key={m.id}>
+            <span className="inline-block w-6 text-right font-bold tabular-nums text-slate-500">{TRAINING_MODULES.indexOf(m) + 1}.</span> {m.title}
+          </li>
+        ))}
+      </ol>
+      <label className="mt-4 block text-xs font-semibold text-slate-700">
+        Tanggal batch
+        <input type="date" aria-label="Tanggal batch" value={date} onChange={(e) => setDate(e.target.value)} className={`${input} mt-1`} />
+      </label>
+      <button type="button" disabled={!date} onClick={() => onSave(registerToBatch(agent, date), date)} className={`${primaryBtn} mt-4 w-full`}>
+        Daftarkan {out.length} sesi
+      </button>
+    </Dialog>
   );
 };
 

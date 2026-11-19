@@ -123,40 +123,97 @@ export function formatBatchDate(iso: string): string {
   return `${day}, ${d} ${MONTHS[m - 1]} ${y}`;
 }
 
-/**
- * Pesan BC pengingat untuk agen yang sudah didaftarkan dan nilainya masih kosong.
- * batchDate: hanya pendaftaran batch tersebut; undefined = semua yang menunggu nilai.
- */
-export function buildTrainingBc(agents: TrainingAgent[], batchDate?: string): string {
-  const rows = agents
+/** "Jumat, 06 November 2026" (tanggal dua digit, gaya pengumuman resmi). */
+export function formatDeadlineDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const day = DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${day}, ${String(d).padStart(2, '0')} ${MONTHS[m - 1]} ${y}`;
+}
+
+/** Salam sesuai jam WIB: pagi (<11), siang (<15), sore (<18), malam. */
+export function greetingForHour(hour: number): string {
+  if (hour < 11) return 'Selamat pagi';
+  if (hour < 15) return 'Selamat siang';
+  if (hour < 18) return 'Selamat sore';
+  return 'Selamat malam';
+}
+
+/** Batas pendaftaran bawaan: Jumat terakhir sebelum tanggal batch (atau Jumat terdekat dari hari ini). */
+export function defaultDeadline(batchDate: string | undefined, todayIso: string): string {
+  const base = batchDate || todayIso;
+  const [y, m, d] = base.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  if (batchDate) {
+    do t.setUTCDate(t.getUTCDate() - 1);
+    while (t.getUTCDay() !== 5);
+  } else {
+    while (t.getUTCDay() !== 5) t.setUTCDate(t.getUTCDate() + 1);
+  }
+  return t.toISOString().slice(0, 10);
+}
+
+/** Agen yang punya sesi menunggu nilai (opsional: hanya batch tertentu), urut nama. */
+export function registeredAgents(agents: TrainingAgent[], batchDate?: string): { agent: TrainingAgent; modules: TrainingModule[] }[] {
+  return agents
     .map((a) => ({
       agent: a,
       modules: TRAINING_MODULES.filter((m) => m.id in a.pending && (batchDate === undefined || a.pending[m.id] === batchDate))
     }))
     .filter((r) => r.modules.length > 0)
     .sort((a, b) => a.agent.name.localeCompare(b.agent.name));
-  if (rows.length === 0) return '';
+}
 
-  const lines: string[] = ['*PENGINGAT TRAINING BRIGHTON*'];
-  if (batchDate !== undefined) lines.push(`Batch: ${formatBatchDate(batchDate)}`);
-  lines.push(
+export interface TrainingBcOptions {
+  batchDate?: string;
+  /** Batas pendaftaran (YYYY-MM-DD) & jamnya, mis. "17.00". */
+  deadline: string;
+  deadlineTime: string;
+  greeting: string;
+}
+
+/** BC grup: daftar PA yang sudah terdaftar sebagai peserta Training Bright On. */
+export function buildTrainingBc(agents: TrainingAgent[], opts: TrainingBcOptions): string {
+  const rows = registeredAgents(agents, opts.batchDate);
+  if (rows.length === 0) return '';
+  return [
+    `${opts.greeting}, Bapak/Ibu.`,
     '',
-    'Halo rekan-rekan, berikut agen yang sudah didaftarkan pada Training Brighton dan nilainya belum keluar:',
-    ''
-  );
-  rows.forEach(({ agent, modules }, i) => {
-    lines.push(`${i + 1}. *${agent.name}*`);
-    for (const m of modules) lines.push(`   • ${m.title}`);
-  });
-  lines.push(
+    'Berikut kami informasikan daftar Property Advisor (PA) yang telah terdaftar sebagai peserta Training Bright On:',
     '',
-    'Mohon cek jadwal dan tautan training di website resmi Brighton, hadir tepat waktu, dan ikuti sesi sampai selesai.',
-    `Nilai minimal kelulusan *${PASS_SCORE}*. Sesi yang belum lulus akan didaftarkan ulang pada batch berikutnya.`,
+    ...rows.map((r) => `- ${r.agent.name}`),
     '',
-    'Terima kasih 🙏',
-    'Brighton HUB Cibubur'
-  );
-  return lines.join('\n');
+    '📌 PENTING UNTUK DIPERHATIKAN',
+    `- Batas akhir pendaftaran dan penambahan peserta ke grup adalah ${formatDeadlineDate(opts.deadline)}, pukul ${opts.deadlineTime} WIB.`,
+    '- Setelah batas waktu tersebut, akses admin untuk penambahan peserta akan ditutup.',
+    '- PA yang belum terdaftar diharapkan segera melakukan pendaftaran atau menghubungi Admin untuk mendapatkan bantuan.',
+    '- Seluruh peserta wajib dipastikan telah berhasil login ke aplikasi Brighton sebelum mengikuti pelatihan.',
+    '',
+    'Terima kasih atas perhatian dan kerja samanya.'
+  ].join('\n');
+}
+
+/** BC pribadi untuk satu agen (dikirim ke WhatsApp/PC masing-masing agen). */
+export function buildAgentTrainingBc(agent: TrainingAgent, opts: TrainingBcOptions): string {
+  const modules = TRAINING_MODULES.filter((m) => m.id in agent.pending && (opts.batchDate === undefined || agent.pending[m.id] === opts.batchDate));
+  if (modules.length === 0) return '';
+  const dates = [...new Set(modules.map((m) => agent.pending[m.id]).filter(Boolean))].sort();
+  return [
+    `${opts.greeting}, Bapak/Ibu ${agent.name}.`,
+    '',
+    `Kami informasikan bahwa Bapak/Ibu telah terdaftar sebagai peserta Training Bright On${
+      dates.length === 1 ? ` batch ${formatBatchDate(dates[0])}` : ''
+    } untuk ${modules.length} sesi berikut:`,
+    '',
+    ...modules.map((m) => `${TRAINING_MODULES.indexOf(m) + 1}. ${m.title}`),
+    '',
+    '📌 PENGINGAT',
+    '- Pastikan sudah berhasil login ke aplikasi Brighton sebelum pelatihan dimulai.',
+    '- Hadir tepat waktu dan ikuti setiap sesi sampai selesai.',
+    `- Nilai minimal kelulusan adalah ${PASS_SCORE}. Sesi yang belum lulus akan didaftarkan ulang pada batch berikutnya.`,
+    `- Jika ada kendala, hubungi Admin sebelum ${formatDeadlineDate(opts.deadline)}, pukul ${opts.deadlineTime} WIB.`,
+    '',
+    'Terima kasih dan semangat mengikuti training.'
+  ].join('\n');
 }
 
 /** Tanggal-tanggal batch yang masih punya pendaftaran menunggu nilai (terbaru dulu, '' terakhir). */

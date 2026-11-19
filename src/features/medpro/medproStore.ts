@@ -163,6 +163,31 @@ function notaRow(n: Partial<Omit<MedproNota, 'id'>>): Partial<Omit<NotaRow, 'id'
   return row;
 }
 
+/** Baris lengkap untuk impor massal: PostgREST menolak (400) jika kunci tiap baris berbeda. */
+function fullNotaRow(n: Omit<MedproNota, 'id'>) {
+  return {
+    nota_date: n.date,
+    invoice: normalizeInvoice(n.invoice),
+    banner: Math.max(0, Math.round(n.banner || 0)),
+    branding: Math.max(0, Math.round(n.branding || 0)),
+    checked: !!n.checked,
+    paid_on: n.paidOn ?? null,
+    note: n.note ? n.note.slice(0, 200) : null
+  };
+}
+
+function fullDropRow(d: Omit<MedproDrop, 'id'>) {
+  return {
+    drop_date: d.date,
+    office: d.office.slice(0, 60),
+    nota_no: d.notaNo.slice(0, 60),
+    amount: Math.max(0, Math.round(d.amount || 0)),
+    checked: !!d.checked,
+    paid_on: d.paidOn ?? null,
+    note: d.note ? d.note.slice(0, 200) : null
+  };
+}
+
 const toDrop = (r: DropRow): MedproDrop => ({
   id: r.id,
   date: r.drop_date,
@@ -237,7 +262,7 @@ function createSupabaseStore(config: SupabaseConfig): MedproStore {
         'rest/v1/medpro_notas?on_conflict=invoice&select=id',
         'POST',
         auth,
-        list.map(notaRow),
+        list.map(fullNotaRow).filter((r) => r.invoice.length >= 5 && r.invoice.length <= 60),
         'resolution=ignore-duplicates,return=representation'
       );
       return ((await res.json()) as unknown[]).length;
@@ -274,7 +299,7 @@ function createSupabaseStore(config: SupabaseConfig): MedproStore {
         'rest/v1/medpro_drops?on_conflict=nota_no,drop_date&select=id',
         'POST',
         auth,
-        list.map(dropRow),
+        list.map(fullDropRow).filter((r) => r.office && r.nota_no),
         'resolution=ignore-duplicates,return=representation'
       );
       return ((await res.json()) as unknown[]).length;

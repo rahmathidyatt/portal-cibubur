@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, ChevronLeft, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 import { STAFF_LINKS } from './ReservationMenu';
 
@@ -12,14 +12,55 @@ interface AdminShellProps {
 
 const GROUPS = [...new Set(STAFF_LINKS.map((l) => l.group))];
 
-/** Tata letak area admin: sidebar di desktop, tab menu geser di HP. */
-export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut, children }) => (
+const COLLAPSE_KEY = 'portal-cibubur:admin-sidebar-collapsed';
+
+function readCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(COLLAPSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Tata letak area admin: sidebar di desktop (bisa disembunyikan), tab menu geser di HP. */
+export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut, children }) => {
+  const [collapsed, setCollapsedState] = useState<boolean>(readCollapsed);
+  const setCollapsed = (v: boolean) => {
+    setCollapsedState(v);
+    try {
+      window.localStorage.setItem(COLLAPSE_KEY, v ? '1' : '0');
+    } catch {
+      /* penyimpanan tidak tersedia */
+    }
+  };
+
+  return (
   <div className="bg-stone-50 lg:flex lg:min-h-[calc(100vh-57px)]">
+    {collapsed && (
+      <button
+        type="button"
+        onClick={() => setCollapsed(false)}
+        aria-label="Tampilkan menu admin"
+        title="Tampilkan menu admin"
+        className="hidden lg:grid fixed left-0 top-[73px] z-30 h-10 w-7 place-items-center rounded-r-xl bg-slate-950 text-amber-400 shadow-lg hover:w-8 transition-all cursor-pointer"
+      >
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </button>
+    )}
     <aside
       aria-label="Menu admin"
-      className="hidden lg:flex lg:flex-col w-64 shrink-0 border-r border-slate-200 bg-white lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)]"
+      className={`${collapsed ? 'hidden' : 'hidden lg:flex'} lg:flex-col w-64 shrink-0 border-r border-slate-200 bg-white lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)]`}
     >
-      <div className="px-5 pt-6 pb-4 border-b border-slate-100">
+      <div className="relative px-5 pt-6 pb-4 border-b border-slate-100">
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          aria-label="Sembunyikan menu admin"
+          title="Sembunyikan menu"
+          className="absolute right-3 top-5 grid h-7 w-7 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
+        >
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        </button>
         <p className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-200">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
           Area admin
@@ -105,4 +146,5 @@ export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut,
 
     <div className="min-w-0 flex-1">{children}</div>
   </div>
-);
+  );
+};

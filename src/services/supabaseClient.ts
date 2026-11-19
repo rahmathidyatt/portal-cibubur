@@ -46,8 +46,14 @@ export async function supabaseFetch(
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
+    let reason = '';
+    try {
+      reason = String((JSON.parse(detail) as { message?: string }).message ?? '').slice(0, 140);
+    } catch {
+      /* bukan JSON */
+    }
     throw new SupabaseRequestError(
-      `Permintaan ke server gagal (${res.status}).`,
+      `Permintaan ke server gagal (${res.status})${reason ? `: ${reason}` : '.'}`,
       res.status,
       detail
     );

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import type { OfficeDaySchedule } from '../data/cibuburData';
-import { Bike, Cake, CalendarPlus } from 'lucide-react';
+import { Cake, CalendarPlus } from 'lucide-react';
 import { FloorTimeTodayCard } from './dashboard/FloorTimeTodayCard';
 import { DealingRoomTodayCard } from './dashboard/DealingRoomTodayCard';
 import { FEATURES } from '../data/features';
@@ -79,18 +79,10 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
               href={OFFICE_IDENTITY.smartMessengerOrderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-3 rounded-2xl bg-slate-950 px-4 py-3 text-white hover:bg-slate-800"
+              className="block rounded-2xl bg-white/50 px-4 py-3 ring-1 ring-slate-200/70 backdrop-blur hover:bg-white/80"
             >
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-400 text-slate-950">
-                <Bike className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold">Order Smart Messenger</span>
-                <span className="block text-xs text-slate-400">Isi formulir order untuk kebutuhan messenger</span>
-              </span>
-              <span aria-hidden="true" className="text-amber-400 transition-transform group-hover:translate-x-0.5">
-                →
-              </span>
+              <span className="block text-sm font-bold text-slate-950">Order Smart Messenger</span>
+              <span className="block text-xs text-slate-500">Isi formulir order untuk kebutuhan smart messenger</span>
             </a>
           </div>
           {FEATURES.dealingRoom && <DealingRoomTodayCard today={today} minutesNow={minutesNow} />}

@@ -5,6 +5,9 @@ import {
   TRAINING_MODULES,
   agentStatus,
   buildTrainingBc,
+  buildAgentTrainingBc,
+  defaultDeadline,
+  greetingForHour,
   importTrainingSheet,
   moduleStatus,
   outstandingModules,
@@ -51,15 +54,21 @@ test('BC pengingat berisi agen & sesi yang menunggu nilai', () => {
     { id: '2', name: 'AYU (HAYP)', scores: {}, pending: { 'dokumen-kepemilikan': '2026-12-04' } },
     { id: '3', name: 'LULUS (AAAA)', scores: allScores(100), pending: {} }
   ];
-  const all = buildTrainingBc(agents);
-  assert.match(all, /^\*PENGINGAT TRAINING BRIGHTON\*/);
-  assert.match(all, /1\. \*AYU \(HAYP\)\*\n {3}• Dokumen Kepemilikan Properti/);
-  assert.match(all, /2\. \*URIP \(XJTA\)\*\n {3}• Bisnis Bersama Brighton\n {3}• Negosiasi/);
+  const opts = { deadline: '2026-11-06', deadlineTime: '17.00', greeting: 'Selamat siang' };
+  const all = buildTrainingBc(agents, opts);
+  assert.match(all, /^Selamat siang, Bapak\/Ibu\./);
+  assert.match(all, /- AYU \(HAYP\)\n- URIP \(XJTA\)/);
+  assert.match(all, /adalah Jumat, 06 November 2026, pukul 17\.00 WIB\./);
   assert.ok(!all.includes('LULUS'));
-  const batch = buildTrainingBc(agents, '2026-11-20');
-  assert.match(batch, /Batch: Jumat, 20 November 2026/);
+  const batch = buildTrainingBc(agents, { ...opts, batchDate: '2026-11-20' });
   assert.ok(!batch.includes('AYU'));
-  assert.equal(buildTrainingBc([agents[2]]), '');
+  assert.equal(buildTrainingBc([agents[2]], opts), '');
+  const one = buildAgentTrainingBc(agents[0], opts);
+  assert.match(one, /Bapak\/Ibu URIP \(XJTA\)/);
+  assert.match(one, /1\. Bisnis Bersama Brighton\n11\. Negosiasi/);
+  assert.equal(defaultDeadline('2026-11-10', '2026-11-01'), '2026-11-06');
+  assert.equal(defaultDeadline(undefined, '2026-11-19'), '2026-11-20');
+  assert.equal(greetingForHour(12), 'Selamat siang');
 });
 
 function grid(rows: Record<string, [string, string | null]>): GridSheet {
