@@ -7,7 +7,7 @@ import {
   writeLocal,
   type SupabaseConfig
 } from '../../services/supabaseClient';
-import type { TrainingAgent } from './training';
+import type { TrainingAgent, TrainingBatch } from './training';
 
 /** Rekap Training Brighton (khusus admin). */
 export interface TrainingStore {
@@ -18,6 +18,9 @@ export interface TrainingStore {
   remove(id: string, auth: AdminAuth): Promise<void>;
   /** Impor rekap: agen dengan nama sama diperbarui, sisanya ditambahkan. */
   importMany(agents: Omit<TrainingAgent, 'id'>[], auth: AdminAuth): Promise<void>;
+  /** Batch training berikutnya (diatur admin). */
+  getBatch(auth: AdminAuth): Promise<TrainingBatch | null>;
+  setBatch(batch: TrainingBatch, auth: AdminAuth): Promise<void>;
 }
 
 function requireAdmin(auth: AdminAuth): void {
@@ -25,6 +28,7 @@ function requireAdmin(auth: AdminAuth): void {
 }
 
 const KEY = 'portal-cibubur:training-agents';
+const BATCH_KEY = 'portal-cibubur:training-batch';
 
 function readAll(): TrainingAgent[] {
   const list = readLocal<TrainingAgent[]>(KEY, []);
@@ -66,6 +70,14 @@ function createLocalStore(): TrainingStore {
         else all.push({ ...a, id: randomId() });
       }
       writeLocal(KEY, all);
+    },
+    async getBatch(auth) {
+      requireAdmin(auth);
+      return readLocal<TrainingBatch | null>(BATCH_KEY, null);
+    },
+    async setBatch(batch, auth) {
+      requireAdmin(auth);
+      writeLocal(BATCH_KEY, batch);
     }
   };
   return store;
@@ -78,6 +90,7 @@ interface Row {
   pending: Record<string, string> | null;
   graduated: boolean | null;
   note: string | null;
+  gender: 'L' | 'P' | null;
 }
 
 const toAgent = (r: Row): TrainingAgent => ({
@@ -86,6 +99,7 @@ const toAgent = (r: Row): TrainingAgent => ({
   scores: r.scores ?? {},
   pending: r.pending ?? {},
   graduated: r.graduated ?? false,
+  gender: r.gender ?? null,
   ...(r.note ? { note: r.note } : {})
 });
 
@@ -97,6 +111,8 @@ const toRow = (a: Omit<TrainingAgent, 'id'>) => ({
   note: a.note ?? null,
   updated_at: new Date().toISOString()
 });
+/** Simpan agen yang sudah ada (ikut L/P). Impor Excel tidak menyentuh L/P. */
+const toFullRow = (a: Omit<TrainingAgent, 'id'>) => ({ ...toRow(a), gender: a.gender ?? null });
 
 function createSupabaseStore(config: SupabaseConfig): TrainingStore {
   return {
@@ -104,14 +120,14 @@ function createSupabaseStore(config: SupabaseConfig): TrainingStore {
       requireAdmin(auth);
       const res = await supabaseFetch(
         config,
-        'rest/v1/training_agents?select=id,name,scores,pending,graduated,note&order=created_at.asc',
+        'rest/v1/training_agents?select=id,name,scores,pending,graduated,note,gender&order=created_at.asc',
         { accessToken: auth.accessToken }
       );
       return ((await res.json()) as Row[]).map(toAgent);
     },
     async add(name, auth) {
       requireAdmin(auth);
-      const res = await supabaseFetch(config, 'rest/v1/training_agents?select=id,name,scores,pending,graduated,note', {
+      const res = await supabaseFetch(config, 'rest/v1/training_agents?select=id,name,scores,pending,graduated,note,gender', {
         method: 'POST',
         accessToken: auth.accessToken,
         headers: { Prefer: 'return=representation' },
@@ -130,7 +146,7 @@ function createSupabaseStore(config: SupabaseConfig): TrainingStore {
         method: 'PATCH',
         accessToken: auth.accessToken,
         headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify(toRow(agent))
+        body: JSON.stringify(toFullRow(agent))
       });
     },
     async saveMany(agents, auth) {
@@ -140,7 +156,7 @@ function createSupabaseStore(config: SupabaseConfig): TrainingStore {
         method: 'POST',
         accessToken: auth.accessToken,
         headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify(agents.map((a) => ({ id: a.id, ...toRow(a) })))
+        body: JSON.stringify(agents.map((a) => ({ id: a.id, ...toFullRow(a) })))
       });
     },
     async remove(id, auth) {
@@ -158,6 +174,21 @@ function createSupabaseStore(config: SupabaseConfig): TrainingStore {
         accessToken: auth.accessToken,
         headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
         body: JSON.stringify(agents.map(toRow))
+      });
+    },
+    async getBatch(auth) {
+      requireAdmin(auth);
+      const res = await supabaseFetch(config, 'rest/v1/training_batch?select=start_date,end_date&id=eq.1', { accessToken: auth.accessToken });
+      const [row] = (await res.json()) as { start_date: string; end_date: string }[];
+      return row ? { start: row.start_date, end: row.end_date } : null;
+    },
+    async setBatch(batch, auth) {
+      requireAdmin(auth);
+      await supabaseFetch(config, 'rest/v1/training_batch?on_conflict=id', {
+        method: 'POST',
+        accessToken: auth.accessToken,
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ id: 1, start_date: batch.start, end_date: batch.end, updated_at: new Date().toISOString() })
       });
     }
   };

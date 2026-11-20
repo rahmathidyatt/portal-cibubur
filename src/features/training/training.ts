@@ -35,6 +35,8 @@ export interface TrainingAgent {
   pending: Record<string, string>;
   /** Ditetapkan lulus oleh admin (hijau di rekap) walau nilai sesi tidak lengkap. */
   graduated?: boolean;
+  /** L = Bapak, P = Ibu (sapaan di BC). */
+  gender?: 'L' | 'P' | null;
   note?: string;
 }
 
@@ -163,8 +165,42 @@ export function registeredAgents(agents: TrainingAgent[], batchDate?: string): {
     .sort((a, b) => a.agent.name.localeCompare(b.agent.name));
 }
 
+/** Batch training berikutnya (biasanya Senin–Kamis), diatur admin. */
+export interface TrainingBatch {
+  start: string;
+  end: string;
+}
+
+export function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/** Tanggal selesai batch: dari pengaturan bila tanggal mulainya sama, selain itu 4 hari (Senin–Kamis). */
+export function batchEnd(start: string, batch?: TrainingBatch | null): string {
+  return batch && batch.start === start ? batch.end : addDays(start, 3);
+}
+
+/** "Senin–Kamis, 23–26 November 2026" (lintas bulan: "Senin, 30 November – Kamis, 3 Desember 2026"). */
+export function formatBatchRange(start: string, end: string): string {
+  const [y1, m1, d1] = start.split('-').map(Number);
+  const [y2, m2, d2] = end.split('-').map(Number);
+  const day = (y: number, m: number, d: number) => DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  if (start === end) return `${day(y1, m1, d1)}, ${d1} ${MONTHS[m1 - 1]} ${y1}`;
+  if (y1 === y2 && m1 === m2) return `${day(y1, m1, d1)}–${day(y2, m2, d2)}, ${d1}–${d2} ${MONTHS[m1 - 1]} ${y1}`;
+  const left = `${day(y1, m1, d1)}, ${d1} ${MONTHS[m1 - 1]}${y1 === y2 ? '' : ` ${y1}`}`;
+  return `${left} – ${day(y2, m2, d2)}, ${d2} ${MONTHS[m2 - 1]} ${y2}`;
+}
+
+/** Sapaan sesuai jenis kelamin agen. */
+export function salutation(agent: Pick<TrainingAgent, 'gender'>): string {
+  return agent.gender === 'L' ? 'Bapak' : agent.gender === 'P' ? 'Ibu' : 'Bapak/Ibu';
+}
+
 export interface TrainingBcOptions {
   batchDate?: string;
+  /** Batch berikutnya yang diatur admin (untuk BC pengingat & konfirmasi). */
+  nextBatch?: TrainingBatch | null;
   /** Batas pendaftaran (YYYY-MM-DD) & jamnya, mis. "17.00". */
   deadline: string;
   deadlineTime: string;
@@ -197,20 +233,22 @@ export function buildAgentTrainingBc(agent: TrainingAgent, opts: TrainingBcOptio
   const modules = TRAINING_MODULES.filter((m) => m.id in agent.pending && (opts.batchDate === undefined || agent.pending[m.id] === opts.batchDate));
   if (modules.length === 0) return '';
   const dates = [...new Set(modules.map((m) => agent.pending[m.id]).filter(Boolean))].sort();
+  const sapa = salutation(agent);
+  const batch =
+    dates.length === 1 ? ` batch ${formatBatchRange(dates[0], batchEnd(dates[0], opts.nextBatch))}` : '';
   return [
-    `${opts.greeting}, Bapak/Ibu ${agent.name}.`,
+    `${opts.greeting}, ${sapa} ${agent.name}.`,
     '',
-    `Kami informasikan bahwa Bapak/Ibu telah terdaftar sebagai peserta Training Bright On${
-      dates.length === 1 ? ` batch ${formatBatchDate(dates[0])}` : ''
-    } untuk ${modules.length} sesi berikut:`,
+    `Kami informasikan bahwa ${sapa} telah terdaftar sebagai peserta Training Bright On${batch} untuk ${modules.length} sesi berikut:`,
     '',
-    ...modules.map((m) => `${TRAINING_MODULES.indexOf(m) + 1}. ${m.title}`),
+    ...modules.map((m, i) => `${i + 1}. ${m.title}`),
     '',
     '📌 PENGINGAT',
     '- Pastikan sudah berhasil login ke aplikasi Brighton sebelum pelatihan dimulai.',
-    '- Hadir tepat waktu dan ikuti setiap sesi sampai selesai.',
+    '- Hadir tepat waktu dan ikuti setiap sesi hingga selesai.',
+    '- Saat mengisi absensi & kuis, WAJIB menuliskan Nama dan Kode Agen yang sesuai.',
+    '- Kesalahan penulisan nama dan kode agen bukan menjadi tanggung jawab Admin apabila nilai tidak terekam.',
     `- Nilai minimal kelulusan adalah ${PASS_SCORE}. Sesi yang belum lulus akan didaftarkan ulang pada batch berikutnya.`,
-    `- Jika ada kendala, hubungi Admin sebelum ${formatDeadlineDate(opts.deadline)}, pukul ${opts.deadlineTime} WIB.`,
     '',
     'Terima kasih dan semangat mengikuti training.'
   ].join('\n');
@@ -324,33 +362,42 @@ export function reminderAgents(agents: TrainingAgent[]): { agent: TrainingAgent;
     .sort((a, b) => a.agent.name.localeCompare(b.agent.name));
 }
 
+/** Kalimat jadwal batch berikutnya untuk BC pengingat. */
+function nextBatchSentence(batch?: TrainingBatch | null): string {
+  return batch?.start
+    ? `Batch berikutnya akan dilaksanakan pada ${formatBatchRange(batch.start, batch.end)}.`
+    : 'Jadwal batch berikutnya akan kami informasikan kemudian.';
+}
+
 /** BC pengingat sesi yang belum diikuti / belum lulus (semua agen, atau satu agen). */
-export function buildReminderBc(agents: TrainingAgent[], opts: Pick<TrainingBcOptions, 'greeting'>, agentId?: string): string {
+export function buildReminderBc(
+  agents: TrainingAgent[],
+  opts: Pick<TrainingBcOptions, 'greeting' | 'nextBatch'>,
+  agentId?: string
+): string {
   const rows = reminderAgents(agents).filter((r) => !agentId || r.agent.id === agentId);
   if (rows.length === 0) return '';
-  const single = !!agentId;
   const label = (s: 'belum' | 'tidak-lulus') => (s === 'belum' ? 'belum mengikuti' : 'belum lulus');
-  const body = single
+  const list = (r: (typeof rows)[number]) => r.modules.map((m) => `- ${m.module.title} (${label(m.status)})`);
+  const body = agentId
     ? [
-        `${opts.greeting}, Bapak/Ibu ${rows[0].agent.name}.`,
+        `${opts.greeting}, ${salutation(rows[0].agent)} ${rows[0].agent.name}.`,
         '',
-        'Kami ingatkan bahwa masih ada sesi Training Bright On yang belum diikuti atau belum lulus:',
+        `Kami ingatkan bahwa masih terdapat sesi Training Bright On yang belum ${salutation(rows[0].agent)} ikuti atau belum lulus. ${nextBatchSentence(opts.nextBatch)}`,
         '',
-        ...rows[0].modules.map((m) => `- ${m.module.title} (${label(m.status)})`)
+        ...list(rows[0])
       ]
     : [
         `${opts.greeting}, Bapak/Ibu.`,
         '',
-        'Berikut kami informasikan Property Advisor (PA) yang masih memiliki sesi Training Bright On yang belum diikuti atau belum lulus:',
+        `Berikut kami informasikan Property Advisor (PA) yang masih memiliki sesi Training Bright On yang belum diikuti atau belum lulus. ${nextBatchSentence(opts.nextBatch)}`,
         '',
-        ...rows.flatMap((r) => [`*${r.agent.name}*`, ...r.modules.map((m) => `- ${m.module.title} (${label(m.status)})`), ''])
+        ...rows.flatMap((r, i) => [...(i ? [''] : []), `*${r.agent.name}*`, ...list(r)])
       ];
-  if (!single) body.pop();
   return [
     ...body,
     '',
     '📌 PENTING UNTUK DIPERHATIKAN',
-    '- Mohon mengikuti sesi tersebut pada batch Training Bright On berikutnya.',
     '- Saat mengisi absensi & kuis, WAJIB menuliskan Nama dan Kode Agen yang sesuai.',
     '- Kesalahan penulisan nama dan kode agen bukan menjadi tanggung jawab Admin apabila nilai tidak terekam.',
     `- Nilai minimal kelulusan adalah ${PASS_SCORE}.`,

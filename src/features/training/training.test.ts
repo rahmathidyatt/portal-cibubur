@@ -65,7 +65,11 @@ test('BC pengingat berisi agen & sesi yang menunggu nilai', () => {
   assert.equal(buildTrainingBc([agents[2]], opts), '');
   const one = buildAgentTrainingBc(agents[0], opts);
   assert.match(one, /Bapak\/Ibu URIP \(XJTA\)/);
-  assert.match(one, /1\. Bisnis Bersama Brighton\n11\. Negosiasi/);
+  assert.match(one, /1\. Bisnis Bersama Brighton\n2\. Negosiasi/);
+  assert.match(one, /batch Jumat–Senin, 20–23 November 2026 untuk 2 sesi/);
+  const ibu = buildAgentTrainingBc({ ...agents[0], gender: 'P', pending: { negosiasi: '2026-11-23' } }, { ...opts, nextBatch: { start: '2026-11-23', end: '2026-11-26' } });
+  assert.match(ibu, /^Selamat siang, Ibu URIP \(XJTA\)\.\n\nKami informasikan bahwa Ibu telah terdaftar sebagai peserta Training Bright On batch Senin–Kamis, 23–26 November 2026 untuk 1 sesi berikut:/);
+  assert.match(ibu, /WAJIB menuliskan Nama dan Kode Agen/);
   assert.equal(defaultDeadline('2026-11-10', '2026-11-01'), '2026-11-06');
   assert.equal(defaultDeadline(undefined, '2026-11-19'), '2026-11-20');
   assert.equal(greetingForHour(12), 'Selamat siang');
@@ -146,5 +150,8 @@ test('BC pengingat sesi belum diikuti/lulus', () => {
   assert.ok(!bc.split('*URIP')[0].includes('Negosiasi'), 'menunggu nilai tidak diingatkan');
   assert.match(bc, /WAJIB menuliskan Nama dan Kode Agen yang sesuai/);
   assert.match(buildReminderBc(agents, { greeting: 'Selamat pagi' }, 'b'), /^Selamat pagi, Bapak\/Ibu URIP \(XJTA\)\./);
+  const pak = buildReminderBc([{ ...agents[1], gender: 'L' }], { greeting: 'Selamat pagi', nextBatch: { start: '2026-11-30', end: '2026-12-03' } }, 'b');
+  assert.match(pak, /^Selamat pagi, Bapak URIP \(XJTA\)\.\n\nKami ingatkan bahwa masih terdapat sesi Training Bright On yang belum Bapak ikuti atau belum lulus\. Batch berikutnya akan dilaksanakan pada Senin, 30 November – Kamis, 3 Desember 2026\./);
+  assert.match(bc, /Jadwal batch berikutnya akan kami informasikan kemudian\./);
   assert.deepEqual(cancelAllPending(agents[0]).pending, {});
 });

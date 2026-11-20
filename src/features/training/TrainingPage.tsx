@@ -11,8 +11,12 @@ import {
   TRAINING_MODULES,
   agentStatus,
   buildTrainingBc,
+  addDays,
+  batchEnd,
   buildAgentTrainingBc,
   buildReminderBc,
+  formatBatchRange,
+  type TrainingBatch,
   cancelAllPending,
   reminderAgents,
   defaultDeadline,
@@ -77,6 +81,27 @@ export const TrainingPage: React.FC = () => {
   const store = getTrainingStore();
   const [agents, setAgents] = useState<TrainingAgent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nextBatch, setNextBatch] = useState<TrainingBatch | null>(null);
+  const [batchEdit, setBatchEdit] = useState<TrainingBatch | null>(null);
+
+  useEffect(() => {
+    store
+      .getBatch(auth)
+      .then(setNextBatch)
+      .catch(() => setNextBatch(null));
+  }, [store, auth]);
+
+  const saveBatch = async (b: TrainingBatch) => {
+    try {
+      await store.setBatch(b, auth);
+      setNextBatch(b);
+      setBatchEdit(null);
+      setBcBatch(b.start);
+      toast(`Batch berikutnya: ${formatBatchRange(b.start, b.end)}.`);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Gagal menyimpan batch.', 'error');
+    }
+  };
   const [filter, setFilter] = useState<Filter>('semua');
   const [search, setSearch] = useState<string>('');
   const [editing, setEditing] = useState<{ agentId: string; moduleId: string } | null>(null);
@@ -130,7 +155,8 @@ export const TrainingPage: React.FC = () => {
   const bcBatchDate = bcBatch === '__all' ? undefined : bcBatch;
   const bcOpts = {
     batchDate: bcBatchDate,
-    deadline: deadline || defaultDeadline(bcBatchDate || undefined, todayInJakarta()),
+    nextBatch,
+    deadline: deadline || defaultDeadline(bcBatchDate || nextBatch?.start || undefined, todayInJakarta()),
     deadlineTime: deadlineTime.trim() || '17.00',
     greeting: greetingForHour(Number(new Date().toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', hour12: false })))
   };
@@ -190,6 +216,66 @@ export const TrainingPage: React.FC = () => {
 
         {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800 ring-1 ring-red-200">{error}</p>}
 
+        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-200">
+          <CalendarPlus className="h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+          {batchEdit ? (
+            <>
+              <label className="text-xs font-semibold text-slate-700">
+                Mulai
+                <input
+                  type="date"
+                  aria-label="Mulai batch"
+                  value={batchEdit.start}
+                  onChange={(e) => setBatchEdit({ start: e.target.value, end: e.target.value ? addDays(e.target.value, 3) : '' })}
+                  className={`${input} mt-0.5 w-40 py-1.5`}
+                />
+              </label>
+              <label className="text-xs font-semibold text-slate-700">
+                Selesai
+                <input
+                  type="date"
+                  aria-label="Selesai batch"
+                  value={batchEdit.end}
+                  min={batchEdit.start}
+                  onChange={(e) => setBatchEdit({ ...batchEdit, end: e.target.value })}
+                  className={`${input} mt-0.5 w-40 py-1.5`}
+                />
+              </label>
+              <p className="text-xs text-slate-500">
+                {batchEdit.start && batchEdit.end >= batchEdit.start ? formatBatchRange(batchEdit.start, batchEdit.end) : 'Pilih tanggal mulai (biasanya Senin).'}
+              </p>
+              <div className="ml-auto flex gap-2">
+                <button type="button" onClick={() => setBatchEdit(null)} className="px-3 py-1.5 text-sm font-semibold text-slate-600 cursor-pointer">
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={!batchEdit.start || !batchEdit.end || batchEdit.end < batchEdit.start}
+                  onClick={() => void saveBatch(batchEdit)}
+                  className={primaryBtn}
+                >
+                  Simpan batch
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-700">
+                <span className="text-xs font-semibold text-slate-500">Batch berikutnya</span>
+                <br />
+                <b className="text-slate-950">{nextBatch ? formatBatchRange(nextBatch.start, nextBatch.end) : 'Belum diatur'}</b>
+              </p>
+              <button
+                type="button"
+                onClick={() => setBatchEdit(nextBatch ?? { start: '', end: '' })}
+                className="ml-auto rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50 cursor-pointer"
+              >
+                {nextBatch ? 'Ubah batch' : 'Atur batch'}
+              </button>
+            </>
+          )}
+        </div>
+
         <div className="mt-6 space-y-4">
           <div className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -228,7 +314,7 @@ export const TrainingPage: React.FC = () => {
               <table className="w-full max-lg:min-w-[900px] table-fixed border-collapse text-sm">
                 <thead>
                   <tr className="bg-stone-50 text-left">
-                    <th className="sticky left-0 lg:top-[57px] z-20 w-[165px] bg-stone-50 px-2 py-2 align-bottom text-[11px] font-bold text-slate-700 shadow-[0_1px_0_#e2e8f0]">
+                    <th className="sticky left-0 lg:top-[57px] z-20 w-[200px] bg-stone-50 px-2 py-2 align-bottom text-[11px] font-bold text-slate-700 shadow-[0_1px_0_#e2e8f0]">
                       Property advisor
                     </th>
                     {TRAINING_MODULES.map((m) => (
@@ -270,6 +356,22 @@ export const TrainingPage: React.FC = () => {
                             />
                             <span className="min-w-0 truncate text-xs font-semibold text-slate-900" title={a.name}>
                               {a.name}
+                            </span>
+                            <span className="ml-auto flex shrink-0 overflow-hidden rounded-md ring-1 ring-slate-200" role="group" aria-label={`Jenis kelamin ${a.name}`}>
+                              {(['L', 'P'] as const).map((g) => (
+                                <button
+                                  key={g}
+                                  type="button"
+                                  aria-pressed={a.gender === g}
+                                  title={g === 'L' ? 'Laki-laki (Bapak)' : 'Perempuan (Ibu)'}
+                                  onClick={() => void saveAgent({ ...a, gender: a.gender === g ? null : g }, '')}
+                                  className={`h-5 w-5 text-[10px] font-bold cursor-pointer ${
+                                    a.gender === g ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 hover:text-slate-700'
+                                  }`}
+                                >
+                                  {g}
+                                </button>
+                              ))}
                             </span>
                             {a.graduated && (
                               <span title="Ditetapkan lulus" className="text-green-700">
@@ -457,11 +559,12 @@ export const TrainingPage: React.FC = () => {
       {registering && (
         <RegisterAgentDialog
           agent={registering}
+          batch={nextBatch}
           onClose={() => setRegistering(null)}
           onSave={(next, date) => {
             setRegistering(null);
             setBcBatch(date);
-            void saveAgent(next, `${next.name} didaftarkan ke batch ${formatBatchDate(date)}.`);
+            void saveAgent(next, `${next.name} didaftarkan ke batch ${formatBatchRange(date, batchEnd(date, nextBatch))}.`);
           }}
         />
       )}
@@ -469,6 +572,7 @@ export const TrainingPage: React.FC = () => {
       {batchOpen && (
         <BatchDialog
           agents={list}
+          batch={nextBatch}
           onClose={() => setBatchOpen(false)}
           onSave={async (updated, date) => {
             setBatchOpen(false);
@@ -476,7 +580,7 @@ export const TrainingPage: React.FC = () => {
             try {
               await store.saveMany(updated, auth);
               setBcBatch(date);
-              toast(`${updated.length} agen didaftarkan ke batch ${formatBatchDate(date)}.`);
+              toast(`${updated.length} agen didaftarkan ke batch ${formatBatchRange(date, batchEnd(date, nextBatch))}.`);
             } catch (err) {
               toast(err instanceof Error ? err.message : 'Gagal menyimpan.', 'error');
               void load();
@@ -599,12 +703,25 @@ const AgentMenu: React.FC<{
 };
 
 /** Daftarkan semua sesi yang belum diikuti / belum lulus dari satu agen sekaligus. */
+/** Batch yang dipakai saat mendaftarkan (diatur di kartu "Batch berikutnya"). */
+const BatchInfo: React.FC<{ batch: TrainingBatch | null }> = ({ batch }) =>
+  batch ? (
+    <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200">
+      Batch: <b>{formatBatchRange(batch.start, batch.end)}</b>
+    </p>
+  ) : (
+    <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-800 ring-1 ring-red-200">
+      Atur dulu &quot;Batch berikutnya&quot; di atas tabel rekap sebelum mendaftarkan agen.
+    </p>
+  );
+
 const RegisterAgentDialog: React.FC<{
   agent: TrainingAgent;
   onClose: () => void;
+  batch: TrainingBatch | null;
   onSave: (next: TrainingAgent, date: string) => void;
-}> = ({ agent, onClose, onSave }) => {
-  const [date, setDate] = useState<string>(todayInJakarta());
+}> = ({ agent, batch, onClose, onSave }) => {
+  const date = batch?.start ?? '';
   const out = outstandingModules(agent);
   return (
     <Dialog title={`Daftarkan sesi · ${agent.name}`} onClose={onClose}>
@@ -618,10 +735,7 @@ const RegisterAgentDialog: React.FC<{
           </li>
         ))}
       </ol>
-      <label className="mt-4 block text-xs font-semibold text-slate-700">
-        Tanggal batch
-        <input type="date" aria-label="Tanggal batch" value={date} onChange={(e) => setDate(e.target.value)} className={`${input} mt-1`} />
-      </label>
+      <BatchInfo batch={batch} />
       <button type="button" disabled={!date} onClick={() => onSave(registerToBatch(agent, date), date)} className={`${primaryBtn} mt-4 w-full`}>
         Daftarkan {out.length} sesi
       </button>
@@ -737,12 +851,13 @@ const ScoreDialog: React.FC<{
 const BatchDialog: React.FC<{
   agents: TrainingAgent[];
   onClose: () => void;
+  batch: TrainingBatch | null;
   onSave: (updated: TrainingAgent[], date: string) => void;
-}> = ({ agents, onClose, onSave }) => {
+}> = ({ agents, batch, onClose, onSave }) => {
   const candidates = agents
     .filter((a) => agentStatus(a) !== 'lulus' && outstandingModules(a).length > 0)
     .sort((a, b) => a.name.localeCompare(b.name));
-  const [date, setDate] = useState<string>(todayInJakarta());
+  const date = batch?.start ?? '';
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState<string>('');
   const q = query.trim().toUpperCase();
@@ -762,10 +877,7 @@ const BatchDialog: React.FC<{
         Semua sesi yang belum diikuti atau belum lulus dari agen terpilih akan ditandai{' '}
         <b className="text-red-700">menunggu nilai</b>.
       </p>
-      <label className="mt-4 block text-xs font-semibold text-slate-700">
-        Tanggal batch
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${input} mt-1`} />
-      </label>
+      <BatchInfo batch={batch} />
       <div className="mt-4 flex items-center justify-between gap-2">
         <p className="text-xs font-semibold text-slate-700">
           Agen belum lulus ({picked.size}/{candidates.length} dipilih)

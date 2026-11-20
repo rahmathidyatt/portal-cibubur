@@ -829,3 +829,18 @@ alter table public.agent_birth_years enable row level security;
 drop policy if exists "admin all agent_birth_years" on public.agent_birth_years;
 create policy "admin all agent_birth_years" on public.agent_birth_years for all to authenticated
   using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+-- Training: L/P untuk sapaan BC (Bapak/Ibu) & batch berikutnya yang diatur admin (satu baris).
+alter table public.training_agents add column if not exists gender text check (gender is null or gender in ('L', 'P'));
+create table if not exists public.training_batch (
+  id smallint primary key default 1 check (id = 1),
+  start_date date not null,
+  end_date date not null check (end_date >= start_date),
+  updated_at timestamptz not null default now()
+);
+revoke all on public.training_batch from anon, authenticated;
+grant select, insert, update on public.training_batch to authenticated;
+alter table public.training_batch enable row level security;
+drop policy if exists "admin all training_batch" on public.training_batch;
+create policy "admin all training_batch" on public.training_batch for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
