@@ -314,7 +314,7 @@ export const TrainingPage: React.FC = () => {
               <table className="w-full max-lg:min-w-[900px] table-fixed border-collapse text-sm">
                 <thead>
                   <tr className="bg-stone-50 text-left">
-                    <th className="sticky left-0 lg:top-[57px] z-20 w-[200px] bg-stone-50 px-2 py-2 align-bottom text-[11px] font-bold text-slate-700 shadow-[0_1px_0_#e2e8f0]">
+                    <th className="sticky left-0 lg:top-[57px] z-20 w-[205px] bg-stone-50 px-2 py-2 text-center align-middle text-[11px] font-bold text-slate-700 shadow-[0_1px_0_#e2e8f0]">
                       Property advisor
                     </th>
                     {TRAINING_MODULES.map((m) => (
@@ -323,7 +323,7 @@ export const TrainingPage: React.FC = () => {
                         className="lg:sticky lg:top-[57px] z-10 bg-stone-50 px-0.5 pt-0 pb-1.5 text-center align-top shadow-[0_1px_0_#e2e8f0]"
                       >
                         <span className={`block h-1.5 ${STAGE_COLOR[m.stage]}`} />
-                        <span className="mt-1 block text-[9.5px] font-semibold leading-[1.15] text-slate-700">{m.title}</span>
+                        <span className="mt-1 block text-[9.5px] font-semibold leading-[1.15] text-slate-700 [overflow-wrap:anywhere]">{m.title}</span>
                       </th>
                     ))}
                     <th className="lg:sticky lg:top-[57px] z-10 w-7 bg-stone-50 shadow-[0_1px_0_#e2e8f0]" />
@@ -354,7 +354,7 @@ export const TrainingPage: React.FC = () => {
                               title={STATUS_META[status].label}
                               className={`h-2.5 w-2.5 shrink-0 rounded-full ${STATUS_META[status].dot}`}
                             />
-                            <span className="min-w-0 truncate text-xs font-semibold text-slate-900" title={a.name}>
+                            <span className="min-w-0 truncate text-[10.5px] font-semibold text-slate-900" title={a.name}>
                               {a.name}
                             </span>
                             <span className="ml-auto flex shrink-0 overflow-hidden rounded-md ring-1 ring-slate-200" role="group" aria-label={`Jenis kelamin ${a.name}`}>

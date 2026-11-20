@@ -34,7 +34,7 @@ test('status sesi & agen (minimal 60)', () => {
 test('daftar batch hanya sesi yang belum lulus; nilai menutup status menunggu', () => {
   const a: TrainingAgent = { id: '1', name: 'A', scores: { 'bisnis-bersama': 100, 'etika-pelayanan': 40 }, pending: {} };
   const r = registerToBatch(a, '2026-11-20');
-  assert.equal(Object.keys(r.pending).length, 10);
+  assert.equal(Object.keys(r.pending).length, 11);
   assert.ok(!('bisnis-bersama' in r.pending));
   assert.equal(agentStatus(r), 'menunggu');
   assert.equal(moduleStatus(setScore(r, 'etika-pelayanan', 80), 'etika-pelayanan'), 'lulus');
@@ -146,7 +146,7 @@ test('BC pengingat sesi belum diikuti/lulus', () => {
   ];
   agents[0].scores['dokumen-kepemilikan'] = 20;
   const bc = buildReminderBc(agents, { greeting: 'Selamat pagi' });
-  assert.match(bc, /\*AYU \(HAYP\)\*\n- Dokumen Kepemilikan Properti \(belum lulus\)\n- Klien Percaya, Bisnis Berkembang \(belum mengikuti\)\n\n\*URIP/);
+  assert.match(bc, /\*AYU \(HAYP\)\*\n- Dokumen Kepemilikan Properti \(belum lulus\)\n- Senjata Teknologi Brighton App Bikin #ClosingLebihCepat \(belum mengikuti\)\n- Klien Percaya, Bisnis Berkembang \(belum mengikuti\)\n\n\*URIP/);
   assert.ok(!bc.split('*URIP')[0].includes('Negosiasi'), 'menunggu nilai tidak diingatkan');
   assert.match(bc, /WAJIB menuliskan Nama dan Kode Agen yang sesuai/);
   assert.match(buildReminderBc(agents, { greeting: 'Selamat pagi' }, 'b'), /^Selamat pagi, Bapak\/Ibu URIP \(XJTA\)\./);

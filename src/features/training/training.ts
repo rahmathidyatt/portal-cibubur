@@ -21,6 +21,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
   { id: 'dokumen-kepemilikan', title: 'Dokumen Kepemilikan Properti', stage: 3 },
   { id: 'alur-transaksi', title: 'Alur Transaksi Bisnis Properti', stage: 3 },
   { id: 'branding-expose', title: 'Branding Brighton & Expose Bikin Closing', stage: 3 },
+  { id: 'senjata-teknologi', title: 'Senjata Teknologi Brighton App Bikin #ClosingLebihCepat', stage: 4 },
   { id: 'klien-percaya', title: 'Klien Percaya, Bisnis Berkembang', stage: 4 },
   { id: 'negosiasi', title: 'Negosiasi', stage: 4 }
 ];

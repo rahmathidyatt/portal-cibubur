@@ -35,6 +35,7 @@ const SESSION_KEYWORDS: string[][] = [
   ['DOKUMEN'],
   ['ALUR'],
   ['BRANDING', 'EXPOSE'],
+  ['TEKNOLOGI', 'BRIGHTON APP'],
   ['KLIEN'],
   ['NEGO']
 ];

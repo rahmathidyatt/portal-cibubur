@@ -23,7 +23,7 @@ test('Excel laporan: warna & angka terbaca kembali', async () => {
 
 test('ekspor training bisa diimpor ulang tanpa kehilangan status', async () => {
   const agents = [
-    { id: '1', name: 'MARSEL (GFXY)', scores: Object.fromEntries(['bisnis-bersama', 'etika-pelayanan', 'tentang-bisnis', 'kebiasaan-sukses', 'listing-modal', 'primary-secondary', 'dokumen-kepemilikan', 'alur-transaksi', 'branding-expose', 'klien-percaya', 'negosiasi'].map((k) => [k, 80])), pending: {} },
+    { id: '1', name: 'MARSEL (GFXY)', scores: Object.fromEntries(['bisnis-bersama', 'etika-pelayanan', 'tentang-bisnis', 'kebiasaan-sukses', 'listing-modal', 'primary-secondary', 'dokumen-kepemilikan', 'alur-transaksi', 'branding-expose', 'senjata-teknologi', 'klien-percaya', 'negosiasi'].map((k) => [k, 80])), pending: {} },
     { id: '2', name: 'URIP (XJTA)', scores: { 'etika-pelayanan': 80 }, pending: { negosiasi: '2026-11-20' } },
     { id: '3', name: 'AISAH (UWVV)', scores: { 'bisnis-bersama': 40 }, pending: {} }
   ];
