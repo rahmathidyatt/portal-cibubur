@@ -17,28 +17,41 @@ const ID_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli
 
 const norm = (s: string) => s.trim().toUpperCase();
 
-/** Closing di bulan `month` (YYYY-MM) oleh agen yang berulang tahun di bulan itu. */
+const stripCode = (s: string) => norm(s).replace(/\s*\([^)]*\)\s*$/, '');
+const firstWord = (s: string) => stripCode(s).split(/\s+/)[0] ?? '';
+
+/**
+ * Closing di bulan `month` (YYYY-MM) oleh agen yang berulang tahun di bulan itu.
+ * Pencocokan ketat: kode PA saat closing harus sama dengan kode di data ulang tahun,
+ * dan nama depannya juga harus sama. Nama sama dengan kode berbeda = orang berbeda.
+ */
 export function findWofClaims(closings: Closing[], birthdays: AgentBirthday[], month: string): WofClaim[] {
   const m = Number(month.slice(5, 7));
   const byCode = new Map(birthdays.map((b) => [norm(b.code), b]));
-  const byName = new Map(birthdays.map((b) => [norm(b.name).replace(/\s*\([^)]*\)\s*$/, ''), b]));
   const claims: WofClaim[] = [];
   const seen = new Set<string>();
   const sorted = closings.filter((c) => c.date.startsWith(month)).sort((a, b) => a.date.localeCompare(b.date));
   for (const c of sorted) {
     for (const a of mainAgents(c)) {
-      // Cocokkan lewat kode PA; jika kode kosong, lewat nama.
-      const b = (a.code.trim() && byCode.get(norm(a.code))) || byName.get(norm(a.name)) || byName.get(norm(a.name.split(/\s+/)[0]));
-      if (!b || b.month !== m) continue;
-      const key = `${c.id}:${norm(b.code)}`;
+      const code = norm(a.code);
+      if (!code) continue;
+      const b = byCode.get(code);
+      if (!b || b.month !== m || firstWord(b.name) !== firstWord(a.name)) continue;
+      const key = `${c.id}:${code}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      // Nama ulang tahun sering sudah berisi kode, mis. "EKA NOVI (MHBX)".
-      const name = norm(b.name || a.name).replace(/\s*\([^)]*\)\s*$/, '');
-      claims.push({ name, code: norm(b.code || a.code), birthday: b, closing: c });
+      // Nama & kode ditulis sesuai data saat closing.
+      claims.push({ name: stripCode(a.name), code, birthday: b, closing: c });
     }
   }
   return claims;
+}
+
+/** Agen closing di bulan itu yang kodenya kosong (tidak bisa dicek WOF). */
+export function closingsWithoutCode(closings: Closing[], month: string): { name: string; closing: Closing }[] {
+  return closings
+    .filter((c) => c.date.startsWith(month))
+    .flatMap((c) => mainAgents(c).filter((a) => !a.code.trim()).map((a) => ({ name: a.name.trim(), closing: c })));
 }
 
 /** "28 Oct 1986" (tahun ditulis bila tersedia). */

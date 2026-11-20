@@ -844,3 +844,96 @@ alter table public.training_batch enable row level security;
 drop policy if exists "admin all training_batch" on public.training_batch;
 create policy "admin all training_batch" on public.training_batch for all to authenticated
   using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+-- ------------------------------------------------------------------
+-- Gemini (edge function minbur-ai) & pengaturan portal.
+-- portal_settings      : pengaturan kecil (mis. ucapan ulang tahun), dibaca semua, diubah admin.
+-- content_translations : cache terjemahan ID → EN, hanya diakses edge function (service role).
+-- minbur_unanswered.ai_answer : jawaban Gemini untuk ditinjau admin & dijadikan FAQ resmi.
+-- ------------------------------------------------------------------
+create table if not exists public.portal_settings (
+  key text primary key check (char_length(key) between 1 and 60),
+  value jsonb not null check (octet_length(value::text) <= 5000),
+  updated_at timestamptz not null default now()
+);
+grant select on public.portal_settings to anon, authenticated;
+grant insert, update, delete on public.portal_settings to authenticated;
+alter table public.portal_settings enable row level security;
+drop policy if exists "read portal_settings" on public.portal_settings;
+create policy "read portal_settings" on public.portal_settings for select to anon, authenticated using (true);
+drop policy if exists "admin all portal_settings" on public.portal_settings;
+create policy "admin all portal_settings" on public.portal_settings for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+create table if not exists public.content_translations (
+  hash text not null,
+  lang text not null check (lang in ('en')),
+  source text not null check (char_length(source) <= 2000),
+  translated text not null check (char_length(translated) <= 4000),
+  created_at timestamptz not null default now(),
+  primary key (hash, lang)
+);
+revoke all on public.content_translations from anon, authenticated;
+alter table public.content_translations enable row level security;
+
+alter table public.minbur_unanswered add column if not exists ai_answer text
+  check (ai_answer is null or char_length(ai_answer) <= 1500);
+
+create or replace function public.record_minbur_ai_answer(p_question text, p_answer text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_q text := left(btrim(coalesce(p_question, '')), 200);
+begin
+  if char_length(v_q) < 1 then
+    return;
+  end if;
+  if exists (select 1 from public.minbur_unanswered
+             where lower(question) = lower(v_q) and asked_at > now() - interval '7 days') then
+    return;
+  end if;
+  if (select count(*) from public.minbur_unanswered where asked_at > now() - interval '1 day') >= 300 then
+    return;
+  end if;
+  insert into public.minbur_unanswered (question, ai_answer) values (v_q, left(p_answer, 1500));
+end;
+$$;
+revoke all on function public.record_minbur_ai_answer(text, text) from public, anon, authenticated;
+grant execute on function public.record_minbur_ai_answer(text, text) to service_role;
+
+-- ------------------------------------------------------------------
+-- Notes (catatan ala Google Keep, khusus admin).
+-- Catatan di sampah tidak dihapus otomatis; hanya admin yang menghapus permanen.
+-- ------------------------------------------------------------------
+create table if not exists public.note_labels (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique check (char_length(name) between 1 and 50),
+  created_at timestamptz not null default now()
+);
+create table if not exists public.notes (
+  id uuid primary key default gen_random_uuid(),
+  title text not null default '' check (char_length(title) <= 200),
+  body text not null default '' check (char_length(body) <= 20000),
+  is_checklist boolean not null default false,
+  items jsonb not null default '[]'::jsonb check (jsonb_typeof(items) = 'array' and octet_length(items::text) <= 50000),
+  color text not null default 'default' check (char_length(color) <= 20),
+  label_ids uuid[] not null default '{}',
+  pinned boolean not null default false,
+  status text not null default 'active' check (status in ('active', 'archived', 'trashed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists notes_status_idx on public.notes (status, pinned, updated_at desc);
+revoke all on public.note_labels, public.notes from anon;
+grant select, insert, update, delete on public.note_labels, public.notes to authenticated;
+alter table public.note_labels enable row level security;
+alter table public.notes enable row level security;
+drop policy if exists "admin all note_labels" on public.note_labels;
+create policy "admin all note_labels" on public.note_labels for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+drop policy if exists "admin all notes" on public.notes;
+create policy "admin all notes" on public.notes for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());

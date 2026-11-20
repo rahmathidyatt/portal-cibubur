@@ -9,7 +9,8 @@ function baseUrl(): string {
 }
 
 const PAUSED_KEY = 'portal-cibubur:jingle-paused';
-const MINI_KEY = 'portal-cibubur:jingle-mini';
+// Pemutar terbuka (bukan tombol bulat) hanya bila pengunjung membukanya sendiri.
+const OPEN_KEY = 'portal-cibubur:jingle-open';
 const VOLUME = 0.3;
 
 function readFlag(key: string): boolean {
@@ -58,10 +59,10 @@ export const JinglePlayer: React.FC = () => {
   const [progress, setProgress] = useState<number>(0);
   // Tidak diputar otomatis bila pernah dijeda, atau di HP/tablet.
   const userPaused = useRef<boolean>(readFlag(PAUSED_KEY) || isTouchDevice());
-  const [mini, setMini] = useState<boolean>(() => readFlag(MINI_KEY));
+  const [mini, setMini] = useState<boolean>(() => !readFlag(OPEN_KEY));
   const setMiniMode = (on: boolean) => {
     setMini(on);
-    writeFlag(MINI_KEY, on);
+    writeFlag(OPEN_KEY, !on);
   };
 
   const load = useCallback(async () => {
@@ -153,7 +154,7 @@ export const JinglePlayer: React.FC = () => {
     'grid h-7 w-7 shrink-0 place-items-center rounded-full text-slate-600 hover:bg-slate-900/5 hover:text-slate-950 cursor-pointer';
 
   return (
-    <div ref={rootRef} className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 max-w-[calc(100vw-1.5rem)]">
+    <div ref={rootRef} data-jingle className="fixed bottom-3 left-3 sm:bottom-4 sm:left-4 z-40 max-w-[calc(100vw-1.5rem)]">
       <audio
         ref={audioRef}
         preload="none"
@@ -184,7 +185,7 @@ export const JinglePlayer: React.FC = () => {
                   }`}
                 >
                   <span className="w-3 text-[10px] tabular-nums text-slate-500">{i + 1}</span>
-                  <span className="truncate">{t.title}</span>
+                  <span translate="no" className="notranslate truncate">{t.title}</span>
                   {i === safeIndex && playing && <Equalizer />}
                 </button>
               </li>
@@ -194,13 +195,13 @@ export const JinglePlayer: React.FC = () => {
       )}
 
       {mini ? (
-        <div className="flex justify-end">
+        <div className="flex">
           <button
             type="button"
             onClick={() => setMiniMode(false)}
             aria-label={`Buka pemutar jingle${playing ? ' (sedang diputar)' : ''}`}
             title={current.title}
-            className={`grid h-10 w-10 place-items-center rounded-full text-slate-700 cursor-pointer ${glass}`}
+            className={`grid h-12 w-12 place-items-center rounded-full text-amber-600 cursor-pointer ${glass}`}
           >
             <Disc3
               className={`h-6 w-6 ${playing ? 'animate-[spin_3s_linear_infinite] motion-reduce:animate-none' : ''}`}
@@ -209,7 +210,7 @@ export const JinglePlayer: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className={`relative flex items-center gap-1.5 overflow-hidden rounded-full py-1 pl-1 pr-1.5 text-slate-900 ${glass}`}>
+        <div className={`relative flex h-12 items-center gap-1.5 overflow-hidden rounded-full pl-2 pr-2 text-slate-900 ${glass}`}>
           <span
             aria-hidden="true"
             className="absolute bottom-0 left-0 h-px bg-slate-900/40 transition-[width] duration-300"
@@ -234,7 +235,7 @@ export const JinglePlayer: React.FC = () => {
             <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               {playing ? 'Sedang diputar' : 'Jingle Brighton'}
             </p>
-            <p className="truncate text-xs font-semibold" title={current.title}>
+            <p translate="no" className="notranslate truncate text-xs font-semibold" title={current.title}>
               {current.title}
             </p>
           </div>

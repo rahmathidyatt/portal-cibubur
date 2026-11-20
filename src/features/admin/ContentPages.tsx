@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Cake, Music, Pause, Play, Plus, Upload } from 'lucide-react';
+import { Cake, Music, Pause, Play, Plus, Sparkles, Upload } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useToast } from '../../hooks/useToast';
 import { getJingleStore, JINGLES_CHANGED_EVENT } from '../../services/jingleStore';
 import { resolveJingleUrl, titleFromFileName, validateJingleFile, type Jingle } from '../../data/jingles';
 import { getBirthdayStore } from '../../services/birthdayStore';
+import { getBirthdayWish, saveBirthdayWish, validateWish, type BirthdayWish } from '../../services/settingsStore';
+import { generateBirthdayWish } from '../../services/aiClient';
 import { ConfirmCancelButton } from '../../components/ConfirmCancelButton';
 import { readTableFile } from '../floortime/spreadsheet';
 import { MONTH_NAMES_ID } from '../floortime/engine';
@@ -48,7 +50,10 @@ export const JinglePage: React.FC = () => (
 /** Menu admin: data ulang tahun agen untuk pengingat beranda. */
 export const BirthdayPage: React.FC = () => (
   <PageFrame title="Ulang tahun agen" description="Data untuk pengingat ulang tahun hari ini dan besok di beranda.">
-    <BirthdayManager />
+    <div className="space-y-6">
+      <BirthdayWishEditor />
+      <BirthdayManager />
+    </div>
   </PageFrame>
 );
 
@@ -227,6 +232,100 @@ const JingleManager: React.FC = () => {
 };
 
 /* ------------------------------------------------------------------ */
+
+/** Ucapan yang tampil di beranda: "Selamat Ulang Tahun NAMA (KODE)" + kalimat ini. */
+const BirthdayWishEditor: React.FC = () => {
+  const { auth } = useAdmin();
+  const toast = useToast();
+  const [wish, setWish] = useState<BirthdayWish>({ id: '', en: '' });
+  const [busy, setBusy] = useState<'save' | 'gen' | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getBirthdayWish().then(setWish);
+  }, []);
+
+  const save = async (next: BirthdayWish, success: string) => {
+    setBusy('save');
+    setMessage(null);
+    try {
+      await saveBirthdayWish(next, auth);
+      setWish(next);
+      toast(success);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Gagal menyimpan ucapan.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const generate = async () => {
+    setBusy('gen');
+    setMessage(null);
+    const result = await generateBirthdayWish(auth.accessToken);
+    setBusy(null);
+    if (!result) {
+      setMessage('Gemini belum aktif atau sedang sibuk. Tulis ucapan secara manual, atau coba lagi nanti.');
+      return;
+    }
+    await save(result, 'Ucapan baru dibuat & langsung tampil di beranda.');
+  };
+
+  return (
+    <div className={card}>
+      <h2 className="flex items-center gap-2 text-base font-bold text-slate-950">
+        <Cake className="w-4 h-4 text-amber-600" aria-hidden="true" />
+        Ucapan ulang tahun di beranda
+      </h2>
+      <p className="mt-1 text-sm text-slate-600">
+        Tampil sebagai <b>Selamat Ulang Tahun NAMA (KODE)</b> lalu kalimat di bawah. Pengunjung yang memilih bahasa
+        Inggris melihat versi English. Setelah disimpan, ucapan langsung tampil.
+      </p>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <label className="block text-sm">
+          <span className="font-semibold text-slate-800">Bahasa Indonesia</span>
+          <textarea
+            rows={3}
+            maxLength={300}
+            value={wish.id}
+            onChange={(e) => setWish((w) => ({ ...w, id: e.target.value }))}
+            className={`${input} mt-1`}
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="font-semibold text-slate-800">English</span>
+          <textarea
+            rows={3}
+            maxLength={300}
+            value={wish.en}
+            onChange={(e) => setWish((w) => ({ ...w, en: e.target.value }))}
+            className={`${input} mt-1`}
+          />
+        </label>
+      </div>
+      {message && <p className="mt-3 text-sm text-red-700">{message}</p>}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy !== null || validateWish(wish) !== null}
+          onClick={() => void save(wish, 'Ucapan disimpan & langsung tampil di beranda.')}
+          className={primaryBtn}
+        >
+          {busy === 'save' ? 'Menyimpan…' : 'Simpan ucapan'}
+        </button>
+        <button
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void generate()}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-800 bg-white ring-1 ring-slate-300 hover:bg-slate-50 rounded-lg disabled:opacity-50 cursor-pointer"
+        >
+          <Sparkles className="w-4 h-4 text-amber-600" aria-hidden="true" />
+          {busy === 'gen' ? 'Membuat…' : 'Buat otomatis (Gemini)'}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const BirthdayManager: React.FC = () => {
   const { auth } = useAdmin();

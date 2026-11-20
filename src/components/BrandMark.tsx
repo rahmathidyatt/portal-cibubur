@@ -2,7 +2,7 @@ import React from 'react';
 
 /** Wordmark Brighton HUB Cibubur (huruf "o" kuning, seperti poster jadwal). */
 export const BrandMark: React.FC<{ className?: string }> = ({ className }) => (
-  <span className={`inline-flex flex-col leading-none ${className ?? ''}`}>
+  <span translate="no" className={`notranslate inline-flex flex-col leading-none ${className ?? ''}`}>
     <span className="font-display text-[22px] font-extrabold tracking-tight text-slate-950">
       Bright<span className="text-amber-500">o</span>n
     </span>

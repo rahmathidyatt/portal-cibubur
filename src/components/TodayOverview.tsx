@@ -13,7 +13,6 @@ import { ClosingShowcase } from '../features/closing/ClosingShowcase';
 import { officeAnniversary } from '../utils/anniversary';
 import { useJakartaClock } from '../hooks/useJakartaClock';
 import {
-  greetingForMinutes,
   minutesNowInJakarta,
   todayInJakarta
 } from '../utils/schedule';
@@ -25,7 +24,6 @@ interface TodayOverviewProps {
 export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => {
   const now = useJakartaClock();
   const today = todayInJakarta(now);
-  const greeting = greetingForMinutes(minutesNowInJakarta(now));
   const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
 
   const minutesNow = minutesNowInJakarta(now);
@@ -39,9 +37,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
         <div>
           <DateClock weeklyHours={weeklyHours} />
-          <h1 className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-            {greeting}, tim Brighton HUB Cibubur
-          </h1>
+          <h1 className="sr-only">Brighton HUB Cibubur</h1>
           <BirthdayReminder today={today} />
           {FEATURES.dealingRoom && (
             <a
@@ -82,9 +78,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
               href={OFFICE_IDENTITY.smartMessengerOrderUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block rounded-2xl bg-white/50 px-4 py-3 ring-1 ring-slate-200/70 backdrop-blur hover:bg-white/80"
+              className="group block cursor-pointer rounded-2xl bg-white/50 px-4 py-3 ring-1 ring-slate-200/70 backdrop-blur transition duration-150 hover:-translate-y-0.5 hover:bg-white hover:shadow-md hover:ring-2 hover:ring-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:translate-y-0"
             >
-              <span className="block text-sm font-bold text-slate-950">Order Smart Messenger</span>
+              <span className="block text-sm font-bold text-slate-950 group-hover:text-amber-700">Order Smart Messenger</span>
               <span className="block text-xs text-slate-500">Isi formulir order untuk kebutuhan smart messenger</span>
             </a>
           </div>

@@ -4,7 +4,7 @@
  */
 
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { Menu, X, LogIn, LogOut, ShieldCheck, LayoutDashboard } from 'lucide-react';
+import { Menu, X, LogIn, LogOut, ShieldCheck, LayoutDashboard, StickyNote } from 'lucide-react';
 import { officeAnniversary } from './utils/anniversary';
 import { recordVisit } from './services/analytics';
 import { todayInJakarta } from './utils/schedule';
@@ -44,10 +44,13 @@ const TrainingPage = lazy(() => import('./features/training/TrainingPage').then(
 const MedproPage = lazy(() => import('./features/medpro/MedproPage').then((m) => ({ default: m.MedproPage })));
 const JinglePage = lazy(() => import('./features/admin/ContentPages').then((m) => ({ default: m.JinglePage })));
 const BirthdayPage = lazy(() => import('./features/admin/ContentPages').then((m) => ({ default: m.BirthdayPage })));
+const NotesPage = lazy(() => import('./features/notes/NotesPage').then((m) => ({ default: m.NotesPage })));
 const NotaMessengerPage = lazy(() =>
   import('./features/nota/NotaMessengerPage').then((m) => ({ default: m.NotaMessengerPage }))
 );
 import { LoginDialog } from './components/LoginDialog';
+import { LangProvider, LangToggle, useLang } from './i18n/lang';
+import { useAutoTranslate } from './i18n/AutoTranslate';
 import { AdminProvider, useAdmin } from './hooks/useAdmin';
 import { ToastProvider } from './hooks/useToast';
 import { isStaffRoute, useHashRoute, type PortalRoute } from './hooks/useHashRoute';
@@ -63,7 +66,9 @@ export default function App() {
   return (
     <AdminProvider>
       <ToastProvider>
-        <PortalApp />
+        <LangProvider>
+          <PortalApp />
+        </LangProvider>
       </ToastProvider>
     </AdminProvider>
   );
@@ -75,6 +80,11 @@ function PortalApp() {
   const [loginOpen, setLoginOpen] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const handleCloseLogin = useCallback(() => setLoginOpen(false), []);
+  const { lang } = useLang();
+  const onStaffRoute = isStaffRoute(route);
+  const onNotes = route === 'notes';
+  // Terjemahan hanya untuk dashboard publik; area admin & Notes tetap Bahasa Indonesia.
+  useAutoTranslate(lang === 'en' && !onStaffRoute && !onNotes);
 
   // Tutup menu HP setiap kali berpindah halaman.
   useEffect(() => setMobileMenuOpen(false), [route]);
@@ -119,9 +129,22 @@ function PortalApp() {
                 Area admin
               </a>
             )}
+            {isAdmin && (
+              <a
+                href="#notes"
+                aria-current={onNotes ? 'page' : undefined}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors ${
+                  onNotes ? 'bg-slate-950 text-white' : 'text-slate-700 ring-1 ring-slate-200 hover:text-slate-950'
+                }`}
+              >
+                <StickyNote className={`w-4 h-4 ${onNotes ? 'text-amber-400' : 'text-amber-600'}`} />
+                Notes
+              </a>
+            )}
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
+            {!onStaffRoute && !onNotes && <LangToggle />}
             {isAdmin ? (
               <button
                 type="button"
@@ -185,6 +208,16 @@ function PortalApp() {
                 Area admin
               </a>
             )}
+            {isAdmin && (
+              <a
+                href="#notes"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-2 inline-flex items-center gap-2 hover:text-slate-950"
+              >
+                <StickyNote className="w-4 h-4 text-amber-600" />
+                Notes
+              </a>
+            )}
             <div className="mt-2 pt-2 border-t border-slate-100 flex flex-col">
               {isAdmin ? (
                 <button
@@ -212,6 +245,14 @@ function PortalApp() {
             <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
             <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
           </>
+        ) : onNotes ? (
+          isAdmin ? (
+            <Suspense fallback={<div className="min-h-[60vh]" aria-label="Memuat" />}>
+              <NotesPage />
+            </Suspense>
+          ) : (
+            <StaffOnly onLogin={() => setLoginOpen(true)} />
+          )
         ) : isStaffRoute(route) ? (
           isAdmin ? (
             <AdminShell route={route} email={session?.email ?? null} onSignOut={() => void signOut()}>
@@ -228,20 +269,7 @@ function PortalApp() {
               </Suspense>
             </AdminShell>
           ) : (
-            <section className="bg-stone-50 min-h-[60vh] py-16">
-              <div className="max-w-md mx-auto px-6 text-center">
-                <h1 className="text-2xl font-bold text-slate-950">Khusus staf kantor</h1>
-                <p className="mt-2 text-sm text-slate-600">Masuk sebagai admin untuk membuka area admin.</p>
-                <button
-                  type="button"
-                  onClick={() => setLoginOpen(true)}
-                  className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg cursor-pointer"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Masuk staf
-                </button>
-              </div>
-            </section>
+            <StaffOnly onLogin={() => setLoginOpen(true)} />
           )
         ) : (
           <ReservationPage
@@ -259,8 +287,28 @@ function PortalApp() {
 
       <SiteFooter isAdmin={isAdmin} onLogin={() => setLoginOpen(true)} />
       <JinglePlayer />
-      {!isStaffRoute(route) && <Minbur />}
+      {!isStaffRoute(route) && !onNotes && <Minbur />}
     </div>
+  );
+}
+
+/** Pesan untuk halaman khusus staf saat belum login. */
+function StaffOnly({ onLogin }: { onLogin: () => void }) {
+  return (
+    <section className="bg-stone-50 min-h-[60vh] py-16">
+      <div className="max-w-md mx-auto px-6 text-center">
+        <h1 className="text-2xl font-bold text-slate-950">Khusus staf kantor</h1>
+        <p className="mt-2 text-sm text-slate-600">Masuk sebagai admin untuk membuka halaman ini.</p>
+        <button
+          type="button"
+          onClick={onLogin}
+          className="mt-5 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg cursor-pointer"
+        >
+          <LogIn className="w-4 h-4" />
+          Masuk staf
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -305,7 +353,7 @@ function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => voi
   const today = todayInJakarta();
   const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
   return (
-    <footer className="bg-white border-t border-slate-200 pt-6 pb-20">
+    <footer className="bg-white border-t border-slate-200 pt-6 pb-36 sm:pb-24">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
@@ -324,15 +372,20 @@ function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => voi
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <OfficeStatusBadge weeklyHours={WEEKLY_OFFICE_HOURS} />
-        <p className="inline-flex items-center gap-1.5">
-          {anniv.isToday ? (
-            <span className="font-semibold text-amber-800">Hari ini ulang tahun ke-{anniv.age} kantor</span>
-          ) : (
-            <span>
-              Berdiri sejak 3 Mei 2023 · {anniv.age} tahun
-            </span>
-          )}
-        </p>
+        {/* Info ulang tahun kantor hanya tampil seminggu menjelang & pada harinya. */}
+        {(anniv.isToday || anniv.daysUntil <= 7) && (
+          <p className="inline-flex items-center gap-1.5">
+            {anniv.isToday ? (
+              <span className="font-semibold text-amber-800">{`Hari ini ulang tahun ke-${anniv.age} kantor`}</span>
+            ) : (
+              <span>
+                {`Berdiri sejak 3 Mei 2023 · ulang tahun ke-${anniv.nextAge} ${
+                  anniv.daysUntil === 1 ? 'besok' : `${anniv.daysUntil} hari lagi`
+                }`}
+              </span>
+            )}
+          </p>
+        )}
         </div>
       </div>
     </footer>

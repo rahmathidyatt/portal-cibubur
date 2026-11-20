@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Closing } from '../closing/closing';
-import { buildWofBc, findWofClaims } from './wof';
+import { buildWofBc, closingsWithoutCode, findWofClaims } from './wof';
 
 const birthdays = [
   { code: 'HVJJ', name: 'WIWIN', month: 10, day: 28 },
@@ -10,7 +10,8 @@ const birthdays = [
 ];
 const ag = (name: string, code: string, role: 'S' | 'PL' = 'S') => ({ role, name, unit: 'Brighton Warrior', area: 'Cibubur, Bogor', code });
 const closings: Closing[] = [
-  { id: '2', date: '2026-10-08', type: 'Sewa Menyewa', location: 'Vila Nusa Indah', agents: [ag('Erva', '')], flyers: [], createdAt: '2' },
+  { id: '2', date: '2026-10-08', type: 'Sewa Menyewa', location: 'Vila Nusa Indah', agents: [ag('Erva', 'AYBK')], flyers: [], createdAt: '2' },
+  { id: '5', date: '2026-10-10', type: 'Jual Beli', location: 'Kota Wisata', agents: [ag('Wiwin', 'ZZZZ'), ag('Erva', '')], flyers: [], createdAt: '5' },
   { id: '1', date: '2026-10-05', type: 'Sewa Menyewa', location: 'Premier Savanna', agents: [ag('Wiwin', 'HVJJ'), ag('Imelda', 'XFDL')], flyers: [], createdAt: '1' },
   { id: '3', date: '2026-10-09', type: 'Primary', location: 'Harvest City', agents: [ag('Budi', ''), ag('Wiwin', 'HVJJ', 'PL')], flyers: [], createdAt: '3' },
   { id: '4', date: '2026-11-02', type: 'Jual Beli', location: 'Kota Wisata', agents: [ag('Wiwin', 'HVJJ')], flyers: [], createdAt: '4' }
@@ -39,4 +40,7 @@ test('WOF: closing di bulan ulang tahun (bukan Project Leader)', () => {
   assert.match(buildWofBc(withYear), /Tanggal Ulang Tahun: 28 Oct 1986/);
   const coded = findWofClaims(closings, [{ ...birthdays[0], name: 'WIWIN (HVJJ)' }], '2026-10');
   assert.match(buildWofBc(coded), /Nama & Kode PA: WIWIN \(HVJJ\)\n/);
+  // Kode sama tapi nama berbeda → bukan orang yang sama.
+  assert.equal(findWofClaims(closings, [{ ...birthdays[0], name: 'BUDI' }], '2026-10').length, 0);
+  assert.deepEqual(closingsWithoutCode(closings, '2026-10').map((x) => x.name).sort(), ['Budi', 'Erva']);
 });

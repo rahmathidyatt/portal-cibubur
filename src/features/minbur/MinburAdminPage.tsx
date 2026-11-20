@@ -47,7 +47,7 @@ function formatWib(iso: string): string {
   }
 }
 
-/** Menu admin: mengajari Minbur tanya-jawab baru & meninjau pertanyaan yang belum terjawab. */
+/** Menu admin: mengajari Epigram tanya-jawab baru & meninjau pertanyaan yang belum terjawab. */
 export const MinburAdminPage: React.FC = () => {
   const { auth } = useAdmin();
   const toast = useToast();
@@ -68,7 +68,7 @@ export const MinburAdminPage: React.FC = () => {
       setFaqs(f);
       setQuestions(q);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat data Minbur.');
+      setError(err instanceof Error ? err.message : 'Gagal memuat data Epigram.');
     }
   }, [store, auth]);
 
@@ -91,7 +91,7 @@ export const MinburAdminPage: React.FC = () => {
   const teach = (q: MinburQuestion) => {
     setEditId(null);
     setFromQuestion(q);
-    setForm({ ...EMPTY, keywords: suggestKeywords(q.question) });
+    setForm({ ...EMPTY, keywords: suggestKeywords(q.question), answer: (q.aiAnswer ?? '').slice(0, 1500) });
     setError(null);
     focusForm();
   };
@@ -114,7 +114,7 @@ export const MinburAdminPage: React.FC = () => {
       await store.saveFaq({ ...form, id: editId ?? undefined }, auth);
       if (fromQuestion) await store.deleteUnanswered(fromQuestion.id, auth).catch(() => undefined);
       window.dispatchEvent(new Event(MINBUR_FAQ_CHANGED));
-      toast(editId ? 'Jawaban Minbur diperbarui.' : 'Minbur sudah belajar jawaban baru.');
+      toast(editId ? 'Jawaban Epigram diperbarui.' : 'Epigram sudah belajar jawaban baru.');
       resetForm();
       await load();
     } catch (err) {
@@ -130,7 +130,7 @@ export const MinburAdminPage: React.FC = () => {
     if (taught) return { ok: true, text: `Dijawab dari ajaran admin (kata kunci: ${taught.keywords}).` };
     const intent = detectIntent(probe);
     if (intent) return { ok: true, text: `Dijawab otomatis dari data portal (topik: ${intent}).` };
-    return { ok: false, text: 'Belum bisa dijawab — ajari Minbur lewat formulir di atas.' };
+    return { ok: false, text: 'Belum bisa dijawab — ajari Epigram lewat formulir di atas.' };
   })();
 
   return (
@@ -139,10 +139,10 @@ export const MinburAdminPage: React.FC = () => {
         <p className="text-xs text-slate-500">Konten portal</p>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-slate-950">
           <MessageCircle className="h-6 w-6 text-amber-600" aria-hidden="true" />
-          Minbur
+          Epigram
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Ajari Minbur menjawab pertanyaan tim. Jawaban ajaran admin diutamakan di atas jawaban otomatis dari data portal.
+          Ajari Epigram menjawab pertanyaan tim. Jawaban ajaran admin diutamakan di atas jawaban otomatis dari data portal.
         </p>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -164,7 +164,7 @@ export const MinburAdminPage: React.FC = () => {
                   aria-label="Kata kunci"
                 />
                 <span className="mt-1 block font-normal text-slate-500">
-                  Pisahkan dengan koma. Satu kata kunci boleh beberapa kata — Minbur menjawab jika semua katanya ada di pertanyaan.
+                  Pisahkan dengan koma. Satu kata kunci boleh beberapa kata — Epigram menjawab jika semua katanya ada di pertanyaan.
                 </span>
               </label>
               <label className="block text-xs font-semibold text-slate-700">
@@ -230,7 +230,7 @@ export const MinburAdminPage: React.FC = () => {
             </div>
 
             <div className={card}>
-              <h2 className="text-base font-bold text-slate-950">Pengetahuan Minbur ({faqs.length})</h2>
+              <h2 className="text-base font-bold text-slate-950">Pengetahuan Epigram ({faqs.length})</h2>
               {faqs.length === 0 ? (
                 <p className="mt-3 text-sm text-slate-500">Belum ada jawaban ajaran admin.</p>
               ) : (
@@ -273,8 +273,11 @@ export const MinburAdminPage: React.FC = () => {
           </div>
 
           <div className={`${card} self-start`}>
-            <h2 className="text-base font-bold text-slate-950">Belum terjawab ({questions.length})</h2>
-            <p className="mt-1 text-xs text-slate-500">Pertanyaan pengunjung yang belum bisa dijawab Minbur. Klik Ajari untuk menambahkan jawabannya.</p>
+            <h2 className="text-base font-bold text-slate-950">Pertanyaan untuk ditinjau ({questions.length})</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Pertanyaan yang tidak ada di FAQ. Yang berlabel Gemini sudah dijawab otomatis — periksa jawabannya, lalu klik
+              Ajari untuk menjadikannya FAQ resmi.
+            </p>
             {questions.length === 0 ? (
               <p className="mt-3 text-sm text-slate-500">Semua pertanyaan sudah terjawab. 👍</p>
             ) : (
@@ -283,7 +286,13 @@ export const MinburAdminPage: React.FC = () => {
                   <li key={q.id} className="flex items-start justify-between gap-3 py-2.5">
                     <div className="min-w-0">
                       <p className="text-sm text-slate-900">{q.question}</p>
-                      <p className="text-[11px] text-slate-500">{formatWib(q.askedAt)}</p>
+                      {q.aiAnswer && (
+                        <p className="mt-1 rounded-lg bg-stone-50 px-2 py-1.5 text-xs text-slate-600 ring-1 ring-slate-200">
+                          <span className="mr-1 font-bold text-amber-700">Gemini:</span>
+                          {q.aiAnswer}
+                        </p>
+                      )}
+                      <p className="mt-0.5 text-[11px] text-slate-500">{formatWib(q.askedAt)}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <button

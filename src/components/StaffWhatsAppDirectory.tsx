@@ -37,7 +37,7 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
               >
                 <div>
                   <p className="text-[11px] font-bold tracking-widest text-amber-700">{contact.division}</p>
-                  <h3 className="mt-1 text-sm font-semibold text-slate-950">{contact.staffName}</h3>
+                  <h3 translate="no" className="notranslate mt-1 text-sm font-semibold text-slate-950">{contact.staffName}</h3>
                 </div>
 
                 <div className="flex items-center justify-between gap-3">

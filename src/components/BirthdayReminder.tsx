@@ -1,14 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { Cake } from 'lucide-react';
 import { getBirthdayStore } from '../services/birthdayStore';
 import { birthdayReminders, type AgentBirthday } from '../features/birthdays/birthdays';
+import { BIRTHDAY_WISH_CHANGED, DEFAULT_BIRTHDAY_WISH, getBirthdayWish, type BirthdayWish } from '../services/settingsStore';
+import { useLang } from '../i18n/lang';
+
+/** "Vina (MHBX)" → "VINA (MHBX)". */
+export function birthdayName(name: string): string {
+  const m = name.match(/^(.*?)\s*(\([^)]*\))\s*$/);
+  return m ? `${m[1].trim().toUpperCase()} ${m[2]}` : name.trim().toUpperCase();
+}
 
 /**
- * Pengingat ulang tahun agen di bawah sapaan beranda: hari ini (H) dan besok (H-1).
+ * Ucapan ulang tahun agen di beranda: hari ini (ucapan lengkap) dan besok (H-1).
  * Tidak tampil bila tidak ada yang berulang tahun.
  */
 export const BirthdayReminder: React.FC<{ today: string }> = ({ today }) => {
+  const { lang } = useLang();
   const [list, setList] = useState<AgentBirthday[]>([]);
+  const [wish, setWish] = useState<BirthdayWish>(DEFAULT_BIRTHDAY_WISH);
 
   useEffect(() => {
     let alive = true;
@@ -16,51 +25,37 @@ export const BirthdayReminder: React.FC<{ today: string }> = ({ today }) => {
       .list()
       .then((rows) => alive && setList(rows))
       .catch(() => alive && setList([]));
+    const loadWish = () =>
+      void getBirthdayWish().then((w) => {
+        if (alive) setWish(w);
+      });
+    loadWish();
+    window.addEventListener(BIRTHDAY_WISH_CHANGED, loadWish);
     return () => {
       alive = false;
+      window.removeEventListener(BIRTHDAY_WISH_CHANGED, loadWish);
     };
   }, []);
 
   const { today: todayList, tomorrow } = birthdayReminders(list, today);
   if (todayList.length === 0 && tomorrow.length === 0) return null;
+  const en = lang === 'en';
 
   return (
-    <div
-      role="note"
-      aria-label="Ulang tahun agen"
-      className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm"
-    >
-      <span className="inline-flex items-center gap-1.5 font-semibold text-amber-800">
-        <Cake className="h-4 w-4 text-amber-600" aria-hidden="true" />
-        Ulang tahun
-      </span>
+    <div role="note" aria-label="Ulang tahun agen" translate="no" className="notranslate mt-3 space-y-2">
       {todayList.length > 0 && (
-        <span className="inline-flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-semibold text-slate-500">Hari ini</span>
-          {todayList.map((b) => (
-            <span key={b.code} className="rounded-full bg-amber-400 px-2.5 py-0.5 text-xs font-bold text-slate-950">
-              {b.name}
-            </span>
-          ))}
-        </span>
-      )}
-      {todayList.length > 0 && tomorrow.length > 0 && (
-        <span aria-hidden="true" className="text-slate-300">
-          ·
-        </span>
+        <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-200">
+          <p className="text-base font-bold text-slate-950 sm:text-lg">
+            {en ? 'Happy Birthday' : 'Selamat Ulang Tahun'} {todayList.map((b) => birthdayName(b.name)).join(' & ')}
+          </p>
+          <p className="mt-1 text-sm text-slate-600">{en ? wish.en : wish.id}</p>
+        </div>
       )}
       {tomorrow.length > 0 && (
-        <span className="inline-flex flex-wrap items-center gap-1.5">
-          <span className="text-xs font-semibold text-slate-500">Besok</span>
-          {tomorrow.map((b) => (
-            <span
-              key={b.code}
-              className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-800 ring-1 ring-amber-200"
-            >
-              {b.name}
-            </span>
-          ))}
-        </span>
+        <p className="text-sm text-slate-600">
+          <span className="font-semibold text-slate-800">{en ? 'Birthday tomorrow:' : 'Ulang tahun besok:'}</span>{' '}
+          {tomorrow.map((b) => b.name).join(', ')}
+        </p>
       )}
     </div>
   );

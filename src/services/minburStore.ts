@@ -1,7 +1,7 @@
 import type { AdminAuth } from './bookingStore';
 import { getSupabaseConfig, randomId, readLocal, supabaseFetch, writeLocal, type SupabaseConfig } from './supabaseClient';
 
-/** Tanya-jawab yang diajarkan admin ke Minbur. */
+/** Tanya-jawab yang diajarkan admin ke Epigram. */
 export interface MinburFaq {
   id: string;
   /** Kata kunci dipisah koma, mis. "parkir, parkiran, motor". */
@@ -16,6 +16,8 @@ export interface MinburQuestion {
   id: string;
   question: string;
   askedAt: string;
+  /** Jawaban Gemini (bila pertanyaan dijawab otomatis). */
+  aiAnswer?: string | null;
 }
 
 export type NewMinburFaq = Pick<MinburFaq, 'keywords' | 'answer' | 'linkLabel' | 'linkUrl'>;
@@ -24,7 +26,7 @@ export interface MinburStore {
   listFaq(): Promise<MinburFaq[]>;
   saveFaq(input: NewMinburFaq & { id?: string }, auth: AdminAuth): Promise<void>;
   deleteFaq(id: string, auth: AdminAuth): Promise<void>;
-  /** Dipanggil pengunjung saat Minbur belum bisa menjawab. */
+  /** Dipanggil pengunjung saat Epigram belum bisa menjawab. */
   recordUnanswered(question: string): Promise<void>;
   listUnanswered(auth: AdminAuth): Promise<MinburQuestion[]>;
   deleteUnanswered(id: string, auth: AdminAuth): Promise<void>;
@@ -33,7 +35,7 @@ export interface MinburStore {
 export const MINBUR_FAQ_CHANGED = 'minbur-faq-changed';
 
 function requireAdmin(auth: AdminAuth): void {
-  if (!auth.isAdmin) throw new Error('Hanya admin yang dapat mengubah pengetahuan Minbur.');
+  if (!auth.isAdmin) throw new Error('Hanya admin yang dapat mengubah pengetahuan Epigram.');
 }
 
 /** Validasi isian admin; mengembalikan pesan kesalahan atau null. */
@@ -163,11 +165,11 @@ function createSupabaseStore(config: SupabaseConfig): MinburStore {
       requireAdmin(auth);
       const res = await supabaseFetch(
         config,
-        'rest/v1/minbur_unanswered?select=id,question,asked_at&order=asked_at.desc&limit=200',
+        'rest/v1/minbur_unanswered?select=id,question,asked_at,ai_answer&order=asked_at.desc&limit=200',
         { accessToken: auth.accessToken }
       );
-      const rows = (await res.json()) as { id: number; question: string; asked_at: string }[];
-      return rows.map((r) => ({ id: String(r.id), question: r.question, askedAt: r.asked_at }));
+      const rows = (await res.json()) as { id: number; question: string; asked_at: string; ai_answer: string | null }[];
+      return rows.map((r) => ({ id: String(r.id), question: r.question, askedAt: r.asked_at, aiAnswer: r.ai_answer }));
     },
     async deleteUnanswered(id, auth) {
       requireAdmin(auth);

@@ -8,7 +8,7 @@ import { UNIT_ORDER, groupByUnit, isPrincipal, type BusinessManager } from '../.
 import { birthdayReminders, type AgentBirthday } from '../birthdays/birthdays';
 import { officeAnniversary } from '../../utils/anniversary';
 
-/** Minbur = "admin cibubur": bot FAQ sederhana yang menjawab dari data portal. */
+/** Epigram (dulu "Minbur"): bot FAQ sederhana yang menjawab dari data portal. */
 
 export type MinburIntent =
   | 'salam'
@@ -55,7 +55,7 @@ const has = (t: string, words: string[]) => words.some((w) => new RegExp(`\\b${w
 /** Urutan aturan penting: yang lebih spesifik dicek dulu. */
 const RULES: { intent: MinburIntent; test: (t: string) => boolean }[] = [
   { intent: 'terima-kasih', test: (t) => has(t, ['terima kasih', 'makasih', 'thanks', 'thank', 'tq\\b', 'thx']) },
-  { intent: 'tentang', test: (t) => has(t, ['minbur', 'siapa kamu', 'kamu siapa', 'bot\\b']) && !has(t, ['jam', 'floortime', 'kontak']) },
+  { intent: 'tentang', test: (t) => has(t, ['epigram', 'minbur', 'siapa kamu', 'kamu siapa', 'bot\\b']) && !has(t, ['jam', 'floortime', 'kontak']) },
   {
     intent: 'usia-kantor',
     test: (t) => has(t, ['berdiri', 'sejak kapan', 'umur kantor', 'usia kantor', 'ulang tahun kantor', 'ultah kantor', 'anniversary'])
@@ -155,7 +155,7 @@ export function answerMySchedule(data: ScheduleData | null, code: string, today:
   if (!code) {
     return {
       lines: [
-        'Minbur belum tahu kode agen Anda.',
+        'Epigram belum tahu kode agen Anda.',
         'Ketik kode agen Anda, misalnya "jadwal ADOL", atau pilih nama Anda di menu Jadwal saya pada halaman Floor Time.'
       ],
       links
@@ -251,7 +251,7 @@ export const NAVIGATION_ANSWER: MinburAnswer = {
     '• Beranda: floor time hari ini, pengumuman, order messenger, ulang tahun.',
     '• Floor Time: jadwal lengkap, Jadwal saya (+ simpan ke kalender), dan formulir pindah/tukar jadwal.',
     '• Business Manager per unit, Kontak staf, serta Jam & lokasi kantor.',
-    'Tanyakan saja ke Minbur, misalnya "siapa jaga besok?" atau "BM Warrior siapa?".'
+    'Tanyakan saja ke Epigram, misalnya "siapa jaga besok?" atau "BM Warrior siapa?".'
   ],
   links: [
     { label: 'Floor Time', href: '#floortime' },

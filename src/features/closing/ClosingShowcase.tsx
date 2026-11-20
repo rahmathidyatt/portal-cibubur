@@ -55,15 +55,15 @@ export const ClosingShowcase: React.FC = () => {
 
   return (
     <section aria-labelledby="closing-title" className="mt-6">
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="text-center">
         <h2 id="closing-title" className="text-lg font-bold tracking-tight text-slate-950">
           Closing {formatMonth(month)}
         </h2>
         <p className="text-xs text-slate-500">{items.length} closing</p>
       </div>
-      <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <ul className="mt-3 flex flex-wrap justify-center gap-3">
         {cards.map((card) => (
-          <li key={card.key}>
+          <li key={card.key} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(20%-9.6px)]">
             <button
               type="button"
               onClick={() => setZoom({ src: card.src, alt: `Flyer closing ${card.names}` })}
@@ -74,7 +74,7 @@ export const ClosingShowcase: React.FC = () => {
                 <img src={card.thumb} alt={`Flyer closing ${card.names}`} loading="lazy" className="h-full w-full object-contain" />
               </span>
               <span className="block px-2.5 py-2">
-                <span className="block truncate text-xs font-bold text-slate-900">{card.names}</span>
+                <span translate="no" className="notranslate block truncate text-xs font-bold text-slate-900">{card.names}</span>
                 <span className="block truncate text-[11px] text-slate-500">
                   {shortDate(card.closing.date)} · {card.closing.type} · {titleCase(card.closing.location)}
                 </span>

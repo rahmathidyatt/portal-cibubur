@@ -149,7 +149,7 @@ export const STAFF_LINKS = [
     group: 'Konten portal',
     href: '#staf-minbur',
     route: 'staf-minbur' as PortalRoute,
-    label: 'Minbur',
+    label: 'Epigram',
     hint: 'Ajari bot & pertanyaan baru',
     Icon: MessageCircle
   }

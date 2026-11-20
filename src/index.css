@@ -34,3 +34,9 @@
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Minbur layar penuh di HP: sembunyikan pemutar jingle & kunci scroll halaman. */
+@media (max-width: 639px) {
+  html.minbur-open body { overflow: hidden; }
+  html.minbur-open [data-jingle] { display: none; }
+}

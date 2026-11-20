@@ -41,15 +41,6 @@ function photoFor(bm: BusinessManager): string | undefined {
   return bm.photoUrl || BUNDLED_PHOTOS[bm.id];
 }
 
-const UNIT_STYLE: Record<string, { label: string; chip: string; dot: string }> = {
-  Warrior: { label: 'text-amber-700', chip: 'bg-amber-100 text-amber-900', dot: 'bg-amber-500' },
-  Champion: { label: 'text-sky-700', chip: 'bg-sky-100 text-sky-900', dot: 'bg-sky-500' },
-  Vision: { label: 'text-violet-700', chip: 'bg-violet-100 text-violet-900', dot: 'bg-violet-500' },
-  Priority: { label: 'text-emerald-700', chip: 'bg-emerald-100 text-emerald-900', dot: 'bg-emerald-500' },
-  Winner: { label: 'text-rose-700', chip: 'bg-rose-100 text-rose-900', dot: 'bg-rose-500' },
-  default: { label: 'text-slate-600', chip: 'bg-slate-100 text-slate-800', dot: 'bg-slate-500' }
-};
-
 const PrincipalSection: React.FC<{
   principals: BusinessManager[];
   isAdmin: boolean;
@@ -254,7 +245,7 @@ export const BusinessManagers: React.FC = () => {
   const renderCard = (bm: BusinessManager) => {
     const photo = photoFor(bm);
     return (
-      <li key={bm.id} className="flex items-center gap-3 rounded-xl bg-white p-2.5 ring-1 ring-slate-200">
+      <li key={bm.id} className="flex w-full items-center gap-3 rounded-xl bg-white p-2.5 ring-1 ring-slate-200 sm:w-[260px]">
         {photo ? (
           <img
             src={photo}
@@ -263,18 +254,18 @@ export const BusinessManagers: React.FC = () => {
             height={400}
             loading="lazy"
             decoding="async"
-            className="h-16 w-16 shrink-0 rounded-lg object-cover bg-amber-400"
+            className="h-16 w-16 shrink-0 rounded-lg object-cover bg-slate-900"
           />
         ) : (
           <span
             aria-hidden="true"
-            className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-amber-400 text-xl font-bold text-slate-950"
+            className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-slate-900 text-xl font-bold text-white"
           >
             {bm.name.charAt(0)}
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-slate-950">{bm.name}</p>
+          <p translate="no" className="notranslate truncate text-sm font-bold text-slate-950">{bm.name}</p>
           <p className="mt-0.5 font-mono text-xs text-slate-500">{bm.code}</p>
         </div>
         {isAdmin && (
@@ -289,18 +280,14 @@ export const BusinessManagers: React.FC = () => {
   return (
     <section id="business-manager" className="scroll-mt-20 py-12 sm:py-16 bg-white border-b border-slate-200">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">Business Manager</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              {bms.length} BM · {units.length} unit
-            </p>
-          </div>
+        <div className="relative text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">Business Manager</h2>
+          <span aria-hidden="true" className="mx-auto mt-3 block h-0.5 w-12 bg-slate-950" />
           {isAdmin && !formOpen && (
             <button
               type="button"
               onClick={() => setFormOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg cursor-pointer"
+              className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg cursor-pointer sm:absolute sm:right-0 sm:top-0 sm:mt-0"
             >
               <Plus className="w-3.5 h-3.5" />
               Tambah BM
@@ -337,29 +324,15 @@ export const BusinessManagers: React.FC = () => {
         {bms.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">Belum ada Business Manager.</p>
         ) : (
-          <div className="mt-4 space-y-4">
-            {units.map(({ unit, members }) => {
-              const style = UNIT_STYLE[unit] ?? UNIT_STYLE.default;
-              return (
-                <section
-                  key={unit}
-                  aria-label={`Unit ${unit}`}
-                  className="grid gap-3 rounded-2xl bg-stone-50 p-3 ring-1 ring-slate-200 md:grid-cols-[180px_minmax(0,1fr)] md:p-4"
-                >
-                  <div className="flex items-center justify-between gap-3 md:flex-col md:items-start md:justify-center">
-                    <div>
-                      <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${style.label}`}>Brighton</p>
-                      <p className="text-2xl font-extrabold tracking-tight text-slate-950">{unit}</p>
-                    </div>
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${style.chip}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                      {members.length} BM
-                    </span>
-                  </div>
-                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{members.map(renderCard)}</ul>
-                </section>
-              );
-            })}
+          <div className="mt-8 space-y-10">
+            {units.map(({ unit, members }) => (
+              <section key={unit} aria-label={`Unit ${unit}`} className="text-center">
+                <h3 translate="no" className="notranslate text-lg font-bold tracking-tight text-slate-950">Brighton {unit}</h3>
+                <ul className="mt-4 flex flex-wrap justify-center gap-3 text-left">
+                  {members.map(renderCard)}
+                </ul>
+              </section>
+            ))}
           </div>
         )}
       </div>

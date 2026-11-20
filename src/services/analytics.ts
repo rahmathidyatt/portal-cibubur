@@ -239,14 +239,15 @@ export function pageLabel(path: string): string {
     'staf-medpro': 'Admin · Nota Medpro',
     'staf-jingle': 'Admin · Jingle',
     'staf-ulang-tahun': 'Admin · Ulang tahun',
-    'staf-minbur': 'Admin · Minbur',
+    'staf-minbur': 'Admin · Epigram',
     'staf-bright-day': 'Admin · Bright Day · Report',
     'staf-bright-day-hadir': 'Admin · Bright Day · Daftar hadir',
     'staf-closing': 'Admin · Closing',
     'staf-wof': 'Admin · WOF',
     'staf-training-tracking': 'Admin · Training · Tracking Nilai',
     'staf-closing-rekap': 'Admin · Analisis · Rekap Closing',
-    'staf-medpro-rekap': 'Admin · Analisis · Rekap Medpro'
+    'staf-medpro-rekap': 'Admin · Analisis · Rekap Medpro',
+    notes: 'Notes'
   };
   return labels[path] ?? path;
 }
