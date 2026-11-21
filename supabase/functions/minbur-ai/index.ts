@@ -315,15 +315,64 @@ async function handleNota(req: Request, body: Record<string, unknown>, log: Call
   const image = String(body.image ?? '');
   const m = image.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
   if (!m || m[2].length > 8_000_000) return json({ error: 'image' }, 400);
-  const out = await gemini(
-    CHAT_MODEL,
-    NOTA_SYSTEM,
-    [{ inline_data: { mime_type: m[1], data: m[2] } }, { text: 'Read this invoice.' }],
-    8000,
-    log,
-    60_000
-  );
+  const photo = { inline_data: { mime_type: m[1], data: m[2] } };
+  const out = (await gemini(CHAT_MODEL, NOTA_SYSTEM, [photo, { text: 'Read this invoice.' }], 8000, log, 60_000)) as Record<
+    string,
+    unknown
+  >;
+  const items = Array.isArray(out?.items) ? (out.items as Record<string, unknown>[]) : [];
+  for (const it of items) it.box_2d = anyBox(it);
+  out.paper_box_2d = anyBox(out, ['paper_box_2d', 'paper_box', 'paper']);
+  // Kotak merah belum lengkap (sering terjadi saat dijawab model cadangan): minta khusus kotaknya.
+  if (items.length > 0 && items.some((it) => !it.box_2d)) {
+    try {
+      const rows = items.map((it, i) => `${i + 1}. ${String(it.description ?? '')}`).join('\n');
+      const boxes = (await gemini(CHAT_MODEL, BOX_SYSTEM, [photo, { text: `Rows:\n${rows}` }], 3000, log, 45_000)) as Record<
+        string,
+        unknown
+      >;
+      const list = Array.isArray(boxes?.rows) ? (boxes.rows as Record<string, unknown>[]) : [];
+      items.forEach((it, i) => {
+        if (!it.box_2d && list[i]) it.box_2d = anyBox(list[i]);
+      });
+      if (!out.paper_box_2d) out.paper_box_2d = anyBox(boxes, ['paper_box_2d']);
+    } catch (err) {
+      console.error('kotak nota gagal', err);
+    }
+  }
   return json(out);
+}
+
+const BOX_SYSTEM = `You locate text on a photo of an invoice. For each numbered row text given, find that item row in the table
+and return its bounding box tightly around the item description text (the "Judul Buku" cell) of that row.
+Return JSON only: {"paper_box_2d": [ymin, xmin, ymax, xmax] of the whole paper, "rows": [{"n": 1, "box_2d": [ymin, xmin, ymax, xmax]}, ...]}
+in the same order as given. Coordinates are integers normalized 0-1000 relative to the full image.`;
+
+/** Ambil kotak [ymin,xmin,ymax,xmax] 0–1000 dari berbagai bentuk jawaban model; null bila tidak valid. */
+function anyBox(o: unknown, keys = ['box_2d', 'box', 'bbox', 'bounding_box']): number[] | null {
+  if (!o || typeof o !== 'object') return null;
+  const rec = o as Record<string, unknown>;
+  for (const k of keys) {
+    let v = rec[k];
+    if (typeof v === 'string') {
+      try {
+        v = JSON.parse(v);
+      } catch {
+        v = v.split(/[^\d.]+/).filter(Boolean).map(Number);
+      }
+    }
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const b = v as Record<string, unknown>;
+      v = [b.ymin ?? b.y_min ?? b.top, b.xmin ?? b.x_min ?? b.left, b.ymax ?? b.y_max ?? b.bottom, b.xmax ?? b.x_max ?? b.right];
+    }
+    if (!Array.isArray(v) || v.length !== 4) continue;
+    let n = v.map(Number);
+    if (!n.every(Number.isFinite)) continue;
+    if (n.every((x) => x >= 0 && x <= 1.0001)) n = n.map((x) => x * 1000);
+    n = n.map((x) => Math.round(Math.max(0, Math.min(1000, x))));
+    if (n[2] > n[0] && n[3] > n[1]) return n;
+  }
+  return null;
 }
 
 /* -------------------------------------------------------------- server */

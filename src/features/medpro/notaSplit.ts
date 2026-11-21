@@ -111,8 +111,14 @@ export function checkNota(scan: Pick<NotaScan, 'items' | 'totalQty' | 'grandTota
 }
 
 const clamp = (v: number) => Math.max(0, Math.min(1000, Number.isFinite(v) ? v : 0));
-const toBox = (b: unknown, fallback: Box): Box =>
-  Array.isArray(b) && b.length === 4 ? (b.map((v) => clamp(Number(v))) as Box) : fallback;
+const toBox = (b: unknown, fallback: Box): Box => {
+  if (!Array.isArray(b) || b.length !== 4) return fallback;
+  const n = b.map((v) => clamp(Number(v))) as Box;
+  return n[2] > n[0] && n[3] > n[1] ? n : fallback;
+};
+
+/** Baris yang kotak merahnya belum terbaca. */
+export const hasBox = (it: Pick<NotaItem, 'box'>) => it.box[2] > it.box[0] && it.box[3] > it.box[1];
 const toInt = (v: unknown) => Math.round(Number(String(v ?? '0').replace(/[^\d-]/g, '')) || 0);
 
 /** Rapikan jawaban mentah Gemini menjadi NotaScan. */

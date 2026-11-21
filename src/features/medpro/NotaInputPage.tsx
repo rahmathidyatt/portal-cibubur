@@ -6,7 +6,7 @@ import { aiErrorMessage, scanNotaImage } from '../../services/aiClient';
 import { getMedproStore } from './medproStore';
 import { normalizeInvoice } from './medpro';
 import { buildNotaZip, loadImage, renderItemCanvas } from './notaRender';
-import { checkNota, itemFileName, normalizeScan, notaNumber, uniqueNames, type NotaCategory, type NotaItem, type NotaScan } from './notaSplit';
+import { checkNota, hasBox, itemFileName, normalizeScan, notaNumber, uniqueNames, type NotaCategory, type NotaItem, type NotaScan } from './notaSplit';
 
 const input =
   'w-full px-2.5 py-1.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400';
@@ -237,6 +237,13 @@ export const NotaInputPage: React.FC = () => {
                   </tfoot>
                 </table>
               </div>
+
+              {scan.items.some((it) => !hasBox(it)) && (
+                <p className="mt-4 flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  Kotak merah belum terbaca untuk {scan.items.filter((it) => !hasBox(it)).length} baris. Klik "Baca &amp; bagi nota" lagi sebelum download.
+                </p>
+              )}
 
               <div
                 className={`mt-4 rounded-xl px-4 py-3 text-sm ring-1 ${
