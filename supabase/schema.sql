@@ -937,3 +937,50 @@ create policy "admin all note_labels" on public.note_labels for all to authentic
 drop policy if exists "admin all notes" on public.notes;
 create policy "admin all notes" on public.notes for all to authenticated
   using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+-- ------------------------------------------------------------------
+-- BC terjadwal (khusus admin): pesan WhatsApp yang dikirim admin dengan satu sentuhan
+-- saat waktunya tiba. Notifikasi ke HP lewat Web Push (edge function bc-notify).
+-- ------------------------------------------------------------------
+create table if not exists public.bc_targets (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique check (char_length(name) between 1 and 80),
+  phone text check (phone is null or phone ~ '^[0-9]{8,16}$'),
+  created_at timestamptz not null default now()
+);
+create table if not exists public.bc_schedules (
+  id uuid primary key default gen_random_uuid(),
+  title text not null check (char_length(title) between 1 and 120),
+  message text not null default '' check (char_length(message) <= 6000),
+  kind text not null default 'manual' check (kind in ('manual', 'training-reminder', 'training-group')),
+  target_id uuid references public.bc_targets(id) on delete set null,
+  next_at timestamptz not null,
+  repeat text not null default 'none' check (repeat in ('none', 'daily', 'weekly', 'monthly')),
+  status text not null default 'active' check (status in ('active', 'done', 'cancelled')),
+  source_key text unique,
+  notified_at timestamptz,
+  last_sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists bc_schedules_due_idx on public.bc_schedules (status, next_at);
+create table if not exists public.push_subscriptions (
+  endpoint text primary key check (char_length(endpoint) <= 1000),
+  p256dh text not null check (char_length(p256dh) <= 200),
+  auth text not null check (char_length(auth) <= 100),
+  created_at timestamptz not null default now()
+);
+revoke all on public.bc_targets, public.bc_schedules, public.push_subscriptions from anon;
+grant select, insert, update, delete on public.bc_targets, public.bc_schedules, public.push_subscriptions to authenticated;
+alter table public.bc_targets enable row level security;
+alter table public.bc_schedules enable row level security;
+alter table public.push_subscriptions enable row level security;
+drop policy if exists "admin all bc_targets" on public.bc_targets;
+create policy "admin all bc_targets" on public.bc_targets for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+drop policy if exists "admin all bc_schedules" on public.bc_schedules;
+create policy "admin all bc_schedules" on public.bc_schedules for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+drop policy if exists "admin all push_subscriptions" on public.push_subscriptions;
+create policy "admin all push_subscriptions" on public.push_subscriptions for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());

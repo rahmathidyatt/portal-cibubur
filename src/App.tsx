@@ -19,7 +19,6 @@ import { TodayOverview } from './components/TodayOverview';
 import { BusinessManagers } from './components/BusinessManagers';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
-import { JinglePlayer } from './components/JinglePlayer';
 import { Minbur } from './features/minbur/Minbur';
 import { MinburAdminPage } from './features/minbur/MinburAdminPage';
 import { BrightDayPage } from './features/brightday/BrightDayPage';
@@ -44,6 +43,9 @@ const TrainingPage = lazy(() => import('./features/training/TrainingPage').then(
 const MedproPage = lazy(() => import('./features/medpro/MedproPage').then((m) => ({ default: m.MedproPage })));
 const JinglePage = lazy(() => import('./features/admin/ContentPages').then((m) => ({ default: m.JinglePage })));
 const BirthdayPage = lazy(() => import('./features/admin/ContentPages').then((m) => ({ default: m.BirthdayPage })));
+const BcSchedulePage = lazy(() => import('./features/bc/BcSchedulePage').then((m) => ({ default: m.BcSchedulePage })));
+// Jingle hanya untuk admin (diputar selama jam kerja); pengunjung tidak memuatnya sama sekali.
+const JinglePlayer = lazy(() => import('./components/JinglePlayer').then((m) => ({ default: m.JinglePlayer })));
 const NotesPage = lazy(() => import('./features/notes/NotesPage').then((m) => ({ default: m.NotesPage })));
 const NotaMessengerPage = lazy(() =>
   import('./features/nota/NotaMessengerPage').then((m) => ({ default: m.NotaMessengerPage }))
@@ -106,7 +108,7 @@ function PortalApp() {
 
           <nav
             aria-label="Navigasi utama"
-            className="hidden lg:flex items-center gap-5 text-sm font-semibold text-slate-600"
+            className="hidden lg:flex items-center gap-3 xl:gap-5 whitespace-nowrap text-sm font-semibold text-slate-600"
           >
             <a href={NAV_LINKS[0].href} className="hover:text-slate-950 transition-colors">
               {NAV_LINKS[0].label}
@@ -120,25 +122,29 @@ function PortalApp() {
             {isAdmin && (
               <a
                 href="#staf-statistik"
+                title="Area admin"
+                aria-label="Area admin"
                 aria-current={isStaffRoute(route) ? 'page' : undefined}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors ${
                   isStaffRoute(route) ? 'bg-slate-950 text-white' : 'text-slate-700 ring-1 ring-slate-200 hover:text-slate-950'
                 }`}
               >
                 <LayoutDashboard className={`w-4 h-4 ${isStaffRoute(route) ? 'text-amber-400' : 'text-amber-600'}`} />
-                Area admin
+                <span className="hidden xl:inline">Area admin</span>
               </a>
             )}
             {isAdmin && (
               <a
                 href="#notes"
+                title="Notes"
+                aria-label="Notes"
                 aria-current={onNotes ? 'page' : undefined}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors ${
                   onNotes ? 'bg-slate-950 text-white' : 'text-slate-700 ring-1 ring-slate-200 hover:text-slate-950'
                 }`}
               >
                 <StickyNote className={`w-4 h-4 ${onNotes ? 'text-amber-400' : 'text-amber-600'}`} />
-                Notes
+                <span className="hidden xl:inline">Notes</span>
               </a>
             )}
           </nav>
@@ -285,9 +291,13 @@ function PortalApp() {
 
       <LoginDialog open={loginOpen} onClose={handleCloseLogin} />
 
-      <SiteFooter isAdmin={isAdmin} onLogin={() => setLoginOpen(true)} />
-      <JinglePlayer />
-      {!isStaffRoute(route) && !onNotes && <Minbur />}
+      <SiteFooter isAdmin={isAdmin} onLogin={() => setLoginOpen(true)} showStatus={route !== 'beranda'} />
+      {isAdmin && (
+        <Suspense fallback={null}>
+          <JinglePlayer />
+        </Suspense>
+      )}
+      {!isStaffRoute(route) && !onNotes && <Minbur aboveJingle={isAdmin} />}
     </div>
   );
 }
@@ -329,6 +339,8 @@ function StaffPage({ route }: { route: PortalRoute }) {
       return <BirthdayPage />;
     case 'staf-minbur':
       return <MinburAdminPage />;
+    case 'staf-bc':
+      return <BcSchedulePage />;
     case 'staf-bright-day':
       return <BrightDayPage />;
     case 'staf-bright-day-hadir':
@@ -349,11 +361,11 @@ function StaffPage({ route }: { route: PortalRoute }) {
 }
 
 /** Footer: identitas kantor + tanggal berdiri (ulang tahun kantor). */
-function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => void }) {
+function SiteFooter({ isAdmin, onLogin, showStatus }: { isAdmin: boolean; onLogin: () => void; showStatus: boolean }) {
   const today = todayInJakarta();
   const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
   return (
-    <footer className="bg-white border-t border-slate-200 pt-6 pb-36 sm:pb-24">
+    <footer className={`bg-white border-t border-slate-200 pt-6 ${isAdmin ? 'pb-36' : 'pb-20'}`}>
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
@@ -371,7 +383,8 @@ function SiteFooter({ isAdmin, onLogin }: { isAdmin: boolean; onLogin: () => voi
           )}
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <OfficeStatusBadge weeklyHours={WEEKLY_OFFICE_HOURS} />
+        {/* Di beranda status kantor sudah tampil di atas. */}
+        {showStatus && <OfficeStatusBadge weeklyHours={WEEKLY_OFFICE_HOURS} />}
         {/* Info ulang tahun kantor hanya tampil seminggu menjelang & pada harinya. */}
         {(anniv.isToday || anniv.daysUntil <= 7) && (
           <p className="inline-flex items-center gap-1.5">

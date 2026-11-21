@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MessageCircle, Phone, Copy, Check } from 'lucide-react';
 import type { OfficeStaffContact } from '../data/cibuburData';
 import { buildWhatsAppChatUrl } from '../utils/hubLogic';
+import { SectionHeading } from './SectionHeading';
 
 interface StaffWhatsAppDirectoryProps {
   contacts: OfficeStaffContact[];
@@ -19,13 +20,11 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
   };
 
   return (
-    <section id="kontak-staf" className="scroll-mt-20 py-12 sm:py-16 bg-white border-b border-slate-200">
+    <section id="kontak-staf" className="scroll-mt-20 py-12 sm:py-16 bg-stone-50 border-b border-slate-200">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">
-          Kontak staf kantor
-        </h2>
+        <SectionHeading overline="Hubungi kami" title="Kontak staf kantor" />
 
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {contacts.map((contact) => {
             const whatsappUrl = buildWhatsAppChatUrl(contact.whatsappNumber, contact.defaultMessage);
             const isCopied = copiedId === contact.id;
@@ -33,11 +32,11 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
             return (
               <article
                 key={contact.id}
-                className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3"
+                className="bg-white ring-1 ring-slate-200 rounded-2xl p-5 flex flex-col gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
               >
                 <div>
-                  <p className="text-[11px] font-bold tracking-widest text-amber-700">{contact.division}</p>
-                  <h3 translate="no" className="notranslate mt-1 text-sm font-semibold text-slate-950">{contact.staffName}</h3>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">{contact.division}</p>
+                  <h3 translate="no" className="notranslate mt-1 text-base font-bold text-slate-950">{contact.staffName}</h3>
                 </div>
 
                 <div className="flex items-center justify-between gap-3">
@@ -69,9 +68,9 @@ export const StaffWhatsAppDirectory: React.FC<StaffWhatsAppDirectoryProps> = ({ 
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-white ring-1 ring-slate-300 hover:bg-slate-950 hover:text-white hover:ring-slate-950 rounded-lg transition-colors"
                 >
-                  <MessageCircle className="w-3.5 h-3.5" />
+                  <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
                   Chat WhatsApp
                 </a>
               </article>

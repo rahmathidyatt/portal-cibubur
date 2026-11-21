@@ -67,7 +67,8 @@ const Avatar: React.FC<{ size?: 'sm' | 'md' }> = ({ size = 'sm' }) => (
 );
 
 /** Pop-up chat "Epigram" (asisten Brighton HUB Cibubur): bot FAQ yang menjawab dari data portal. */
-export const Minbur: React.FC = () => {
+/** aboveJingle: tombol chat berada di atas tombol jingle (saat admin login). */
+export const Minbur: React.FC<{ aboveJingle?: boolean }> = ({ aboveJingle = false }) => {
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
@@ -309,7 +310,9 @@ export const Minbur: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-[4.25rem] left-3 z-40 sm:bottom-[4.5rem] sm:left-4">
+    <div
+      className={`fixed left-3 z-40 sm:left-4 ${aboveJingle ? 'bottom-[4.25rem] sm:bottom-[4.5rem]' : 'bottom-3 sm:bottom-4'}`}
+    >
       {open && (
         <div
           role="dialog"
@@ -386,7 +389,7 @@ export const Minbur: React.FC = () => {
             )}
           </div>
 
-          <div className="border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] sm:border-white/60 sm:bg-white/50 sm:pb-0">
+          <div className="border-t border-slate-200 bg-white pb-[calc(env(safe-area-inset-bottom)+4.5rem)] sm:border-white/60 sm:bg-white/50 sm:pb-0">
             <div className="flex gap-1.5 overflow-x-auto px-3 pt-2.5 pb-1 [scrollbar-width:none]">
               {QUICK_QUESTIONS.map((q) => (
                 <button

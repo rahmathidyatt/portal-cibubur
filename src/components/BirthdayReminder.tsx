@@ -42,17 +42,22 @@ export const BirthdayReminder: React.FC<{ today: string }> = ({ today }) => {
   const en = lang === 'en';
 
   return (
-    <div role="note" aria-label="Ulang tahun agen" translate="no" className="notranslate mt-3 space-y-2">
+    <div
+      role="note"
+      aria-label="Ulang tahun agen"
+      translate="no"
+      className="notranslate mt-5 flex flex-col gap-1 rounded-xl bg-slate-100/80 px-4 py-3 ring-1 ring-slate-200/70 sm:flex-row sm:items-center sm:gap-4"
+    >
       {todayList.length > 0 && (
-        <div className="rounded-2xl bg-white px-4 py-3 ring-1 ring-slate-200">
-          <p className="text-base font-bold text-slate-950 sm:text-lg">
+        <p className="min-w-0 flex-1 text-sm">
+          <span className="font-bold text-slate-950">
             {en ? 'Happy Birthday' : 'Selamat Ulang Tahun'} {todayList.map((b) => birthdayName(b.name)).join(' & ')}
-          </p>
-          <p className="mt-1 text-sm text-slate-600">{en ? wish.en : wish.id}</p>
-        </div>
+          </span>
+          <span className="text-slate-600"> — {en ? wish.en : wish.id}</span>
+        </p>
       )}
       {tomorrow.length > 0 && (
-        <p className="text-sm text-slate-600">
+        <p className={`shrink-0 text-xs text-slate-500 ${todayList.length > 0 ? 'sm:border-l sm:border-slate-300 sm:pl-4' : ''}`}>
           <span className="font-semibold text-slate-800">{en ? 'Birthday tomorrow:' : 'Ulang tahun besok:'}</span>{' '}
           {tomorrow.map((b) => b.name).join(', ')}
         </p>

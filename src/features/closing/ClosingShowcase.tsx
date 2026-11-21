@@ -1,3 +1,4 @@
+import { SectionHeading } from '../../components/SectionHeading';
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { todayInJakarta } from '../../utils/schedule';
@@ -54,14 +55,9 @@ export const ClosingShowcase: React.FC = () => {
   if (cards.length === 0) return null;
 
   return (
-    <section aria-labelledby="closing-title" className="mt-6">
-      <div className="text-center">
-        <h2 id="closing-title" className="text-lg font-bold tracking-tight text-slate-950">
-          Closing {formatMonth(month)}
-        </h2>
-        <p className="text-xs text-slate-500">{items.length} closing</p>
-      </div>
-      <ul className="mt-3 flex flex-wrap justify-center gap-3">
+    <section aria-labelledby="closing-title" className="mt-12">
+      <SectionHeading id="closing-title" overline={`${items.length} closing`} title={`Closing ${formatMonth(month)}`} />
+      <ul className="mt-8 flex flex-wrap justify-center gap-3">
         {cards.map((card) => (
           <li key={card.key} className="w-[calc(50%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(20%-9.6px)]">
             <button

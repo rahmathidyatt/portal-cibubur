@@ -77,7 +77,7 @@ export const FloorTimeTodayCard: React.FC<{ today: string; minutesNow: number }>
   const myNext = schedule && me ? nextSlot(slotsForAgentCode(schedule.data, me.code), today, minutesNow) : null;
 
   return (
-    <DashCard id="ft-today" title="Floor Time hari ini" Icon={Users} action={{ href: '#floortime', label: 'Jadwal lengkap' }}>
+    <DashCard id="ft-today" title="Floor Time hari ini" Icon={Users} action={{ href: '#floortime', label: 'Jadwal lengkap' }} className="flex-1">
       {body}
       {schedule && (
         <a

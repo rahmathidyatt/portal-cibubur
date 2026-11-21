@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle, ClipboardCheck, Trophy, Gift, FileSearch } from 'lucide-react';
+import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle, ClipboardCheck, Trophy, Gift, FileSearch, CalendarClock } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
 import { FEATURES } from '../data/features';
@@ -51,6 +51,14 @@ export const STAFF_LINKS = [
     label: 'Rekap Medpro',
     hint: 'Biaya banner, branding & drop',
     Icon: Flag
+  },
+  {
+    group: 'Operasional',
+    href: '#staf-bc',
+    route: 'staf-bc' as PortalRoute,
+    label: 'BC Terjadwal',
+    hint: 'Jadwalkan BC & kirim satu sentuhan',
+    Icon: CalendarClock
   },
   {
     group: 'Operasional',

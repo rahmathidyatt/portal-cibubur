@@ -11,6 +11,7 @@ import {
 import { getContentStore } from '../services/contentStore';
 import { useAdmin } from '../hooks/useAdmin';
 import { resizeImageToDataUrl } from '../utils/imageResize';
+import { SectionHeading } from './SectionHeading';
 import { ConfirmCancelButton } from './ConfirmCancelButton';
 
 // Foto bawaan di-import satu per satu agar Vite menyalin & meng-hash file saat build.
@@ -77,7 +78,7 @@ const PrincipalSection: React.FC<{
         </div>
       </div>
     ) : (
-      <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{principals.map(renderCard)}</ul>
+      <ul className="mt-3 flex flex-wrap justify-center gap-3">{principals.map((p) => renderCard(p))}</ul>
     )}
   </div>
 );
@@ -240,12 +241,16 @@ export const BusinessManagers: React.FC = () => {
 
   const principals = managers.filter(isPrincipal);
   const bms = managers.filter((m) => !isPrincipal(m));
-  const units = groupByUnit(bms);
+  const units = groupByUnit<BusinessManager>(bms);
 
-  const renderCard = (bm: BusinessManager) => {
+  /** Kartu BM tegak: foto besar, label unit, nama & kode. */
+  const renderCard = (bm: BusinessManager, unit?: string) => {
     const photo = photoFor(bm);
     return (
-      <li key={bm.id} className="flex w-full items-center gap-3 rounded-xl bg-white p-2.5 ring-1 ring-slate-200 sm:w-[260px]">
+      <li
+        key={bm.id}
+        className="w-[calc(33.333%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(16.666%-10px)] overflow-hidden rounded-xl sm:rounded-2xl bg-white ring-1 ring-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-md"
+      >
         {photo ? (
           <img
             src={photo}
@@ -254,25 +259,30 @@ export const BusinessManagers: React.FC = () => {
             height={400}
             loading="lazy"
             decoding="async"
-            className="h-16 w-16 shrink-0 rounded-lg object-cover bg-slate-900"
+            className="aspect-square w-full object-cover object-top bg-slate-900"
           />
         ) : (
           <span
             aria-hidden="true"
-            className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-slate-900 text-xl font-bold text-white"
+            className="grid aspect-square w-full place-items-center bg-slate-900 text-4xl font-bold text-white"
           >
             {bm.name.charAt(0)}
           </span>
         )}
-        <div className="min-w-0 flex-1">
-          <p translate="no" className="notranslate truncate text-sm font-bold text-slate-950">{bm.name}</p>
-          <p className="mt-0.5 font-mono text-xs text-slate-500">{bm.code}</p>
+        <div className="px-2 py-2 sm:px-3 sm:py-3">
+          {unit && (
+            <p translate="no" className="notranslate truncate text-[8.5px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
+              Brighton {unit}
+            </p>
+          )}
+          <p translate="no" className="notranslate mt-0.5 truncate text-xs sm:text-sm font-bold text-slate-950">{bm.name}</p>
+          <p className="mt-0.5 font-mono text-[11px] sm:text-xs text-slate-500">{bm.code}</p>
+          {isAdmin && (
+            <div className="mt-2">
+              <ConfirmCancelButton label="Hapus" confirmLabel="Hapus" onConfirm={() => handleDelete(bm)} />
+            </div>
+          )}
         </div>
-        {isAdmin && (
-          <div className="self-start">
-            <ConfirmCancelButton label="Hapus" confirmLabel="Hapus" onConfirm={() => handleDelete(bm)} />
-          </div>
-        )}
       </li>
     );
   };
@@ -280,20 +290,22 @@ export const BusinessManagers: React.FC = () => {
   return (
     <section id="business-manager" className="scroll-mt-20 py-12 sm:py-16 bg-white border-b border-slate-200">
       <div className="max-w-[1140px] mx-auto px-4 sm:px-6">
-        <div className="relative text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950">Business Manager</h2>
-          <span aria-hidden="true" className="mx-auto mt-3 block h-0.5 w-12 bg-slate-950" />
-          {isAdmin && !formOpen && (
-            <button
-              type="button"
-              onClick={() => setFormOpen(true)}
-              className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg cursor-pointer sm:absolute sm:right-0 sm:top-0 sm:mt-0"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Tambah BM
-            </button>
-          )}
-        </div>
+        <SectionHeading
+          overline="Pimpinan unit"
+          title="Business Manager"
+          action={
+            isAdmin && !formOpen ? (
+              <button
+                type="button"
+                onClick={() => setFormOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tambah BM
+              </button>
+            ) : null
+          }
+        />
 
         {isAdmin && formOpen && (
           <AddBmForm
@@ -324,16 +336,10 @@ export const BusinessManagers: React.FC = () => {
         {bms.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">Belum ada Business Manager.</p>
         ) : (
-          <div className="mt-8 space-y-10">
-            {units.map(({ unit, members }) => (
-              <section key={unit} aria-label={`Unit ${unit}`} className="text-center">
-                <h3 translate="no" className="notranslate text-lg font-bold tracking-tight text-slate-950">Brighton {unit}</h3>
-                <ul className="mt-4 flex flex-wrap justify-center gap-3 text-left">
-                  {members.map(renderCard)}
-                </ul>
-              </section>
-            ))}
-          </div>
+          // Semua BM dalam satu grid rapi (urut per unit); nama unit tampil di tiap kartu.
+          <ul className="mt-8 flex flex-wrap justify-center gap-2 sm:gap-3">
+            {units.flatMap(({ unit, members }) => members.map((bm) => renderCard(bm, unit)))}
+          </ul>
         )}
       </div>
     </section>

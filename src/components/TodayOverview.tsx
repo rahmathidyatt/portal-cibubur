@@ -34,7 +34,7 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
 
   return (
     <section id="beranda" className="scroll-mt-20 border-b border-slate-200 bg-stone-50">
-      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div>
           <DateClock weeklyHours={weeklyHours} />
           <h1 className="sr-only">Brighton HUB Cibubur</h1>
@@ -49,8 +49,6 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
             </a>
           )}
         </div>
-
-        <ClosingShowcase />
 
         {anniv.isToday && (
           <div
@@ -69,8 +67,9 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
           </div>
         )}
 
+        {/* Kartu utama: sama tinggi dalam satu baris. */}
         <div
-          className={`mt-6 grid gap-4 items-start ${cards >= 3 ? 'md:grid-cols-2 lg:grid-cols-3' : cards === 2 ? 'md:grid-cols-2' : ''}`}
+          className={`mt-6 grid gap-4 items-stretch ${cards >= 3 ? 'md:grid-cols-2 lg:grid-cols-3' : cards === 2 ? 'md:grid-cols-2' : ''}`}
         >
           <div className="flex flex-col gap-3">
             <FloorTimeTodayCard today={today} minutesNow={minutesNow} />
@@ -87,6 +86,8 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
           {FEATURES.dealingRoom && <DealingRoomTodayCard today={today} minutesNow={minutesNow} />}
           <AnnouncementsCard onLoaded={setAnnouncementCount} />
         </div>
+
+        <ClosingShowcase />
       </div>
     </section>
   );

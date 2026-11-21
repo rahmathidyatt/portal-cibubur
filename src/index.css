@@ -40,3 +40,8 @@
   html.minbur-open body { overflow: hidden; }
   html.minbur-open [data-jingle] { display: none; }
 }
+
+/* Area admin di laptop: jingle di kanan sidebar (lebar 16rem). */
+@media (min-width: 1024px) {
+  html.admin-sidebar-open [data-jingle] { left: calc(16rem + 1rem); }
+}

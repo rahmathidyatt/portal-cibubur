@@ -247,6 +247,7 @@ export function pageLabel(path: string): string {
     'staf-training-tracking': 'Admin · Training · Tracking Nilai',
     'staf-closing-rekap': 'Admin · Analisis · Rekap Closing',
     'staf-medpro-rekap': 'Admin · Analisis · Rekap Medpro',
+    'staf-bc': 'Admin · BC Terjadwal',
     notes: 'Notes'
   };
   return labels[path] ?? path;

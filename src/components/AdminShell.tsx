@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft, CalendarCheck, ChevronDown, GraduationCap, TrendingUp, ChevronLeft, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 import { STAFF_LINKS } from './ReservationMenu';
@@ -120,6 +120,11 @@ export const AdminShell: React.FC<AdminShellProps> = ({ route, email, onSignOut,
       /* penyimpanan tidak tersedia */
     }
   };
+  // Tombol jingle (kiri bawah) digeser ke kanan sidebar agar tidak menutupi menu "Keluar".
+  useEffect(() => {
+    document.documentElement.classList.toggle('admin-sidebar-open', !collapsed);
+    return () => document.documentElement.classList.remove('admin-sidebar-open');
+  }, [collapsed]);
 
   return (
   <div className="bg-stone-50 lg:flex lg:min-h-[calc(100vh-57px)]">

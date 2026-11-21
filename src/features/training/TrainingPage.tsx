@@ -37,6 +37,7 @@ import {
   type ModuleStatus,
   type TrainingAgent
 } from './training';
+import { getBcStore } from '../bc/bcStore';
 import { getTrainingStore } from './trainingStore';
 import { trainingReport } from './trainingReport';
 import { ExportButtons } from '../../components/ExportButtons';
@@ -94,6 +95,10 @@ export const TrainingPage: React.FC = () => {
   const saveBatch = async (b: TrainingBatch) => {
     try {
       await store.setBatch(b, auth);
+      // BC Pengingat (H-3) & Daftar peserta (H-1) otomatis masuk BC Terjadwal.
+      await getBcStore()
+        .syncTraining(b.start, auth)
+        .catch(() => undefined);
       setNextBatch(b);
       setBatchEdit(null);
       setBcBatch(b.start);

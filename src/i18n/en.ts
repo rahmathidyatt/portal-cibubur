@@ -56,6 +56,10 @@ export const EN_DICTIONARY: Record<string, string> = {
   'Ulang tahun': 'Birthday',
   'Lihat di beranda': 'View on home page',
 
+  'Pimpinan unit': 'Unit leaders',
+  'Hubungi kami': 'Contact us',
+  'Kunjungi kami': 'Visit us',
+
   // Business Manager
   'Business Manager': 'Business Manager',
   'Lihat Business Manager': 'View Business Managers',
