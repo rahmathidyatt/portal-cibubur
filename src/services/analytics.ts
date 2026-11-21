@@ -248,6 +248,8 @@ export function pageLabel(path: string): string {
     'staf-closing-rekap': 'Admin · Analisis · Rekap Closing',
     'staf-medpro-rekap': 'Admin · Analisis · Rekap Medpro',
     'staf-bc': 'Admin · BC Terjadwal',
+    'staf-closing-reward': 'Admin · Closing · Closing Reward',
+    'staf-medpro-input': 'Admin · Nota Medpro · Input nota',
     notes: 'Notes'
   };
   return labels[path] ?? path;

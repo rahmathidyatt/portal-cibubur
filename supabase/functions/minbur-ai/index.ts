@@ -3,6 +3,7 @@
 //   mode "chat"      : jawab pertanyaan Epigram berdasarkan data portal, lalu catat untuk ditinjau admin
 //   mode "translate" : terjemahkan teks portal ID → EN (hasil disimpan di cache content_translations)
 //   mode "wish"      : buat ucapan ulang tahun ID & EN (khusus admin)
+//   mode "nota"      : baca foto nota medpro + posisi tiap baris (khusus admin)
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -21,13 +22,13 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
 
-async function gemini(model: string, system: string, user: string, maxTokens: number): Promise<unknown> {
+async function gemini(model: string, system: string, user: string | Record<string, unknown>[], maxTokens: number): Promise<unknown> {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
+      contents: [{ role: 'user', parts: typeof user === 'string' ? [{ text: user }] : user }],
       generationConfig: { responseMimeType: 'application/json', maxOutputTokens: maxTokens }
     })
   });
@@ -176,6 +177,41 @@ async function handleWish(req: Request): Promise<Response> {
   return json({ en, id });
 }
 
+/* ---------------------------------------------------------------- nota */
+
+const NOTA_SYSTEM = `You read a photo of an Indonesian printing invoice ("FAKTUR PENJUALAN") for Brighton office media promotion (banners, ID cards, business cards, etc.).
+Return JSON only:
+{
+  "invoice": full invoice number exactly as printed after "Nomor", e.g. "022642/ASP/FP/XI/2026",
+  "date": invoice date as YYYY-MM-DD (from the city/date line near the bottom, e.g. "Depok, 13 November 2026"),
+  "paper_box_2d": [ymin, xmin, ymax, xmax] of the whole invoice paper,
+  "items": one object per printed item row (ignore empty rows with "-"), in order:
+    {
+      "description": full text of the "Judul Buku" cell,
+      "product": product type, e.g. "BANNER", "STIKER BANNER", "ID CARD", "KARTU NAMA", "PROMO",
+      "label": the customer/listing name and purpose after the product word and before "ukuran", e.g. "MONIKA JUAL", "HENDRA & NING JUAL SEWA",
+      "size": size text after "ukuran" as printed, e.g. "0,8 x 0,5 m" ("" if none),
+      "price": integer rupiah (16.000 -> 16000), "qty": integer, "total": integer rupiah,
+      "box_2d": [ymin, xmin, ymax, xmax] tightly around the "Judul Buku" text of this row only
+    },
+  "total_qty": integer under "Jumlah" qty column, "grand_total": integer rupiah total at the bottom
+}
+All box coordinates are normalized 0-1000 relative to the full image. Copy names exactly as printed (keep typos). Never invent rows.`;
+
+async function handleNota(req: Request, body: Record<string, unknown>): Promise<Response> {
+  if (!(await isAdmin(req))) return json({ error: 'forbidden' }, 403);
+  const image = String(body.image ?? '');
+  const m = image.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+  if (!m || m[2].length > 8_000_000) return json({ error: 'image' }, 400);
+  const out = await gemini(
+    CHAT_MODEL,
+    NOTA_SYSTEM,
+    [{ inline_data: { mime_type: m[1], data: m[2] } }, { text: 'Read this invoice.' }],
+    8000
+  );
+  return json(out);
+}
+
 /* -------------------------------------------------------------- server */
 
 Deno.serve(async (req) => {
@@ -191,6 +227,8 @@ Deno.serve(async (req) => {
         return await handleTranslate(body);
       case 'wish':
         return await handleWish(req);
+      case 'nota':
+        return await handleNota(req, body);
       default:
         return json({ error: 'mode' }, 400);
     }

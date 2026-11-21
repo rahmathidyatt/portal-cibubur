@@ -8,7 +8,7 @@ const santi = { role: 'S' as const, name: 'Santi', unit: 'Brighton Max', area: '
 test('Primary: agen pertama selling, sisanya Project Leader (maks. 2)', () => {
   const agents = applyType([imelda, santi, { ...santi, name: 'Vira' }, { ...santi, name: 'X' }], 'Primary');
   assert.deepEqual(agents.map((a) => a.role), ['S', 'PL', 'PL']);
-  assert.deepEqual(applyType(agents, 'Jual Beli').map((a) => a.role), ['S', 'S', 'S']);
+  assert.deepEqual(applyType(agents, 'Jual Beli').map((a) => a.role), ['S', 'PL', 'PL']);
   assert.deepEqual(mainAgents({ agents }).map((a) => a.name), ['Imelda']);
 });
 

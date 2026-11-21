@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle, ClipboardCheck, Trophy, Gift, FileSearch, CalendarClock } from 'lucide-react';
+import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle, ClipboardCheck, Trophy, Gift, FileSearch, CalendarClock, ScanLine } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
 import { FEATURES } from '../data/features';
@@ -96,19 +96,39 @@ export const STAFF_LINKS = [
   },
   {
     group: 'Operasional',
+    parent: 'Nota Medpro',
     href: '#staf-medpro',
     route: 'staf-medpro' as PortalRoute,
-    label: 'Nota Medpro',
+    label: 'Data nota',
     hint: 'Banner, alat branding & drop',
     Icon: Flag
   },
   {
     group: 'Operasional',
+    parent: 'Nota Medpro',
+    href: '#staf-medpro-input',
+    route: 'staf-medpro-input' as PortalRoute,
+    label: 'Input nota',
+    hint: 'Foto nota → dibagi per baris',
+    Icon: ScanLine
+  },
+  {
+    group: 'Operasional',
+    parent: 'Closing',
     href: '#staf-closing',
     route: 'staf-closing' as PortalRoute,
-    label: 'Closing',
+    label: 'Data closing',
     hint: 'Flyer & info closing',
     Icon: Trophy
+  },
+  {
+    group: 'Operasional',
+    parent: 'Closing',
+    href: '#staf-closing-reward',
+    route: 'staf-closing-reward' as PortalRoute,
+    label: 'Closing Reward',
+    hint: 'Klaim reward booster (Agu–Des)',
+    Icon: Gift
   },
   {
     group: 'Operasional',

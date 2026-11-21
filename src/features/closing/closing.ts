@@ -9,7 +9,8 @@ export const MAX_PROJECT_LEADERS = 2;
 export const CLOSING_ROLES: { value: ClosingRole; label: string }[] = [
   { value: 'L', label: 'L (Listing)' },
   { value: 'S', label: 'S (Selling)' },
-  { value: 'L/S', label: 'L/S (Listing & Selling)' }
+  { value: 'L/S', label: 'L/S (Listing & Selling)' },
+  { value: 'PL', label: 'PL (Project Leader)' }
 ];
 export const DEFAULT_AREA = 'Cibubur, Bogor';
 
@@ -98,7 +99,8 @@ export function applyType(agents: ClosingAgent[], type: ClosingType): ClosingAge
   if (type === 'Primary') {
     return agents.slice(0, 1 + MAX_PROJECT_LEADERS).map((a, i) => ({ ...a, role: i === 0 ? 'S' : 'PL' }));
   }
-  return agents.map((a) => (a.role === 'PL' ? { ...a, role: 'S' } : a));
+  // Jual Beli & Sewa juga boleh punya Project Leader, jadi peran dipertahankan.
+  return agents;
 }
 
 /** Agen utama (bukan Project Leader). */

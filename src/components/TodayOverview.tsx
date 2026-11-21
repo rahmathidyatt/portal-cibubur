@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin';
 import type { OfficeDaySchedule } from '../data/cibuburData';
-import { Cake, CalendarPlus } from 'lucide-react';
+import { ArrowUpRight, Cake, CalendarPlus, FilePen, Send, type LucideIcon } from 'lucide-react';
 import { FloorTimeTodayCard } from './dashboard/FloorTimeTodayCard';
 import { DealingRoomTodayCard } from './dashboard/DealingRoomTodayCard';
 import { FEATURES } from '../data/features';
@@ -67,24 +67,27 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
           </div>
         )}
 
-        {/* Kartu utama: sama tinggi dalam satu baris. */}
+        {/* Baris 1: info hari ini (sama tinggi). Baris 2: formulir (sama tinggi). */}
         <div
           className={`mt-6 grid gap-4 items-stretch ${cards >= 3 ? 'md:grid-cols-2 lg:grid-cols-3' : cards === 2 ? 'md:grid-cols-2' : ''}`}
         >
-          <div className="flex flex-col gap-3">
-            <FloorTimeTodayCard today={today} minutesNow={minutesNow} />
-            <a
-              href={OFFICE_IDENTITY.smartMessengerOrderUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group block cursor-pointer rounded-2xl bg-white/50 px-4 py-3 ring-1 ring-slate-200/70 backdrop-blur transition duration-150 hover:-translate-y-0.5 hover:bg-white hover:shadow-md hover:ring-2 hover:ring-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:translate-y-0"
-            >
-              <span className="block text-sm font-bold text-slate-950 group-hover:text-amber-700">Order Smart Messenger</span>
-              <span className="block text-xs text-slate-500">Isi formulir order untuk kebutuhan smart messenger</span>
-            </a>
-          </div>
+          <FloorTimeTodayCard today={today} minutesNow={minutesNow} />
           {FEATURES.dealingRoom && <DealingRoomTodayCard today={today} minutesNow={minutesNow} />}
           <AnnouncementsCard onLoaded={setAnnouncementCount} />
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <ActionCard
+            href={OFFICE_IDENTITY.smartMessengerOrderUrl}
+            Icon={Send}
+            title="Smart Messenger"
+            hint="Isi formulir order smart messenger"
+          />
+          <ActionCard
+            href={OFFICE_IDENTITY.mouFormUrl}
+            Icon={FilePen}
+            title="Pembuatan MoU"
+            hint="Isi formulir order pembuatan MoU"
+          />
         </div>
 
         <ClosingShowcase />
@@ -92,3 +95,22 @@ export const TodayOverview: React.FC<TodayOverviewProps> = ({ weeklyHours }) => 
     </section>
   );
 };
+
+/** Kartu tautan formulir: ikon, judul, keterangan, panah — seluruh kartu bisa diklik. */
+const ActionCard: React.FC<{ href: string; Icon: LucideIcon; title: string; hint: string }> = ({ href, Icon, title, hint }) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="group flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition duration-150 hover:-translate-y-0.5 hover:shadow-md hover:ring-2 hover:ring-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 active:translate-y-0 sm:p-5"
+  >
+    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-950 text-amber-400">
+      <Icon className="h-5 w-5" aria-hidden="true" />
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block text-sm font-bold text-slate-950 group-hover:text-amber-700 sm:text-base">{title}</span>
+      <span className="mt-0.5 block text-xs text-slate-600 sm:text-sm">{hint}</span>
+    </span>
+    <ArrowUpRight className="h-5 w-5 shrink-0 text-slate-400 transition group-hover:text-amber-600" aria-hidden="true" />
+  </a>
+);

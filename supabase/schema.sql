@@ -984,3 +984,21 @@ create policy "admin all bc_schedules" on public.bc_schedules for all to authent
 drop policy if exists "admin all push_subscriptions" on public.push_subscriptions;
 create policy "admin all push_subscriptions" on public.push_subscriptions for all to authenticated
   using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+-- ------------------------------------------------------------------
+-- Closing Reward Booster (Agustus–Desember 2026): catatan klaim per agen per closing.
+-- ------------------------------------------------------------------
+create table if not exists public.closing_reward_claims (
+  closing_id uuid not null references public.closings(id) on delete cascade,
+  agent_key text not null check (char_length(agent_key) between 1 and 160),
+  claimed_by text not null check (char_length(claimed_by) between 1 and 120),
+  claimed_at date not null default ((now() at time zone 'Asia/Jakarta')::date),
+  created_at timestamptz not null default now(),
+  primary key (closing_id, agent_key)
+);
+revoke all on public.closing_reward_claims from anon;
+grant select, insert, update, delete on public.closing_reward_claims to authenticated;
+alter table public.closing_reward_claims enable row level security;
+drop policy if exists "admin all closing_reward_claims" on public.closing_reward_claims;
+create policy "admin all closing_reward_claims" on public.closing_reward_claims for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());

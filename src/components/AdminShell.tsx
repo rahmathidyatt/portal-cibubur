@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, CalendarCheck, ChevronDown, GraduationCap, TrendingUp, ChevronLeft, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Flag, Trophy, CalendarCheck, ChevronDown, GraduationCap, TrendingUp, ChevronLeft, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 import { STAFF_LINKS } from './ReservationMenu';
 
@@ -17,7 +17,9 @@ type StaffLink = (typeof STAFF_LINKS)[number];
 const PARENT_ICONS: Record<string, React.FC<{ className?: string }>> = {
   'Bright Day': CalendarCheck,
   'Training Brighton': GraduationCap,
-  Analisis: TrendingUp
+  Analisis: TrendingUp,
+  Closing: Trophy,
+  'Nota Medpro': Flag
 };
 
 const ParentIcon: React.FC<{ name: string; className?: string }> = ({ name, className }) => {

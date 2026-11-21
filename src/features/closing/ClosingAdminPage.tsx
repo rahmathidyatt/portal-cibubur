@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2, Upload } from 'lucide-react';
+import { ClipboardPaste, Plus, Trash2, Upload } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useToast } from '../../hooks/useToast';
 import { ConfirmCancelButton } from '../../components/ConfirmCancelButton';
@@ -22,6 +22,7 @@ import {
   type ClosingType
 } from './closing';
 import { CLOSINGS_CHANGED, getClosingStore } from './closingStore';
+import { parseClosingText, type ParsedClosing } from './closingPaste';
 
 const input =
   'w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400';
@@ -57,6 +58,9 @@ export const ClosingAdminPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState<string>(todayInJakarta().slice(0, 7));
   const fileRef = useRef<HTMLInputElement>(null);
+  const [pasteText, setPasteText] = useState('');
+  const [parsed, setParsed] = useState<ParsedClosing[]>([]);
+  const [usedIndex, setUsedIndex] = useState<number | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -118,6 +122,23 @@ export const ClosingAdminPage: React.FC = () => {
     }
   };
 
+  /** Isi formulir dari teks yang ditempel (tanggal & flyer tetap diisi manual). */
+  const fillFrom = (p: ParsedClosing, index: number) => {
+    setDraft((d) => ({ ...d, type: p.type, location: p.location, agents: p.agents.length ? p.agents : [emptyAgent()] }));
+    setUsedIndex(index);
+    setError(null);
+  };
+  const readPaste = () => {
+    const list = parseClosingText(pasteText);
+    if (list.length === 0) {
+      setParsed([]);
+      return setError('Teks closing tidak terbaca. Pastikan ada baris "Jual Beli – LOKASI" lalu baris "- S: Nama Brighton Unit Area".');
+    }
+    setParsed(list);
+    fillFrom(list[0], 0);
+    toast(list.length === 1 ? 'Formulir terisi. Lengkapi tanggal & flyer.' : `${list.length} closing terbaca. Closing 1 sudah mengisi formulir.`);
+  };
+
   const reset = () => {
     setDraft(blank());
     setEditing(false);
@@ -135,7 +156,15 @@ export const ClosingAdminPage: React.FC = () => {
       window.dispatchEvent(new Event(CLOSINGS_CHANGED));
       toast(editing ? 'Closing diperbarui.' : 'Closing disimpan dan tampil di beranda.');
       setMonth(clean.date.slice(0, 7));
+      const rest = usedIndex !== null ? parsed.filter((_, i) => i !== usedIndex) : parsed;
       reset();
+      if (usedIndex !== null) {
+        setParsed(rest);
+        setUsedIndex(null);
+        // Closing berikutnya dari teks yang ditempel langsung mengisi formulir.
+        if (rest.length > 0) fillFrom(rest[0], 0);
+        else setPasteText('');
+      }
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan closing.');
@@ -160,6 +189,45 @@ export const ClosingAdminPage: React.FC = () => {
         <div className="mt-6 max-w-[900px]">
           <div ref={formRef} className={`${card} scroll-mt-24 space-y-4`}>
             <h2 className="text-base font-bold text-slate-950">{editing ? 'Ubah closing' : 'Tambah closing'}</h2>
+            {!editing && (
+              <details className="group rounded-xl bg-stone-50 ring-1 ring-slate-200" open={parsed.length > 0 || undefined}>
+                <summary className="flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm font-semibold text-slate-800">
+                  <ClipboardPaste className="h-4 w-4 text-amber-600" aria-hidden="true" />
+                  Tempel teks closing (isi otomatis)
+                </summary>
+                <div className="space-y-2 px-3 pb-3">
+                  <textarea
+                    rows={6}
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                    placeholder={'Jual Beli – AMAZING CIKEAS HILL\n- PL: Rudy Brighton Warrior Cibubur, Bogor @BM Warrior Rudy (AUFZ)\n- S: Vira Brighton Warrior Cibubur, Bogor @BM Warrior Vira (AUTU)'}
+                    aria-label="Teks closing"
+                    className={`${input} font-mono text-xs`}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={readPaste} disabled={!pasteText.trim()} className={primaryBtn}>
+                      Isi otomatis
+                    </button>
+                  </div>
+                  {parsed.length > 1 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {parsed.map((p, i) => (
+                        <button
+                          key={`${p.location}-${i}`}
+                          type="button"
+                          onClick={() => fillFrom(p, i)}
+                          className={`rounded-full px-3 py-1 text-xs font-bold cursor-pointer ${
+                            usedIndex === i ? 'bg-slate-950 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          {i + 1}. {p.type} – {p.location}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="text-xs font-semibold text-slate-700">
                 Tanggal closing

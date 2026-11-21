@@ -42,3 +42,8 @@ export async function generateBirthdayWish(accessToken: string | null): Promise<
   const r = await callAi<{ id?: string; en?: string }>({ mode: 'wish' }, accessToken);
   return r?.id && r?.en ? { id: r.id.trim(), en: r.en.trim() } : null;
 }
+
+/** Baca foto nota medpro (khusus admin): isi nota + posisi tiap baris. */
+export async function scanNotaImage(imageDataUrl: string, accessToken: string | null): Promise<Record<string, unknown> | null> {
+  return callAi<Record<string, unknown>>({ mode: 'nota', image: imageDataUrl }, accessToken);
+}

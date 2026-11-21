@@ -62,7 +62,9 @@ export const OFFICE_IDENTITY = {
   /** Tanggal berdiri kantor (YYYY-MM-DD), dipakai untuk ulang tahun kantor. */
   foundedDate: '2023-05-03',
   /** Formulir order Smart Messenger (Google Form via bit.ly). */
-  smartMessengerOrderUrl: 'https://bit.ly/FormOrderSmartMessengerHubCibubur'
+  smartMessengerOrderUrl: 'https://bit.ly/FormOrderSmartMessengerHubCibubur',
+  /** Google Form Pembuatan MoU. */
+  mouFormUrl: 'https://bit.ly/FormPengajuanPermintaanOrderBrightonHubCibubur'
 };
 
 export const WEEKLY_OFFICE_HOURS: OfficeDaySchedule[] = [
