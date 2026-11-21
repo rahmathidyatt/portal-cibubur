@@ -22,26 +22,88 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
 
-async function gemini(model: string, system: string, user: string | Record<string, unknown>[], maxTokens: number): Promise<unknown> {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: typeof user === 'string' ? [{ text: user }] : user }],
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: maxTokens }
-    })
-  });
-  if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const data = await res.json();
-  const parts: { text?: string; thought?: boolean }[] = data?.candidates?.[0]?.content?.parts ?? [];
-  const text = parts
-    .filter((p) => !p.thought && typeof p.text === 'string')
-    .map((p) => p.text)
-    .join('')
-    .trim()
-    .replace(/^```(?:json)?\s*|\s*```$/g, '');
-  return JSON.parse(text);
+class GeminiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function callGemini(
+  model: string,
+  system: string,
+  parts: Record<string, unknown>[],
+  maxTokens: number,
+  thinking: 'low' | 'minimal' | null,
+  timeoutMs: number
+): Promise<unknown> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_KEY },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: maxTokens,
+          ...(thinking ? { thinkingConfig: { thinkingLevel: thinking } } : {})
+        }
+      })
+    });
+    if (!res.ok) throw new GeminiError(res.status, (await res.text()).slice(0, 300));
+    const data = await res.json();
+    const out: { text?: string; thought?: boolean }[] = data?.candidates?.[0]?.content?.parts ?? [];
+    const text = out
+      .filter((p) => !p.thought && typeof p.text === 'string')
+      .map((p) => p.text)
+      .join('')
+      .trim()
+      .replace(/^```(?:json)?\s*|\s*```$/g, '');
+    return JSON.parse(text);
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') throw new GeminiError(504, 'timeout');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Panggil Gemini dengan "berpikir" seminimal mungkin agar cepat. Bila model sibuk (503/429)
+ * atau terlalu lama, coba sekali lagi dengan model cadangan yang lebih ringan.
+ */
+async function gemini(
+  model: string,
+  system: string,
+  user: string | Record<string, unknown>[],
+  maxTokens: number,
+  timeoutMs = 25_000
+): Promise<unknown> {
+  const parts = typeof user === 'string' ? [{ text: user }] : user;
+  const attempt = async (m: string, ms: number) => {
+    const level = /lite/.test(m) ? 'minimal' : 'low';
+    try {
+      return await callGemini(m, system, parts, maxTokens, level, ms);
+    } catch (err) {
+      // Model tidak mendukung pengaturan thinking: ulangi tanpa pengaturan itu.
+      if (err instanceof GeminiError && err.status === 400 && /thinking/i.test(err.message))
+        return await callGemini(m, system, parts, maxTokens, null, ms);
+      throw err;
+    }
+  };
+  try {
+    return await attempt(model, timeoutMs);
+  } catch (err) {
+    const busy = err instanceof GeminiError && [429, 500, 503, 504].includes(err.status);
+    if (!busy || model === TRANSLATE_MODEL) throw err;
+    console.error('gemini sibuk, pakai model cadangan', (err as GeminiError).status);
+    return await attempt(TRANSLATE_MODEL, timeoutMs);
+  }
 }
 
 async function rest(path: string, init: RequestInit = {}): Promise<Response> {
@@ -207,7 +269,8 @@ async function handleNota(req: Request, body: Record<string, unknown>): Promise<
     CHAT_MODEL,
     NOTA_SYSTEM,
     [{ inline_data: { mime_type: m[1], data: m[2] } }, { text: 'Read this invoice.' }],
-    8000
+    8000,
+    60_000
   );
   return json(out);
 }
@@ -234,6 +297,7 @@ Deno.serve(async (req) => {
     }
   } catch (err) {
     console.error(err);
-    return json({ error: 'failed' }, 502);
+    const busy = err instanceof GeminiError && [429, 500, 503, 504].includes(err.status);
+    return json({ error: busy ? 'busy' : 'failed' }, busy ? 503 : 502);
   }
 });

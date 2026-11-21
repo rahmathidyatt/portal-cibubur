@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, Loader2, Save, ScanLine, Upload } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useToast } from '../../hooks/useToast';
-import { scanNotaImage } from '../../services/aiClient';
+import { aiErrorMessage, scanNotaImage } from '../../services/aiClient';
 import { getMedproStore } from './medproStore';
 import { normalizeInvoice } from './medpro';
 import { buildNotaZip, loadImage, renderItemCanvas } from './notaRender';
@@ -61,8 +61,8 @@ export const NotaInputPage: React.FC = () => {
       const { compressPhoto } = await import('../../utils/image');
       const blob = await (await fetch(photo)).blob();
       const small = await compressPhoto(new File([blob], 'nota.jpg', { type: blob.type }), 1800, 0.85);
-      const raw = await scanNotaImage(small, auth.accessToken);
-      if (!raw) throw new Error('Gemini belum aktif atau gagal membaca nota. Pastikan API key Gemini sudah disimpan, lalu coba lagi.');
+      const { data: raw, error: code } = await scanNotaImage(small, auth.accessToken);
+      if (!raw) throw new Error(aiErrorMessage(code));
       const result = normalizeScan(raw);
       if (result.items.length === 0) throw new Error('Tidak ada baris item yang terbaca. Coba foto ulang dengan lebih jelas & lurus.');
       setScan(result);
@@ -146,7 +146,7 @@ export const NotaInputPage: React.FC = () => {
             />
             <button type="button" onClick={() => void read()} disabled={!photo || busy !== null} className={primaryBtn}>
               {busy === 'scan' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
-              {busy === 'scan' ? 'Membaca nota…' : 'Baca & bagi nota'}
+              {busy === 'scan' ? 'Membaca nota… (±30–60 detik)' : 'Baca & bagi nota'}
             </button>
           </div>
           {photo && !scan && <img src={photo} alt="Foto nota" className="mt-4 max-h-80 rounded-lg ring-1 ring-slate-200" />}
