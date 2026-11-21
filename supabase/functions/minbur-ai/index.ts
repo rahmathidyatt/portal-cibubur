@@ -22,6 +22,30 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
 
+/** Satu percobaan panggilan Gemini (disimpan ke ai_usage_log untuk analisis admin). */
+interface LogRow {
+  mode: string;
+  model: string;
+  status: 'ok' | 'busy' | 'rate_limit' | 'timeout' | 'error';
+  http_status: number | null;
+  duration_ms: number;
+  fallback: boolean;
+  question?: string | null;
+}
+
+interface CallLog {
+  mode: string;
+  rows: LogRow[];
+}
+
+function statusOf(code: number | null): LogRow['status'] {
+  if (code === null) return 'ok';
+  if (code === 429) return 'rate_limit';
+  if (code === 504) return 'timeout';
+  if (code === 500 || code === 503) return 'busy';
+  return 'error';
+}
+
 class GeminiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -36,10 +60,14 @@ async function callGemini(
   parts: Record<string, unknown>[],
   maxTokens: number,
   thinking: 'low' | 'minimal' | null,
-  timeoutMs: number
+  timeoutMs: number,
+  log: CallLog,
+  fallback: boolean
 ): Promise<unknown> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const started = Date.now();
+  let code: number | null = null;
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
@@ -55,7 +83,10 @@ async function callGemini(
         }
       })
     });
-    if (!res.ok) throw new GeminiError(res.status, (await res.text()).slice(0, 300));
+    if (!res.ok) {
+      code = res.status;
+      throw new GeminiError(res.status, (await res.text()).slice(0, 300));
+    }
     const data = await res.json();
     const out: { text?: string; thought?: boolean }[] = data?.candidates?.[0]?.content?.parts ?? [];
     const text = out
@@ -66,10 +97,26 @@ async function callGemini(
       .replace(/^```(?:json)?\s*|\s*```$/g, '');
     return JSON.parse(text);
   } catch (err) {
-    if ((err as Error).name === 'AbortError') throw new GeminiError(504, 'timeout');
+    if ((err as Error).name === 'AbortError') {
+      code = 504;
+      throw new GeminiError(504, 'timeout');
+    }
+    if (code === null) code = 0;
     throw err;
   } finally {
     clearTimeout(timer);
+    // Percobaan ulang tanpa pengaturan thinking (400) tidak dihitung terpisah.
+    if (!(code === 400 && thinking)) {
+      log.rows.push({
+        mode: log.mode,
+        model,
+        status: statusOf(code),
+        http_status: code,
+        duration_ms: Date.now() - started,
+        fallback,
+        question: null
+      });
+    }
   }
 }
 
@@ -82,27 +129,28 @@ async function gemini(
   system: string,
   user: string | Record<string, unknown>[],
   maxTokens: number,
+  log: CallLog,
   timeoutMs = 25_000
 ): Promise<unknown> {
   const parts = typeof user === 'string' ? [{ text: user }] : user;
-  const attempt = async (m: string, ms: number) => {
+  const attempt = async (m: string, ms: number, fallback: boolean) => {
     const level = /lite/.test(m) ? 'minimal' : 'low';
     try {
-      return await callGemini(m, system, parts, maxTokens, level, ms);
+      return await callGemini(m, system, parts, maxTokens, level, ms, log, fallback);
     } catch (err) {
       // Model tidak mendukung pengaturan thinking: ulangi tanpa pengaturan itu.
       if (err instanceof GeminiError && err.status === 400 && /thinking/i.test(err.message))
-        return await callGemini(m, system, parts, maxTokens, null, ms);
+        return await callGemini(m, system, parts, maxTokens, null, ms, log, fallback);
       throw err;
     }
   };
   try {
-    return await attempt(model, timeoutMs);
+    return await attempt(model, timeoutMs, false);
   } catch (err) {
     const busy = err instanceof GeminiError && [429, 500, 503, 504].includes(err.status);
     if (!busy || model === TRANSLATE_MODEL) throw err;
     console.error('gemini sibuk, pakai model cadangan', (err as GeminiError).status);
-    return await attempt(TRANSLATE_MODEL, timeoutMs);
+    return await attempt(TRANSLATE_MODEL, timeoutMs, true);
   }
 }
 
@@ -136,7 +184,7 @@ Aturan:
 
 Keluarkan JSON: {"answer": "<jawaban>"}`;
 
-async function handleChat(body: Record<string, unknown>): Promise<Response> {
+async function handleChat(body: Record<string, unknown>, log: CallLog): Promise<Response> {
   const question = String(body.question ?? '').trim().slice(0, 300);
   const context = String(body.context ?? '').slice(0, 20000);
   const lang = body.lang === 'en' ? 'en' : 'id';
@@ -145,7 +193,8 @@ async function handleChat(body: Record<string, unknown>): Promise<Response> {
     CHAT_MODEL,
     CHAT_SYSTEM(lang),
     `DATA PORTAL:\n${context}\n\nPERTANYAAN AGEN:\n${question}`,
-    800
+    800,
+    log
   )) as { answer?: string };
   const answer = String(out?.answer ?? '').trim().slice(0, 1500);
   if (!answer) return json({ error: 'no_answer' }, 502);
@@ -166,7 +215,7 @@ const TRANSLATE_SYSTEM = `Terjemahkan setiap teks dari bahasa Indonesia ke bahas
 - Jumlah dan urutan hasil HARUS sama dengan input.
 Keluarkan JSON: {"t": ["<terjemahan 1>", "<terjemahan 2>", ...]}`;
 
-async function handleTranslate(body: Record<string, unknown>): Promise<Response> {
+async function handleTranslate(body: Record<string, unknown>, log: CallLog): Promise<Response> {
   const texts = (Array.isArray(body.texts) ? body.texts : []).slice(0, 80).map((t) => String(t ?? '').slice(0, 2000));
   if (texts.length === 0) return json({ texts: [] });
   const hashes = await Promise.all(texts.map((t) => sha256(t)));
@@ -187,7 +236,8 @@ async function handleTranslate(body: Record<string, unknown>): Promise<Response>
       TRANSLATE_MODEL,
       TRANSLATE_SYSTEM,
       JSON.stringify(missingIdx.map((i) => texts[i])),
-      8000
+      8000,
+      log
     )) as { t?: unknown[] };
     const translated = Array.isArray(out?.t) ? out.t : [];
     if (translated.length === missingIdx.length) {
@@ -227,9 +277,9 @@ async function isAdmin(req: Request): Promise<boolean> {
 const WISH_SYSTEM = `Buat SATU kalimat ucapan ulang tahun yang hangat dan profesional untuk agen properti di kantor Brighton Real Estate (Brighton HUB Cibubur). Jangan sebut nama orang, tanpa emoji, maksimal 30 kata. Contoh gaya: "May each passing year bring greater wisdom, higher achievements, and more meaningful happiness." Buat variasi baru, jangan mengulang contoh.
 Keluarkan JSON: {"en": "<kalimat bahasa Inggris>", "id": "<padanan bahasa Indonesia yang natural>"}`;
 
-async function handleWish(req: Request): Promise<Response> {
+async function handleWish(req: Request, log: CallLog): Promise<Response> {
   if (!(await isAdmin(req))) return json({ error: 'forbidden' }, 403);
-  const out = (await gemini(CHAT_MODEL, WISH_SYSTEM, `Variasi #${crypto.randomUUID().slice(0, 8)}`, 400)) as {
+  const out = (await gemini(CHAT_MODEL, WISH_SYSTEM, `Variasi #${crypto.randomUUID().slice(0, 8)}`, 400, log)) as {
     en?: string;
     id?: string;
   };
@@ -260,7 +310,7 @@ Return JSON only:
 }
 All box coordinates are normalized 0-1000 relative to the full image. Copy names exactly as printed (keep typos). Never invent rows.`;
 
-async function handleNota(req: Request, body: Record<string, unknown>): Promise<Response> {
+async function handleNota(req: Request, body: Record<string, unknown>, log: CallLog): Promise<Response> {
   if (!(await isAdmin(req))) return json({ error: 'forbidden' }, 403);
   const image = String(body.image ?? '');
   const m = image.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
@@ -270,6 +320,7 @@ async function handleNota(req: Request, body: Record<string, unknown>): Promise<
     NOTA_SYSTEM,
     [{ inline_data: { mime_type: m[1], data: m[2] } }, { text: 'Read this invoice.' }],
     8000,
+    log,
     60_000
   );
   return json(out);
@@ -277,21 +328,33 @@ async function handleNota(req: Request, body: Record<string, unknown>): Promise<
 
 /* -------------------------------------------------------------- server */
 
+/** Simpan catatan pemakaian (gagal menyimpan tidak mengganggu jawaban). */
+async function flushLog(log: CallLog, question: string | null): Promise<void> {
+  if (log.rows.length === 0) return;
+  if (question) log.rows[0].question = question.slice(0, 200);
+  await rest('ai_usage_log', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(log.rows) }).catch(
+    () => undefined
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'method' }, 405);
   if (!GEMINI_KEY) return json({ error: 'not_configured' }, 503);
+  let body: Record<string, unknown> = {};
+  const log: CallLog = { mode: 'unknown', rows: [] };
   try {
-    const body = (await req.json()) as Record<string, unknown>;
+    body = (await req.json()) as Record<string, unknown>;
+    log.mode = String(body.mode ?? 'unknown').slice(0, 20);
     switch (body.mode) {
       case 'chat':
-        return await handleChat(body);
+        return await handleChat(body, log);
       case 'translate':
-        return await handleTranslate(body);
+        return await handleTranslate(body, log);
       case 'wish':
-        return await handleWish(req);
+        return await handleWish(req, log);
       case 'nota':
-        return await handleNota(req, body);
+        return await handleNota(req, body, log);
       default:
         return json({ error: 'mode' }, 400);
     }
@@ -299,5 +362,7 @@ Deno.serve(async (req) => {
     console.error(err);
     const busy = err instanceof GeminiError && [429, 500, 503, 504].includes(err.status);
     return json({ error: busy ? 'busy' : 'failed' }, busy ? 503 : 502);
+  } finally {
+    await flushLog(log, body.mode === 'chat' ? String(body.question ?? '').trim() : null);
   }
 });

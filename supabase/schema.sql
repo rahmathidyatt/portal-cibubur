@@ -1002,3 +1002,24 @@ alter table public.closing_reward_claims enable row level security;
 drop policy if exists "admin all closing_reward_claims" on public.closing_reward_claims;
 create policy "admin all closing_reward_claims" on public.closing_reward_claims for all to authenticated
   using (public.is_portal_admin()) with check (public.is_portal_admin());
+
+-- ------------------------------------------------------------------
+-- Catatan pemakaian Gemini (ditulis edge function minbur-ai, dibaca admin di Analisis).
+-- ------------------------------------------------------------------
+create table if not exists public.ai_usage_log (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  mode text not null check (char_length(mode) <= 20),
+  model text not null check (char_length(model) <= 80),
+  status text not null check (status in ('ok', 'busy', 'rate_limit', 'timeout', 'error')),
+  http_status int,
+  duration_ms int,
+  fallback boolean not null default false,
+  question text check (question is null or char_length(question) <= 200)
+);
+create index if not exists ai_usage_log_created_idx on public.ai_usage_log (created_at desc);
+revoke all on public.ai_usage_log from anon, authenticated;
+grant select on public.ai_usage_log to authenticated;
+alter table public.ai_usage_log enable row level security;
+drop policy if exists "admin read ai_usage_log" on public.ai_usage_log;
+create policy "admin read ai_usage_log" on public.ai_usage_log for select to authenticated using (public.is_portal_admin());

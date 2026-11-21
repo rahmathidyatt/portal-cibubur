@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle, ClipboardCheck, Trophy, Gift, FileSearch, CalendarClock, ScanLine } from 'lucide-react';
+import { ChevronDown, Calendar, Users, CalendarRange, Receipt, TrendingUp, Music, Cake, GraduationCap, Flag, MessageCircle, ClipboardCheck, Trophy, Gift, FileSearch, CalendarClock, ScanLine, Sparkles } from 'lucide-react';
 import type { PortalRoute } from '../hooks/useHashRoute';
 
 import { FEATURES } from '../data/features';
@@ -51,6 +51,15 @@ export const STAFF_LINKS = [
     label: 'Rekap Medpro',
     hint: 'Biaya banner, branding & drop',
     Icon: Flag
+  },
+  {
+    group: 'Ringkasan',
+    parent: 'Analisis',
+    href: '#staf-gemini',
+    route: 'staf-gemini' as PortalRoute,
+    label: 'Penggunaan Gemini',
+    hint: 'Jatah harian, status & pertanyaan',
+    Icon: Sparkles
   },
   {
     group: 'Operasional',

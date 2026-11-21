@@ -250,6 +250,7 @@ export function pageLabel(path: string): string {
     'staf-bc': 'Admin · BC Terjadwal',
     'staf-closing-reward': 'Admin · Closing · Closing Reward',
     'staf-medpro-input': 'Admin · Nota Medpro · Input nota',
+    'staf-gemini': 'Admin · Analisis · Penggunaan Gemini',
     notes: 'Notes'
   };
   return labels[path] ?? path;

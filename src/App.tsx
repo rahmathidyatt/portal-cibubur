@@ -43,6 +43,7 @@ const TrainingPage = lazy(() => import('./features/training/TrainingPage').then(
 const MedproPage = lazy(() => import('./features/medpro/MedproPage').then((m) => ({ default: m.MedproPage })));
 const JinglePage = lazy(() => import('./features/admin/ContentPages').then((m) => ({ default: m.JinglePage })));
 const BirthdayPage = lazy(() => import('./features/admin/ContentPages').then((m) => ({ default: m.BirthdayPage })));
+const AiUsagePage = lazy(() => import('./features/aiusage/AiUsagePage').then((m) => ({ default: m.AiUsagePage })));
 const NotaInputPage = lazy(() => import('./features/medpro/NotaInputPage').then((m) => ({ default: m.NotaInputPage })));
 const ClosingRewardPage = lazy(() => import('./features/closing/ClosingRewardPage').then((m) => ({ default: m.ClosingRewardPage })));
 const BcSchedulePage = lazy(() => import('./features/bc/BcSchedulePage').then((m) => ({ default: m.BcSchedulePage })));
@@ -347,6 +348,8 @@ function StaffPage({ route }: { route: PortalRoute }) {
       return <ClosingRewardPage />;
     case 'staf-medpro-input':
       return <NotaInputPage />;
+    case 'staf-gemini':
+      return <AiUsagePage />;
     case 'staf-bright-day':
       return <BrightDayPage />;
     case 'staf-bright-day-hadir':
