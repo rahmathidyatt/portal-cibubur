@@ -17,6 +17,7 @@ import {
 } from './data/cibuburData';
 import { TodayOverview } from './components/TodayOverview';
 import { BusinessManagers } from './components/BusinessManagers';
+import { Achievements } from './features/achievements/Achievements';
 import { StaffWhatsAppDirectory } from './components/StaffWhatsAppDirectory';
 import { OfficeHoursLocation } from './components/OfficeHoursLocation';
 import { Minbur } from './features/minbur/Minbur';
@@ -32,6 +33,7 @@ import { ReservationPage } from './components/ReservationPage';
 import { ReservationMenu, RESERVATION_LINKS } from './components/ReservationMenu';
 import { AdminShell } from './components/AdminShell';
 import { OfficeStatusBadge } from './components/LiveClock';
+import { ValuesBand } from './components/ValuesBand';
 import { BrandMark } from './components/BrandMark';
 
 // Alat staf dimuat terpisah agar halaman publik tetap ringan (PDF/ZIP/Excel hanya untuk staf).
@@ -49,6 +51,7 @@ const ClosingRewardPage = lazy(() => import('./features/closing/ClosingRewardPag
 const BcSchedulePage = lazy(() => import('./features/bc/BcSchedulePage').then((m) => ({ default: m.BcSchedulePage })));
 // Jingle hanya untuk admin (diputar selama jam kerja); pengunjung tidak memuatnya sama sekali.
 const JinglePlayer = lazy(() => import('./components/JinglePlayer').then((m) => ({ default: m.JinglePlayer })));
+const StudioPage = lazy(() => import('./features/studio/StudioPage').then((m) => ({ default: m.StudioPage })));
 const NotesPage = lazy(() => import('./features/notes/NotesPage').then((m) => ({ default: m.NotesPage })));
 const NotaMessengerPage = lazy(() =>
   import('./features/nota/NotaMessengerPage').then((m) => ({ default: m.NotaMessengerPage }))
@@ -88,8 +91,9 @@ function PortalApp() {
   const { lang } = useLang();
   const onStaffRoute = isStaffRoute(route);
   const onNotes = route === 'notes';
+  const onStudio = route === 'studio';
   // Terjemahan hanya untuk dashboard publik; area admin & Notes tetap Bahasa Indonesia.
-  useAutoTranslate(lang === 'en' && !onStaffRoute && !onNotes);
+  useAutoTranslate(lang === 'en' && !onStaffRoute && !onNotes && !onStudio);
 
   // Tutup menu HP setiap kali berpindah halaman.
   useEffect(() => setMobileMenuOpen(false), [route]);
@@ -116,6 +120,15 @@ function PortalApp() {
             <a href={NAV_LINKS[0].href} className="hover:text-slate-950 transition-colors">
               {NAV_LINKS[0].label}
             </a>
+            {isAdmin && (
+              <a
+                href="#studio"
+                aria-current={onStudio ? 'page' : undefined}
+                className={`transition-colors ${onStudio ? 'text-slate-950' : 'hover:text-slate-950'}`}
+              >
+                Studio Agen
+              </a>
+            )}
             <ReservationMenu route={route} />
             {NAV_LINKS.slice(1).map((link) => (
               <a key={link.href} href={link.href} className="hover:text-slate-950 transition-colors">
@@ -133,7 +146,7 @@ function PortalApp() {
                 }`}
               >
                 <LayoutDashboard className={`w-4 h-4 ${isStaffRoute(route) ? 'text-amber-400' : 'text-amber-600'}`} />
-                <span className="hidden xl:inline">Area admin</span>
+                <span className="sr-only">Area admin</span>
               </a>
             )}
             {isAdmin && (
@@ -147,13 +160,13 @@ function PortalApp() {
                 }`}
               >
                 <StickyNote className={`w-4 h-4 ${onNotes ? 'text-amber-400' : 'text-amber-600'}`} />
-                <span className="hidden xl:inline">Notes</span>
+                <span className="sr-only">Notes</span>
               </a>
             )}
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
-            {!onStaffRoute && !onNotes && <LangToggle />}
+            {!onStaffRoute && !onNotes && !onStudio && <LangToggle />}
             {isAdmin ? (
               <button
                 type="button"
@@ -185,6 +198,11 @@ function PortalApp() {
             <a href="#beranda" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-950">
               Beranda
             </a>
+            {isAdmin && (
+              <a href="#studio" onClick={() => setMobileMenuOpen(false)} className="py-2 hover:text-slate-950">
+                Studio Agen
+              </a>
+            )}
             {RESERVATION_LINKS.length > 1 && <p className="pt-2 pb-1 text-xs font-semibold text-slate-500">Reservasi</p>}
             {RESERVATION_LINKS.map(({ href, label, Icon }) => (
               <a
@@ -250,10 +268,19 @@ function PortalApp() {
         {route === 'beranda' ? (
           <>
             <TodayOverview weeklyHours={WEEKLY_OFFICE_HOURS} />
+            <Achievements />
             <BusinessManagers />
             <StaffWhatsAppDirectory contacts={OFFICE_STAFF_CONTACTS} />
             <OfficeHoursLocation weeklyHours={WEEKLY_OFFICE_HOURS} />
           </>
+        ) : onStudio ? (
+          isAdmin ? (
+            <Suspense fallback={<div className="min-h-[60vh]" aria-label="Memuat" />}>
+              <StudioPage />
+            </Suspense>
+          ) : (
+            <StaffOnly onLogin={() => setLoginOpen(true)} />
+          )
         ) : onNotes ? (
           isAdmin ? (
             <Suspense fallback={<div className="min-h-[60vh]" aria-label="Memuat" />}>
@@ -300,7 +327,7 @@ function PortalApp() {
           <JinglePlayer />
         </Suspense>
       )}
-      {!isStaffRoute(route) && !onNotes && <Minbur aboveJingle={isAdmin} />}
+      {!isStaffRoute(route) && !onNotes && !onStudio && <Minbur aboveJingle={isAdmin} />}
     </div>
   );
 }
@@ -374,8 +401,8 @@ function SiteFooter({ isAdmin, onLogin, showStatus }: { isAdmin: boolean; onLogi
   const today = todayInJakarta();
   const anniv = officeAnniversary(OFFICE_IDENTITY.foundedDate, today);
   return (
-    <footer className={`bg-white border-t border-slate-200 pt-6 ${isAdmin ? 'pb-36' : 'pb-20'}`}>
-      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
+    <footer className="bg-white border-t border-slate-200">
+      <div className="max-w-[1140px] mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-slate-500">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
             © {today.slice(0, 4)} {OFFICE_IDENTITY.name} · Centrum Cibubur
@@ -410,6 +437,8 @@ function SiteFooter({ isAdmin, onLogin, showStatus }: { isAdmin: boolean; onLogi
         )}
         </div>
       </div>
+      {/* Nilai CHASE selalu paling bawah halaman. */}
+      <ValuesBand />
     </footer>
   );
 }

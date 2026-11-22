@@ -31,6 +31,7 @@ export interface NewBusinessManager {
 export interface ContentStore {
   listBusinessManagers(): Promise<BusinessManager[]>;
   addBusinessManager(input: NewBusinessManager, auth: AdminAuth): Promise<void>;
+  updateBusinessManager(id: string, input: NewBusinessManager, auth: AdminAuth): Promise<void>;
   deleteBusinessManager(id: string, auth: AdminAuth): Promise<void>;
   listAnnouncements(): Promise<Announcement[]>;
   addAnnouncement(input: { title: string; body: string; repeatWeekday?: number | null }, auth: AdminAuth): Promise<void>;
@@ -87,6 +88,10 @@ function createLocalContentStore(): ContentStore {
       requireAdmin(auth);
       const list = readLocalBms();
       writeLocal(BM_KEY, [...list, { id: randomId(), ...normalizeBm(input) }]);
+    },
+    async updateBusinessManager(id, input, auth) {
+      requireAdmin(auth);
+      writeLocal(BM_KEY, readLocalBms().map((m) => (m.id === id ? { id, ...normalizeBm(input) } : m)));
     },
     async deleteBusinessManager(id, auth) {
       requireAdmin(auth);
@@ -151,6 +156,16 @@ function createSupabaseContentStore(config: SupabaseConfig): ContentStore {
       const bm = normalizeBm(input);
       await supabaseFetch(config, 'rest/v1/business_managers', {
         method: 'POST',
+        accessToken: auth.accessToken,
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ name: bm.name, code: bm.code, tier: bm.tier, photo_url: bm.photoUrl })
+      });
+    },
+    async updateBusinessManager(id, input, auth) {
+      requireAdmin(auth);
+      const bm = normalizeBm(input);
+      await supabaseFetch(config, `rest/v1/business_managers?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
         accessToken: auth.accessToken,
         headers: { Prefer: 'return=minimal' },
         body: JSON.stringify({ name: bm.name, code: bm.code, tier: bm.tier, photo_url: bm.photoUrl })

@@ -1023,3 +1023,29 @@ grant select on public.ai_usage_log to authenticated;
 alter table public.ai_usage_log enable row level security;
 drop policy if exists "admin read ai_usage_log" on public.ai_usage_log;
 create policy "admin read ai_usage_log" on public.ai_usage_log for select to authenticated using (public.is_portal_admin());
+
+-- ===================================================================
+-- Pencapaian kantor di beranda (poster penghargaan). Terbaru di depan (period_end).
+-- ===================================================================
+create table if not exists public.achievements (
+  id           text primary key default gen_random_uuid()::text,
+  award        text not null check (char_length(trim(award)) between 3 and 80),
+  title        text not null check (char_length(trim(title)) between 3 and 120),
+  rank         text not null default '' check (char_length(rank) <= 20),
+  period_label text not null default '' check (char_length(period_label) <= 60),
+  period_end   date not null,
+  -- Poster unggahan admin (data URL). NULL = poster bawaan aplikasi untuk id ini.
+  photo_url    text check (photo_url is null or (photo_url like 'data:image/%' and char_length(photo_url) < 900000)),
+  created_at   timestamptz not null default now()
+);
+alter table public.achievements enable row level security;
+drop policy if exists "public read achievements" on public.achievements;
+create policy "public read achievements" on public.achievements for select using (true);
+drop policy if exists "admin write achievements" on public.achievements;
+create policy "admin write achievements" on public.achievements for all to authenticated
+  using (public.is_portal_admin()) with check (public.is_portal_admin());
+grant select on public.achievements to anon, authenticated;
+grant insert, update, delete on public.achievements to authenticated;
+insert into public.achievements (id, award, title, rank, period_label, period_end)
+select 'boc-awards-2026', 'BOC Awards 2026', 'TOP 15 Brighton HUB · Bisnis Tanpa Batas', '#12', 'Januari – Juni 2026', '2026-06-30'
+where not exists (select 1 from public.achievements);

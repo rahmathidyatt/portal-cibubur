@@ -81,3 +81,26 @@ export async function generateBirthdayWish(accessToken: string | null): Promise<
 export async function scanNotaImage(imageDataUrl: string, accessToken: string | null): Promise<AiResult<Record<string, unknown>>> {
   return callAiResult<Record<string, unknown>>({ mode: 'nota', image: imageDataUrl }, accessToken, 140_000);
 }
+
+/** Studio Agen: cari letak nomor rumah ('number') atau wajah & plat ('privacy') di foto. */
+export async function studioFind(imageDataUrl: string, target: 'number' | 'privacy', accessToken: string | null) {
+  return callAiResult<{ items?: { label: string; box_2d: [number, number, number, number] }[] }>(
+    { mode: 'studio_find', image: imageDataUrl, target },
+    accessToken,
+    100_000
+  );
+}
+
+/** Studio Agen: teks flyer (judul, poin unggulan, ajakan) dari prompt & data properti. */
+export async function studioFlyerText(prompt: string, data: Record<string, string>, accessToken: string | null) {
+  return callAiResult<{ headline?: string; highlights?: string[]; cta?: string }>(
+    { mode: 'studio_text', kind: 'flyer', prompt, data },
+    accessToken,
+    55_000
+  );
+}
+
+/** Studio Agen: deskripsi listing siap tempel. */
+export async function studioListingText(prompt: string, data: Record<string, string>, accessToken: string | null) {
+  return callAiResult<{ caption?: string }>({ mode: 'studio_text', kind: 'listing', prompt, data }, accessToken, 55_000);
+}

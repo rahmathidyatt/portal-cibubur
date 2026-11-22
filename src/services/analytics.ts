@@ -251,7 +251,8 @@ export function pageLabel(path: string): string {
     'staf-closing-reward': 'Admin · Closing · Closing Reward',
     'staf-medpro-input': 'Admin · Nota Medpro · Input nota',
     'staf-gemini': 'Admin · Analisis · Penggunaan Gemini',
-    notes: 'Notes'
+    notes: 'Notes',
+    studio: 'Studio Agen'
   };
   return labels[path] ?? path;
 }

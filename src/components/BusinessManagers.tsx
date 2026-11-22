@@ -5,6 +5,7 @@ import {
   BUSINESS_MANAGERS,
   groupByUnit,
   isPrincipal,
+  normalizeTier,
   validateBusinessManager,
   type BusinessManager
 } from '../data/businessManagers';
@@ -91,13 +92,16 @@ const AddBmForm: React.FC<{
   onDone: () => void;
   onCancel: () => void;
   initialTier: string;
-}> = ({ existing, onDone, onCancel, initialTier }) => {
+  /** Diisi = mode edit BM yang sudah ada. */
+  editing?: BusinessManager | null;
+}> = ({ existing, onDone, onCancel, initialTier, editing }) => {
   const { auth } = useAdmin();
-  const [name, setName] = useState<string>('');
-  const [code, setCode] = useState<string>('');
-  const [tier, setTier] = useState<string>(initialTier);
+  const [name, setName] = useState<string>(editing?.name ?? '');
+  const [code, setCode] = useState<string>(editing?.code ?? '');
+  const [tier, setTier] = useState<string>(editing?.tier ?? initialTier);
   const principal = isPrincipal({ tier });
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(editing?.photoUrl ?? null);
+  const preview = photoUrl || (editing ? photoFor(editing) : undefined);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
 
@@ -114,7 +118,9 @@ const AddBmForm: React.FC<{
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validation = validateBusinessManager({ name, code, tier }, existing);
+    const finalTier = normalizeTier(tier);
+    const others = editing ? existing.filter((m) => m.id !== editing.id) : existing;
+    const validation = validateBusinessManager({ name, code, tier: finalTier }, others);
     if (validation) {
       setError(validation);
       return;
@@ -122,7 +128,8 @@ const AddBmForm: React.FC<{
     setBusy(true);
     setError(null);
     try {
-      await getContentStore().addBusinessManager({ name, code, tier, photoUrl }, auth);
+      if (editing) await getContentStore().updateBusinessManager(editing.id, { name, code, tier: finalTier, photoUrl }, auth);
+      else await getContentStore().addBusinessManager({ name, code, tier: finalTier, photoUrl }, auth);
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan BM.');
@@ -137,8 +144,8 @@ const AddBmForm: React.FC<{
       className="mt-6 rounded-2xl border border-dashed border-slate-300 p-4 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4"
     >
       <label className="relative grid place-items-center w-24 h-24 rounded-xl bg-amber-100 text-amber-800 cursor-pointer overflow-hidden">
-        {photoUrl ? (
-          <img src={photoUrl} alt="Pratinjau foto BM" className="w-full h-full object-cover" />
+        {preview ? (
+          <img src={preview} alt="Pratinjau foto BM" className="w-full h-full object-cover" />
         ) : (
           <span className="flex flex-col items-center gap-1 text-[11px] font-semibold">
             <Upload className="w-4 h-4" />
@@ -171,19 +178,30 @@ const AddBmForm: React.FC<{
           placeholder="Kode, mis. ABCD"
           className={`${inputClass} font-mono`}
         />
-        <select aria-label="Level BM" value={tier} onChange={(e) => setTier(e.target.value)} className={inputClass}>
-          {BM_TIER_OPTIONS.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
+        {/* Unit bebas diketik (unit Brighton sangat banyak); daftar hanya saran. */}
+        <input
+          aria-label="Unit BM"
+          list="bm-unit-options"
+          value={tier}
+          maxLength={40}
+          onChange={(e) => setTier(e.target.value)}
+          onFocus={(e) => e.target.select()}
+          placeholder="Unit, mis. Brighton Eagle"
+          className={`${inputClass} [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-list-button]:hidden`}
+        />
+        <datalist id="bm-unit-options">
+          {[...new Set([...BM_TIER_OPTIONS, ...existing.map((m) => m.tier)])].map((t) => (
+            <option key={t} value={t} />
           ))}
-        </select>
+        </datalist>
 
         <div className="sm:col-span-3 flex items-center justify-between gap-3">
           {error ? (
             <p className="text-xs font-semibold text-red-700">{error}</p>
           ) : (
-            <p className="text-[11px] text-slate-500">Foto otomatis dipotong persegi 400×400.</p>
+            <p className="text-[11px] text-slate-500">
+              {editing ? `Edit ${editing.name} · klik foto untuk mengganti.` : 'Foto otomatis dipotong persegi 400×400.'}
+            </p>
           )}
           <div className="flex gap-2 shrink-0">
             <button
@@ -198,7 +216,7 @@ const AddBmForm: React.FC<{
               disabled={busy}
               className="px-3 py-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-500 rounded-lg disabled:opacity-60 cursor-pointer"
             >
-              {busy ? 'Menyimpan…' : principal ? 'Simpan Principal' : 'Simpan BM'}
+              {busy ? 'Menyimpan…' : editing ? 'Simpan perubahan' : principal ? 'Simpan Principal' : 'Simpan BM'}
             </button>
           </div>
         </div>
@@ -212,8 +230,12 @@ export const BusinessManagers: React.FC = () => {
   const [managers, setManagers] = useState<BusinessManager[]>(BUSINESS_MANAGERS);
   /** Level awal formulir tambah (null = formulir tertutup). */
   const [formTier, setFormTier] = useState<string | null>(null);
+  const [editingBm, setEditingBm] = useState<BusinessManager | null>(null);
   const formOpen = formTier !== null;
-  const setFormOpen = (open: boolean, tier = 'Brighton Warrior') => setFormTier(open ? tier : null);
+  const setFormOpen = (open: boolean, tier = 'Brighton Warrior') => {
+    setFormTier(open ? tier : null);
+    if (!open) setEditingBm(null);
+  };
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -249,7 +271,7 @@ export const BusinessManagers: React.FC = () => {
     return (
       <li
         key={bm.id}
-        className="w-[calc(33.333%-6px)] sm:w-[calc(33.333%-8px)] lg:w-[calc(16.666%-10px)] overflow-hidden rounded-xl sm:rounded-2xl bg-white ring-1 ring-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-md"
+        className="w-[calc(25%-6px)] sm:w-[calc(20%-10px)] lg:w-[calc(11.111%-11px)] overflow-hidden rounded-xl bg-white ring-1 ring-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:shadow-md"
       >
         {photo ? (
           <img
@@ -264,21 +286,36 @@ export const BusinessManagers: React.FC = () => {
         ) : (
           <span
             aria-hidden="true"
-            className="grid aspect-square w-full place-items-center bg-slate-900 text-4xl font-bold text-white"
+            className="grid aspect-square w-full place-items-center bg-slate-900 text-2xl font-bold text-white"
           >
             {bm.name.charAt(0)}
           </span>
         )}
-        <div className="px-2 py-2 sm:px-3 sm:py-3">
+        <div className="px-1.5 py-1.5 sm:px-2.5 sm:py-2">
           {unit && (
-            <p translate="no" className="notranslate truncate text-[8.5px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-amber-700">
-              Brighton {unit}
+            <p
+              translate="no"
+              title={`Brighton ${unit}`}
+              className="notranslate truncate text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.1em] text-amber-700"
+            >
+              {unit}
             </p>
           )}
-          <p translate="no" className="notranslate mt-0.5 truncate text-xs sm:text-sm font-bold text-slate-950">{bm.name}</p>
-          <p className="mt-0.5 font-mono text-[11px] sm:text-xs text-slate-500">{bm.code}</p>
+          <p translate="no" title={bm.name} className="notranslate mt-0.5 line-clamp-2 break-words text-[11px] leading-tight sm:text-[13px] font-bold text-slate-950">{bm.name}</p>
+          <p className="font-mono text-[10px] sm:text-[11px] text-slate-500">{bm.code}</p>
           {isAdmin && (
-            <div className="mt-2">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingBm(bm);
+                  setFormTier(bm.tier);
+                  document.getElementById('business-manager')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-xs font-bold text-slate-700 hover:text-slate-950 cursor-pointer"
+              >
+                Edit
+              </button>
               <ConfirmCancelButton label="Hapus" confirmLabel="Hapus" onConfirm={() => handleDelete(bm)} />
             </div>
           )}
@@ -309,7 +346,8 @@ export const BusinessManagers: React.FC = () => {
 
         {isAdmin && formOpen && (
           <AddBmForm
-            key={formTier}
+            key={editingBm?.id ?? formTier}
+            editing={editingBm}
             initialTier={formTier ?? 'Brighton Warrior'}
             existing={managers}
             onCancel={() => setFormOpen(false)}

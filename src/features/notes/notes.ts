@@ -108,7 +108,7 @@ export function sortNotes(list: Note[]): Note[] {
   return [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export type NotesView = { kind: 'notes' } | { kind: 'label'; labelId: string } | { kind: 'archive' } | { kind: 'trash' };
+export type NotesView = { kind: 'notes' } | { kind: 'label'; labelId: string } | { kind: 'archive' } | { kind: 'trash' } | { kind: 'guide' };
 
 export function filterNotes(list: Note[], view: NotesView): Note[] {
   switch (view.kind) {
@@ -120,6 +120,8 @@ export function filterNotes(list: Note[], view: NotesView): Note[] {
       return list.filter((n) => n.status === 'archived');
     case 'trash':
       return list.filter((n) => n.status === 'trashed');
+    case 'guide':
+      return [];
   }
 }
 

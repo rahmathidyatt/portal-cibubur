@@ -45,3 +45,12 @@ test('unit BM & principal', () => {
     ['Winner', 1]
   ]);
 });
+
+test('normalizeTier merapikan unit yang diketik bebas', async () => {
+  const { normalizeTier } = await import('./businessManagers');
+  assert.equal(normalizeTier('eagle'), 'Brighton Eagle');
+  assert.equal(normalizeTier('  brighton   star one '), 'Brighton Star One');
+  assert.equal(normalizeTier('Brighton Warrior'), 'Brighton Warrior');
+  assert.equal(normalizeTier('principal'), 'Principal');
+  assert.equal(normalizeTier(''), '');
+});

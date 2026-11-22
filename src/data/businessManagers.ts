@@ -15,8 +15,26 @@ export const BM_TIER_OPTIONS = [
   'Brighton Champion',
   'Brighton Vision',
   'Brighton Priority',
-  'Brighton Winner'
+  'Brighton Winner',
+  'Brighton Harmony',
+  'Brighton Max'
 ];
+
+/**
+ * Rapikan unit yang diketik admin (unit Brighton sangat banyak, jadi boleh diketik bebas):
+ * "eagle" → "Brighton Eagle", "brighton  star one" → "Brighton Star One", "principal" → "Principal".
+ */
+export function normalizeTier(text: string): string {
+  const t = text.trim().replace(/\s+/g, ' ');
+  if (!t) return '';
+  if (/principal/i.test(t)) return 'Principal';
+  const rest = t.replace(/^brighton\s*/i, '');
+  const title = rest
+    .split(' ')
+    .map((w) => (w.length <= 3 && w === w.toUpperCase() ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join(' ');
+  return title ? `Brighton ${title}` : '';
+}
 
 /** Urutan unit sesuai kebiasaan kantor. */
 export const UNIT_ORDER = ['Warrior', 'Champion', 'Vision', 'Priority', 'Winner'];

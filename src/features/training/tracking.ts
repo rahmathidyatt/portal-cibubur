@@ -24,20 +24,20 @@ export interface RecapFile {
   rows: RecapRow[];
 }
 
-/** Kata kunci judul sesi (urutan sama dengan TRAINING_MODULES). */
-const SESSION_KEYWORDS: string[][] = [
-  ['BISNIS BERSAMA'],
-  ['ETIKA'],
-  ['TENTANG BISNIS'],
-  ['KEBIASAAN'],
-  ['PRIMARY', 'SECONDARY'],
-  ['LISTING'],
-  ['DOKUMEN'],
-  ['ALUR'],
-  ['BRANDING', 'EXPOSE'],
-  ['TEKNOLOGI', 'BRIGHTON APP'],
-  ['KLIEN'],
-  ['NEGO']
+/** Kata kunci judul sesi per id sesi (dicocokkan berurutan; yang lebih spesifik di atas). */
+const SESSION_KEYWORDS: [string, string[]][] = [
+  ['bisnis-bersama', ['BISNIS BERSAMA']],
+  ['etika-pelayanan', ['ETIKA']],
+  ['tentang-bisnis', ['TENTANG BISNIS']],
+  ['kebiasaan-sukses', ['KEBIASAAN']],
+  ['listing-modal', ['LISTING']],
+  ['primary-secondary', ['PRIMARY', 'SECONDARY']],
+  ['dokumen-kepemilikan', ['DOKUMEN']],
+  ['alur-transaksi', ['ALUR']],
+  ['branding-expose', ['BRANDING', 'EXPOSE']],
+  ['senjata-teknologi', ['TEKNOLOGI', 'BRIGHTON APP']],
+  ['klien-percaya', ['KLIEN']],
+  ['negosiasi', ['NEGO']]
 ];
 
 /** Huruf besar, karakter "fancy" (𝙉𝙏𝘿𝙓) jadi huruf biasa. */
@@ -52,8 +52,8 @@ export function codeTokens(text: string): string[] {
 
 function moduleForTitle(title: string, index: number): string | null {
   const t = clean(title);
-  const i = SESSION_KEYWORDS.findIndex((keys) => keys.some((k) => t.includes(k)));
-  if (i >= 0) return TRAINING_MODULES[i].id;
+  const hit = SESSION_KEYWORDS.find(([, keys]) => keys.some((k) => t.includes(k)));
+  if (hit) return hit[0];
   return TRAINING_MODULES[index]?.id ?? null;
 }
 

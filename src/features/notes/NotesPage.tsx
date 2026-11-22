@@ -9,6 +9,7 @@ import {
   Palette,
   Pencil,
   Pin,
+  PhoneCall,
   Plus,
   RotateCcw,
   Tag,
@@ -18,6 +19,7 @@ import {
 import { useAdmin } from '../../hooks/useAdmin';
 import { useToast } from '../../hooks/useToast';
 import { ConfirmCancelButton } from '../../components/ConfirmCancelButton';
+import { CallGuides } from './CallGuides';
 import { getNotesStore, validateLabel } from './notesStore';
 import {
   EMPTY_DRAFT,
@@ -125,7 +127,8 @@ export const NotesPage: React.FC = () => {
       view: { kind: 'label', labelId: l.id } as NotesView
     })),
     { key: 'archive', label: 'Arsip', icon: <Archive className="h-4 w-4" />, view: { kind: 'archive' } },
-    { key: 'trash', label: 'Sampah', icon: <Trash2 className="h-4 w-4" />, view: { kind: 'trash' } }
+    { key: 'trash', label: 'Sampah', icon: <Trash2 className="h-4 w-4" />, view: { kind: 'trash' } },
+    { key: 'guide', label: 'Panduan Percakapan', icon: <PhoneCall className="h-4 w-4" />, view: { kind: 'guide' } }
   ];
   const isActive = (v: NotesView) =>
     v.kind === view.kind && (v.kind !== 'label' || (view.kind === 'label' && v.labelId === view.labelId));
@@ -183,6 +186,10 @@ export const NotesPage: React.FC = () => {
         </nav>
 
         <div className="mt-4 min-w-0 flex-1 lg:mt-0">
+          {view.kind === 'guide' ? (
+            <CallGuides />
+          ) : (
+          <>
           {(view.kind === 'notes' || view.kind === 'label') && (
             <Composer
               labels={labels}
@@ -232,6 +239,8 @@ export const NotesPage: React.FC = () => {
                 />
               )}
             </div>
+          )}
+          </>
           )}
         </div>
       </div>
@@ -377,7 +386,7 @@ const NoteCard: React.FC<CardActions & { note: Note; trash: boolean }> = ({
             ))}
             {open.length > 12 && <li className="text-xs text-slate-500">… {open.length - 12} item lagi</li>}
             {done.length > 0 && (
-              <li className="pt-1 text-xs font-semibold text-slate-500">
+              <li className="pt-1 text-xs font-semibold text-emerald-700">
                 {done.length} item selesai
               </li>
             )}
@@ -592,7 +601,7 @@ const ChecklistEditor: React.FC<{
         checked={i.done}
         onChange={() => update(i.id, { done: !i.done })}
         aria-label={i.done ? 'Tandai belum selesai' : 'Tandai selesai'}
-        className="h-4 w-4 shrink-0 accent-slate-900 cursor-pointer"
+        className={`h-4 w-4 shrink-0 cursor-pointer ${i.done ? 'accent-emerald-600' : 'accent-slate-900'}`}
       />
       <input
         ref={(el) => {
@@ -611,7 +620,7 @@ const ChecklistEditor: React.FC<{
             remove(i.id);
           }
         }}
-        className={`min-w-0 flex-1 bg-transparent py-1 text-sm outline-none ${i.done ? 'text-slate-500 line-through' : 'text-slate-900'}`}
+        className={`min-w-0 flex-1 bg-transparent py-1 text-sm outline-none ${i.done ? 'font-medium text-emerald-700' : 'text-slate-900'}`}
       />
       <button type="button" aria-label="Hapus item" onClick={() => remove(i.id)} className={`${iconBtn} h-7 w-7 opacity-60 hover:opacity-100`}>
         <X className="h-3.5 w-3.5" />

@@ -155,3 +155,25 @@ test('BC pengingat sesi belum diikuti/lulus', () => {
   assert.match(bc, /Jadwal batch berikutnya akan kami informasikan kemudian\./);
   assert.deepEqual(cancelAllPending(agents[0]).pending, {});
 });
+
+test('tracking: judul sheet rekap dipetakan ke sesi yang benar', async () => {
+  const { parseRecapFile } = await import('./tracking');
+  const titles = [
+    'LISTING ADALAH MODAL BISNIS PROPERTI',
+    'BISNIS PROPERTI: PRIMARY & SECONDARY MARKET',
+    'SENJATA TEKNOLOGI BRIGHTON APP BIKIN #CLOSINGLEBIHCEPAT',
+    'KLIEN PERCAYA, BISNIS BERKEMBANG'
+  ];
+  const sheets = titles.map((t, i) => {
+    const cells = new Map<string, { value: string }>();
+    const set = (r: number, c: number, v: string) => cells.set(`${String.fromCharCode(64 + c)}${r}`, { value: v });
+    set(1, 1, t);
+    ['No', 'Tanggal', 'Skor', 'Nama', 'Unit', 'Kode'].forEach((h, k) => set(2, k + 1, h));
+    ['1', '2026-11-20', '85', 'AYU', 'X', 'HAYP'].forEach((v, k) => set(3, k + 1, v));
+    return { name: `Sheet${i + 1}`, maxRow: 3, maxCol: 6, cells } as unknown as Parameters<typeof parseRecapFile>[0][number];
+  });
+  assert.deepEqual(
+    parseRecapFile(sheets).sessions.map((s) => s.moduleId),
+    ['listing-modal', 'primary-secondary', 'senjata-teknologi', 'klien-percaya']
+  );
+});

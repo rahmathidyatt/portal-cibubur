@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FEATURES } from '../data/features';
 
-export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota' | 'staf-statistik' | 'staf-jingle' | 'staf-ulang-tahun' | 'staf-training' | 'staf-medpro' | 'staf-minbur' | 'staf-bright-day' | 'staf-bright-day-hadir' | 'staf-closing' | 'staf-wof' | 'staf-training-tracking' | 'staf-closing-rekap' | 'staf-medpro-rekap' | 'staf-bc' | 'staf-closing-reward' | 'staf-medpro-input' | 'staf-gemini' | 'notes';
+export type PortalRoute = 'beranda' | 'dealing-room' | 'floortime' | 'staf-floor-time' | 'staf-nota' | 'staf-statistik' | 'staf-jingle' | 'staf-ulang-tahun' | 'staf-training' | 'staf-medpro' | 'staf-minbur' | 'staf-bright-day' | 'staf-bright-day-hadir' | 'staf-closing' | 'staf-wof' | 'staf-training-tracking' | 'staf-closing-rekap' | 'staf-medpro-rekap' | 'staf-bc' | 'staf-closing-reward' | 'staf-medpro-input' | 'staf-gemini' | 'notes' | 'studio';
 
 const PAGE_ROUTES: PortalRoute[] = [
   ...(FEATURES.dealingRoom ? (['dealing-room'] as PortalRoute[]) : []),
@@ -25,7 +25,8 @@ const PAGE_ROUTES: PortalRoute[] = [
   'staf-closing-reward',
   'staf-medpro-input',
   'staf-gemini',
-  'notes'
+  'notes',
+  'studio'
 ];
 
 /** Alamat lama yang diarahkan ke halaman baru. */

@@ -4,6 +4,8 @@
 //   mode "translate" : terjemahkan teks portal ID → EN (hasil disimpan di cache content_translations)
 //   mode "wish"      : buat ucapan ulang tahun ID & EN (khusus admin)
 //   mode "nota"      : baca foto nota medpro + posisi tiap baris (khusus admin)
+//   mode "studio_find": cari nomor rumah / wajah & plat di foto (khusus admin)
+//   mode "studio_text": teks flyer & deskripsi listing (khusus admin)
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -375,6 +377,71 @@ function anyBox(o: unknown, keys = ['box_2d', 'box', 'bbox', 'bounding_box']): n
   return null;
 }
 
+/* -------------------------------------------------------------- studio */
+
+const FIND_SYSTEM: Record<string, string> = {
+  number: `You inspect a real-estate photo. Find every visible house number, address plate, block/number sign, and any text that reveals the exact address (e.g. "No. 12", "Blok C3/7"). Do not include brand logos, posters or unrelated text.`,
+  privacy: `You inspect a real-estate photo. Find every visible human face (including partial or small faces) and every vehicle license plate.`
+};
+
+async function handleStudioFind(req: Request, body: Record<string, unknown>, log: CallLog): Promise<Response> {
+  if (!(await isAdmin(req))) return json({ error: 'forbidden' }, 403);
+  const target = body.target === 'privacy' ? 'privacy' : 'number';
+  const image = String(body.image ?? '');
+  const m = image.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+  if (!m || m[2].length > 8_000_000) return json({ error: 'image' }, 400);
+  const out = (await gemini(
+    CHAT_MODEL,
+    `${FIND_SYSTEM[target]}
+Return JSON only: {"items": [{"label": short label in Indonesian, "box_2d": [ymin, xmin, ymax, xmax]}]}.
+Coordinates are integers normalized 0-1000 relative to the full image. Return {"items": []} if none are visible.`,
+    [{ inline_data: { mime_type: m[1], data: m[2] } }, { text: 'Find them.' }],
+    3000,
+    log,
+    45_000
+  )) as Record<string, unknown>;
+  const items = (Array.isArray(out?.items) ? (out.items as Record<string, unknown>[]) : [])
+    .map((it) => ({ label: String(it.label ?? '').slice(0, 40), box_2d: anyBox(it) }))
+    .filter((it) => it.box_2d)
+    .slice(0, 30);
+  return json({ items });
+}
+
+const FLYER_SYSTEM = `Kamu copywriter properti untuk agen Brighton Real Estate (Brighton HUB Cibubur).
+Dari permintaan agen dan data properti, tulis teks flyer Instagram dalam bahasa Indonesia yang singkat, menarik, dan jujur.
+Aturan: jangan mengarang fakta (harga, luas, jumlah kamar, fasilitas, jarak) yang tidak disebut agen; jangan memakai klaim berlebihan seperti "termurah" atau "pasti untung"; tanpa emoji; tanpa tanda pagar.
+Keluarkan JSON: {"headline": "judul maks. 6 kata", "highlights": ["poin unggulan maks. 6 kata", ... 2 sampai 4 poin], "cta": "ajakan maks. 3 kata, mis. Hubungi Sekarang"}`;
+
+const LISTING_SYSTEM = `Kamu copywriter properti untuk agen Brighton Real Estate (Brighton HUB Cibubur).
+Agen menuliskan informasi properti secara bebas (bisa beberapa paragraf, tidak berurutan, banyak singkatan). Ubah menjadi satu caption listing berbahasa Indonesia untuk Instagram/WhatsApp.
+Format: 1 kalimat pembuka yang menarik; lalu daftar spesifikasi dan keunggulan, tiap baris diawali "- " (harga, lokasi, LT/LB, kamar tidur/mandi, sertifikat, fasilitas, akses — hanya yang disebut); lalu 1 kalimat ajakan menghubungi agen beserta nama dan nomor WA bila disebut; lalu 5–8 tagar relevan di baris terakhir.
+Aturan: jangan mengarang fakta yang tidak disebut agen; tulis angka dan harga persis seperti yang disebut; jangan memakai klaim berlebihan seperti "termurah" atau "pasti untung"; maksimal sekitar 180 kata.
+Keluarkan JSON: {"caption": "<teks lengkap, baris baru dengan \\n>"}`;
+
+async function handleStudioText(req: Request, body: Record<string, unknown>, log: CallLog): Promise<Response> {
+  if (!(await isAdmin(req))) return json({ error: 'forbidden' }, 403);
+  const kind = body.kind === 'listing' ? 'listing' : 'flyer';
+  const prompt = String(body.prompt ?? '').slice(0, 4000);
+  const data = JSON.stringify(body.data ?? {}).slice(0, 2000);
+  const out = (await gemini(
+    CHAT_MODEL,
+    kind === 'listing' ? LISTING_SYSTEM : FLYER_SYSTEM,
+    kind === 'listing'
+      ? `INFORMASI DARI AGEN:\n${prompt || '-'}`
+      : `DATA PROPERTI: ${data}\n\nPERMINTAAN AGEN:\n${prompt || '-'}`,
+    kind === 'listing' ? 2500 : 1500,
+    log
+  )) as Record<string, unknown>;
+  if (kind === 'listing') {
+    const caption = String(out?.caption ?? '').trim().slice(0, 3000);
+    return caption ? json({ caption }) : json({ error: 'no_answer' }, 502);
+  }
+  const headline = String(out?.headline ?? '').trim().slice(0, 80);
+  const highlights = (Array.isArray(out?.highlights) ? out.highlights : []).map((h) => String(h ?? '').trim().slice(0, 60)).filter(Boolean).slice(0, 4);
+  const cta = String(out?.cta ?? '').trim().slice(0, 30);
+  return headline ? json({ headline, highlights, cta }) : json({ error: 'no_answer' }, 502);
+}
+
 /* -------------------------------------------------------------- server */
 
 /** Simpan catatan pemakaian (gagal menyimpan tidak mengganggu jawaban). */
@@ -404,6 +471,10 @@ Deno.serve(async (req) => {
         return await handleWish(req, log);
       case 'nota':
         return await handleNota(req, body, log);
+      case 'studio_find':
+        return await handleStudioFind(req, body, log);
+      case 'studio_text':
+        return await handleStudioText(req, body, log);
       default:
         return json({ error: 'mode' }, 400);
     }

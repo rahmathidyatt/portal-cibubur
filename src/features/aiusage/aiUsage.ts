@@ -25,7 +25,9 @@ export const MODE_LABEL: Record<string, string> = {
   chat: 'Epigram',
   translate: 'Terjemahan EN',
   wish: 'Ucapan ulang tahun',
-  nota: 'Scan nota'
+  nota: 'Scan nota',
+  studio_find: 'Studio · deteksi foto',
+  studio_text: 'Studio · teks'
 };
 
 export const STATUS_LABEL: Record<UsageStatus, string> = {
