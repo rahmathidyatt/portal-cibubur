@@ -91,6 +91,8 @@ interface Row {
   graduated: boolean | null;
   note: string | null;
   gender: 'L' | 'P' | null;
+  scored_batch?: Record<string, string> | null;
+  to_enter?: Record<string, number> | null;
 }
 
 const toAgent = (r: Row): TrainingAgent => ({
@@ -100,7 +102,9 @@ const toAgent = (r: Row): TrainingAgent => ({
   pending: r.pending ?? {},
   graduated: r.graduated ?? false,
   gender: r.gender ?? null,
-  ...(r.note ? { note: r.note } : {})
+  ...(r.note ? { note: r.note } : {}),
+  ...(r.scored_batch && Object.keys(r.scored_batch).length ? { scoredBatch: r.scored_batch } : {}),
+  ...(r.to_enter && Object.keys(r.to_enter).length ? { toEnter: r.to_enter } : {})
 });
 
 const toRow = (a: Omit<TrainingAgent, 'id'>) => ({
@@ -112,7 +116,7 @@ const toRow = (a: Omit<TrainingAgent, 'id'>) => ({
   updated_at: new Date().toISOString()
 });
 /** Simpan agen yang sudah ada (ikut L/P). Impor Excel tidak menyentuh L/P. */
-const toFullRow = (a: Omit<TrainingAgent, 'id'>) => ({ ...toRow(a), gender: a.gender ?? null });
+const toFullRow = (a: Omit<TrainingAgent, 'id'>) => ({ ...toRow(a), gender: a.gender ?? null, scored_batch: a.scoredBatch ?? {}, to_enter: a.toEnter ?? {} });
 
 function createSupabaseStore(config: SupabaseConfig): TrainingStore {
   return {
@@ -120,7 +124,7 @@ function createSupabaseStore(config: SupabaseConfig): TrainingStore {
       requireAdmin(auth);
       const res = await supabaseFetch(
         config,
-        'rest/v1/training_agents?select=id,name,scores,pending,graduated,note,gender&order=created_at.asc',
+        'rest/v1/training_agents?select=id,name,scores,pending,graduated,note,gender,scored_batch,to_enter&order=created_at.asc',
         { accessToken: auth.accessToken }
       );
       return ((await res.json()) as Row[]).map(toAgent);

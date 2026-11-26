@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, FileSpreadsheet, X } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useToast } from '../../hooks/useToast';
-import { TRAINING_MODULES, PASS_SCORE, setScore, type TrainingAgent } from './training';
+import { TRAINING_MODULES, PASS_SCORE, markToEnter, setScore, type TrainingAgent } from './training';
 import { getTrainingStore } from './trainingStore';
 import { matchRecap, parseRecapFile, type AgentFindings, type RecapFile } from './tracking';
 
@@ -67,6 +67,8 @@ export const TrackingPage: React.FC = () => {
     if (chosen.length === 0) return toast('Centang minimal satu sesi yang benar milik agen ini.', 'error');
     let next = r.agent;
     for (const f of chosen) next = setScore(next, f.moduleId, f.row.score);
+    // Oranye di Rekap Nilai sampai ditandai sudah diinput ke web resmi Brighton.
+    next = markToEnter(next, chosen.map((f) => f.moduleId));
     try {
       await store.save(next, auth);
       setAgents((list) => list?.map((a) => (a.id === next.id ? next : a)) ?? null);

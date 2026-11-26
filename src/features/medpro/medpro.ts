@@ -17,6 +17,64 @@ export interface MedproNota {
   /** Tanggal dibayar; null = periode berjalan. */
   paidOn: string | null;
   note?: string;
+  /** Rincian barang dari Input nota (untuk cek silang); kosong untuk nota yang diinput manual/impor. */
+  items?: NotaLine[];
+}
+
+/** Satu baris barang di dalam nota. */
+export interface NotaLine {
+  description: string;
+  product: string;
+  /** Nama pada nota, mis. "MONIKA JUAL". */
+  label: string;
+  size: string;
+  price: number;
+  qty: number;
+  total: number;
+  category: 'banner' | 'branding';
+}
+
+/** Jumlah rincian barang per kategori, untuk dibandingkan dengan kolom nota. */
+export function lineTotals(items: NotaLine[]): { banner: number; branding: number } {
+  return items.reduce(
+    (acc, it) => ({ ...acc, [it.category]: acc[it.category] + (it.total || 0) }),
+    { banner: 0, branding: 0 }
+  );
+}
+
+/** Rincian tidak cocok dengan kolom Banner/Alat branding (mis. stiker tercatat di kolom yang salah). */
+export function lineMismatch(n: Pick<MedproNota, 'banner' | 'branding' | 'items'>): string | null {
+  if (!n.items?.length) return null;
+  const t = lineTotals(n.items);
+  const fmt = (v: number) => v.toLocaleString('id-ID');
+  const out: string[] = [];
+  if (t.banner !== n.banner) out.push(`barang Banner/plank ${fmt(t.banner)} ≠ kolom ${fmt(n.banner)}`);
+  if (t.branding !== n.branding) out.push(`barang Alat branding ${fmt(t.branding)} ≠ kolom ${fmt(n.branding)}`);
+  return out.length ? `Tidak cocok: ${out.join('; ')}.` : null;
+}
+
+/** "BANNER" → "Banner", "ID CARD" → "ID Card". */
+function productName(product: string): string {
+  return product
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => (w === 'id' ? 'ID' : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(' ');
+}
+
+/** Pesan WhatsApp ke agen: barang pesanannya sudah tiba di kantor. */
+export function arrivalMessage(item: NotaLine, greeting: string): string {
+  const what = productName(item.product) || (item.category === 'banner' ? 'Banner' : 'Alat branding');
+  const size = item.size.trim() ? ` ukuran ${item.size.trim()}` : '';
+  const qty = item.qty > 1 ? ` (${item.qty} pcs)` : '';
+  return [
+    `${greeting}, Bapak/Ibu.`,
+    '',
+    `Kami informasikan ${what} *${item.label.trim() || item.description.trim()}*${size}${qty} sudah tersedia di kantor Brighton HUB Cibubur dan dapat diambil pada jam operasional.`,
+    '',
+    'Terima kasih.'
+  ].join('\n');
 }
 
 /** Nota drop banner (banner yang dikirim/diantar ke kantor lain). */

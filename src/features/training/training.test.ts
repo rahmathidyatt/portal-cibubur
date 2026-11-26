@@ -65,7 +65,7 @@ test('BC pengingat berisi agen & sesi yang menunggu nilai', () => {
   assert.equal(buildTrainingBc([agents[2]], opts), '');
   const one = buildAgentTrainingBc(agents[0], opts);
   assert.match(one, /Bapak\/Ibu URIP \(XJTA\)/);
-  assert.match(one, /1\. Bisnis Bersama Brighton\n2\. Negosiasi/);
+  assert.match(one, /1\. Hari ke-1 \(Jumat, 20 Nov\) · Bisnis Bersama Brighton\n2\. Hari ke-4 \(Senin, 23 Nov\) · Negosiasi/);
   assert.match(one, /batch Jumat–Senin, 20–23 November 2026 untuk 2 sesi/);
   const ibu = buildAgentTrainingBc({ ...agents[0], gender: 'P', pending: { negosiasi: '2026-11-23' } }, { ...opts, nextBatch: { start: '2026-11-23', end: '2026-11-26' } });
   assert.match(ibu, /^Selamat siang, Ibu URIP \(XJTA\)\.\n\nKami informasikan bahwa Ibu telah terdaftar sebagai peserta Training Bright On batch Senin–Kamis, 23–26 November 2026 untuk 1 sesi berikut:/);
@@ -176,4 +176,43 @@ test('tracking: judul sheet rekap dipetakan ke sesi yang benar', async () => {
     parseRecapFile(sheets).sessions.map((s) => s.moduleId),
     ['listing-modal', 'primary-secondary', 'senjata-teknologi', 'klien-percaya']
   );
+});
+
+test('BC hasil training: batch asal nilai dicatat, sesi tanpa nilai & belum lulus', async () => {
+  const { buildResultBc, resultAgents, resultBatches } = await import('./training');
+  let agent: TrainingAgent = {
+    id: 'x',
+    name: 'AYU (HAYP)',
+    gender: 'P',
+    scores: {},
+    pending: { 'bisnis-bersama': '2026-11-30', 'listing-modal': '2026-11-30', negosiasi: '2026-11-30' }
+  };
+  agent = setScore(agent, 'bisnis-bersama', 90);
+  agent = setScore(agent, 'listing-modal', 40);
+  assert.deepEqual(agent.scoredBatch, { 'bisnis-bersama': '2026-11-30', 'listing-modal': '2026-11-30' });
+  assert.deepEqual(resultBatches([agent]), ['2026-11-30']);
+  const [r] = resultAgents([agent], '2026-11-30');
+  const bc = buildResultBc(agent, r.results, { greeting: 'Selamat pagi', batchStart: '2026-11-30', batchEnd: '2026-12-03' });
+  assert.match(bc, /✅ Lulus\n- Hari ke-1 \(Senin, 30 Nov\) · Bisnis Bersama Brighton \(nilai 90\)/);
+  assert.match(bc, /❌ Belum lulus \(nilai minimal 60\)\n- Hari ke-2 \(Selasa, 1 Des\) · Listing adalah Modal Bisnis Properti \(nilai 40\)/);
+  assert.match(bc, /⚠️ Belum ada nilai\n- Hari ke-4 \(Kamis, 3 Des\) · Negosiasi/);
+  const fresh: TrainingAgent = { ...agent, scores: {}, scoredBatch: {}, pending: { 'bisnis-bersama': '2026-11-30' } };
+  const none = buildResultBc(fresh, resultAgents([fresh], '2026-11-30')[0].results, { greeting: 'Selamat pagi', batchStart: '2026-11-30', batchEnd: '2026-12-03' });
+  assert.match(none, /belum menerima nilai Ibu untuk seluruh sesi/);
+  const passed = setScore(fresh, 'bisnis-bersama', 80);
+  assert.equal(resultAgents([passed], '2026-11-30').length, 0);
+});
+
+test('nilai dari Tracking oranye sampai diinput ke web resmi', async () => {
+  const { markToEnter, clearToEnter } = await import('./training');
+  let a: TrainingAgent = { id: 'x', name: 'AYU (HAYP)', scores: {}, pending: { 'bisnis-bersama': '2026-11-30', negosiasi: '2026-11-30' } };
+  a = setScore(setScore(a, 'bisnis-bersama', 80), 'negosiasi', 40);
+  a = markToEnter(a, ['bisnis-bersama', 'negosiasi']);
+  assert.deepEqual(a.toEnter, { 'bisnis-bersama': 80, negosiasi: 40 });
+  a = setScore(a, 'negosiasi', 60);
+  assert.equal(a.toEnter?.negosiasi, 60);
+  a = clearToEnter(a, 'bisnis-bersama');
+  assert.deepEqual(a.toEnter, { negosiasi: 60 });
+  assert.equal(clearToEnter(a).toEnter, undefined);
+  assert.equal(setScore(a, 'negosiasi', null).toEnter, undefined);
 });

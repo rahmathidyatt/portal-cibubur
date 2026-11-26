@@ -1049,3 +1049,12 @@ grant insert, update, delete on public.achievements to authenticated;
 insert into public.achievements (id, award, title, rank, period_label, period_end)
 select 'boc-awards-2026', 'BOC Awards 2026', 'TOP 15 Brighton HUB · Bisnis Tanpa Batas', '#12', 'Januari – Juni 2026', '2026-06-30'
 where not exists (select 1 from public.achievements);
+
+-- Rincian barang nota dari Input nota (cek silang & kabari agen). NULL untuk nota manual/impor.
+alter table public.medpro_notas add column if not exists items jsonb
+  check (items is null or (jsonb_typeof(items) = 'array' and jsonb_array_length(items) <= 60));
+
+-- Batch asal nilai tiap sesi (id sesi → tanggal batch) untuk BC hasil training.
+alter table public.training_agents add column if not exists scored_batch jsonb not null default '{}'::jsonb;
+-- Nilai dari Tracking Nilai yang belum diinput ke web resmi Brighton (oranye di rekap).
+alter table public.training_agents add column if not exists to_enter jsonb not null default '{}'::jsonb;

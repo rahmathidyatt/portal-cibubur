@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, CalendarClock, ChevronDown, FileSpreadsheet, Plus, Undo2, X } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, CalendarClock, ChevronDown, FileSpreadsheet, MessageCircle, Plus, Undo2, X } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useToast } from '../../hooks/useToast';
 import { ConfirmCancelButton } from '../../components/ConfirmCancelButton';
 import { CopyTextBlock } from '../../components/CopyTextBlock';
 import { readXlsxGrid } from '../../utils/xlsxGrid';
-import { todayInJakarta } from '../../utils/schedule';
+import { greetingForMinutes, minutesNowInJakarta, todayInJakarta } from '../../utils/schedule';
 import {
   buildDropBc,
   buildPaymentBc,
@@ -16,7 +16,10 @@ import {
   groupByPaidOn,
   importMedproSheet,
   invoiceBr,
+  arrivalMessage,
   invoiceFormatWarning,
+  lineMismatch,
+  lineTotals,
   nextPayday,
   normalizeInvoice,
   notaTotal,
@@ -25,7 +28,8 @@ import {
   summarize,
   validateNotaInput,
   type MedproDrop,
-  type MedproNota
+  type MedproNota,
+  type NotaLine
 } from './medpro';
 import { getMedproStore } from './medproStore';
 import { dropReport, medproReport } from './medproReport';
@@ -343,11 +347,104 @@ const NotaForm: React.FC<{ allNotas: MedproNota[]; run: Run }> = ({ allNotas, ru
   );
 };
 
+/** Rincian barang di dalam nota: untuk cek silang dengan web Brighton & kabari agen lewat WhatsApp. */
+const NotaLines: React.FC<{ nota: MedproNota; mismatch: string | null; onCategory?: (index: number, category: NotaLine['category']) => void }> = ({
+  nota,
+  mismatch,
+  onCategory
+}) => {
+  if (!nota.items?.length)
+    return (
+      <p className="text-xs text-slate-500">
+        Rincian barang tidak tersedia. Nota ini diinput manual/impor, bukan lewat Input nota.
+      </p>
+    );
+  const notify = (it: NotaLine) => {
+    const text = arrivalMessage(it, greetingForMinutes(minutesNowInJakarta()));
+    // Tanpa nomor: WhatsApp membuka daftar kontak untuk memilih agen.
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  };
+  return (
+    <div>
+      {mismatch && (
+        <p className="mb-2 flex items-start gap-1.5 text-xs font-semibold text-red-700">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {mismatch}
+        </p>
+      )}
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-left text-[11px] font-bold text-slate-500">
+            <th className="py-1 pr-2">No</th>
+            <th className="py-1 pr-2">Barang</th>
+            <th className="py-1 pr-2">Masuk ke</th>
+            <th className="py-1 pr-2 text-right">Harga</th>
+            <th className="py-1 pr-2 text-center">Qty</th>
+            <th className="py-1 pr-2 text-right">Jumlah</th>
+            <th className="py-1" />
+          </tr>
+        </thead>
+        <tbody>
+          {nota.items.map((it, i) => (
+            <tr key={i} className="border-t border-slate-200/70">
+              <td className="py-1.5 pr-2 tabular-nums text-slate-500">{i + 1}</td>
+              <td className="py-1.5 pr-2 font-semibold text-slate-800">{it.description}</td>
+              <td className="py-1.5 pr-2">
+                {onCategory ? (
+                  <select
+                    value={it.category}
+                    aria-label={`Kategori ${it.description}`}
+                    onChange={(e) => onCategory(i, e.target.value as NotaLine['category'])}
+                    className={`rounded-full border-0 px-2 py-0.5 text-[11px] font-bold cursor-pointer ${
+                      it.category === 'banner' ? 'bg-sky-100 text-sky-900' : 'bg-violet-100 text-violet-900'
+                    }`}
+                  >
+                    <option value="banner">Banner / plank</option>
+                    <option value="branding">Alat branding</option>
+                  </select>
+                ) : (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      it.category === 'banner' ? 'bg-sky-100 text-sky-900' : 'bg-violet-100 text-violet-900'
+                    }`}
+                  >
+                    {it.category === 'banner' ? 'Banner / plank' : 'Alat branding'}
+                  </span>
+                )}
+              </td>
+              <td className="py-1.5 pr-2 text-right tabular-nums">{money(it.price)}</td>
+              <td className="py-1.5 pr-2 text-center tabular-nums">{it.qty}</td>
+              <td className="py-1.5 pr-2 text-right font-semibold tabular-nums">{money(it.total)}</td>
+              <td className="py-1.5 text-right">
+                <button
+                  type="button"
+                  onClick={() => notify(it)}
+                  className="inline-flex items-center gap-1 rounded-md bg-green-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-green-700 cursor-pointer whitespace-nowrap"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" /> Kabari agen
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 /** Tabel seperti rekap Excel: tanggal sekali per grup, INVOICE BR hijau bila sudah dicek. */
 const NotaTable: React.FC<{ notas: MedproNota[]; run: Run; editable?: boolean }> = ({ notas, run, editable }) => {
   const { auth } = useAdmin();
   const store = getMedproStore();
   const s = summarize(notas);
+  /** Nota yang rinciannya sedang dibuka. */
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setOpen((o) => {
+      const next = new Set(o);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   return (
     <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
       <table className="w-full min-w-[760px] border-collapse text-sm">
@@ -373,8 +470,11 @@ const NotaTable: React.FC<{ notas: MedproNota[]; run: Run; editable?: boolean }>
           )}
           {notas.map((n, i) => {
             const firstOfDate = i === 0 || notas[i - 1].date !== n.date;
+            const mismatch = lineMismatch(n);
+            const isOpen = open.has(n.id);
             return (
-              <tr key={n.id} className={`border-t ${firstOfDate ? 'border-slate-200' : 'border-slate-100'}`}>
+              <React.Fragment key={n.id}>
+              <tr className={`border-t ${firstOfDate ? 'border-slate-200' : 'border-slate-100'}`}>
                 <td className="px-3 py-1.5 whitespace-nowrap text-slate-700">{firstOfDate ? formatShortId(n.date) : ''}</td>
                 <td className="px-1.5 py-1">
                   <span
@@ -386,7 +486,23 @@ const NotaTable: React.FC<{ notas: MedproNota[]; run: Run; editable?: boolean }>
                   </span>
                   {n.note && <span className="ml-1.5 text-[11px] font-semibold text-amber-800">{n.note}</span>}
                 </td>
-                <td className="px-3 py-1.5 font-mono text-xs text-slate-700">{n.invoice}</td>
+                <td className="px-3 py-1.5 font-mono text-xs text-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => toggle(n.id)}
+                    aria-expanded={isOpen}
+                    className="inline-flex items-center gap-1 hover:text-slate-950 cursor-pointer"
+                    title="Lihat isi nota"
+                  >
+                    {n.invoice}
+                    <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {mismatch && (
+                    <span title={mismatch} className="ml-1 inline-flex align-middle text-red-600">
+                      <AlertTriangle className="h-3.5 w-3.5" aria-label={mismatch} />
+                    </span>
+                  )}
+                </td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{money(n.banner)}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums">{money(n.branding)}</td>
                 <td className="px-3 py-1.5 text-right font-semibold tabular-nums">{money(notaTotal(n))}</td>
@@ -409,6 +525,30 @@ const NotaTable: React.FC<{ notas: MedproNota[]; run: Run; editable?: boolean }>
                   </td>
                 )}
               </tr>
+              {isOpen && (
+                <tr className="bg-stone-50/70">
+                  <td colSpan={editable ? 8 : 7} className="px-3 py-3">
+                    <NotaLines
+                      nota={n}
+                      mismatch={mismatch}
+                      onCategory={
+                        editable && n.items
+                          ? (idx, category) => {
+                              // Ubah kategori barang → kolom Banner/Alat branding dihitung ulang dari rinciannya.
+                              const items = n.items!.map((it, j) => (j === idx ? { ...it, category } : it));
+                              const t = lineTotals(items);
+                              void run(
+                                () => store.updateNota(n.id, { items, banner: t.banner, branding: t.branding }, auth),
+                                `Kategori diubah. ${invoiceBr(n.invoice)} dihitung ulang.`
+                              );
+                            }
+                          : undefined
+                      }
+                    />
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             );
           })}
         </tbody>

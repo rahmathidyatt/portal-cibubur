@@ -109,10 +109,28 @@ export const NotaInputPage: React.FC = () => {
         return;
       }
       await store.addNota(
-        { date: scan.date, invoice, banner: check.banner, branding: check.branding, checked: true, paidOn: null },
+        {
+          date: scan.date,
+          invoice,
+          banner: check.banner,
+          branding: check.branding,
+          // Belum dicentang: dicek dulu dengan harga akhir di web Brighton resmi.
+          checked: false,
+          paidOn: null,
+          items: scan.items.map(({ description, product, label, size, price, qty, total, category }) => ({
+            description,
+            product,
+            label,
+            size,
+            price,
+            qty,
+            total,
+            category
+          }))
+        },
         auth
       );
-      toast(`Nota ${notaNumber(invoice)} tersimpan di Nota Medpro.`);
+      toast(`Nota ${notaNumber(invoice)} tersimpan. Centang "Sesuai" di Data nota setelah dicek dengan web Brighton.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan ke Nota Medpro.');
     } finally {

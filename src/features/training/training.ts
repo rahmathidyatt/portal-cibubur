@@ -38,6 +38,10 @@ export interface TrainingAgent {
   graduated?: boolean;
   /** L = Bapak, P = Ibu (sapaan di BC). */
   gender?: 'L' | 'P' | null;
+  /** Batch asal nilai tiap sesi (id sesi → tanggal batch), dicatat saat nilai mengisi pendaftaran; untuk BC hasil training. */
+  scoredBatch?: Record<string, string>;
+  /** Nilai dari Tracking Nilai yang belum diinput ke web resmi Brighton (id sesi → nilai); oranye di rekap. */
+  toEnter?: Record<string, number>;
   note?: string;
 }
 
@@ -86,10 +90,41 @@ export function registerToBatch(agent: TrainingAgent, batchDate: string, moduleI
 export function setScore(agent: TrainingAgent, moduleId: string, score: number | null): TrainingAgent {
   const scores = { ...agent.scores };
   const pending = { ...agent.pending };
-  if (score === null) delete scores[moduleId];
-  else scores[moduleId] = Math.max(0, Math.min(100, Math.round(score)));
+  const scoredBatch = { ...(agent.scoredBatch ?? {}) };
+  const toEnter = { ...(agent.toEnter ?? {}) };
+  if (score === null) {
+    delete scores[moduleId];
+    delete scoredBatch[moduleId];
+    delete toEnter[moduleId];
+  } else {
+    scores[moduleId] = Math.max(0, Math.min(100, Math.round(score)));
+    // Nilai mengisi pendaftaran batch: ingat batch-nya untuk BC hasil training.
+    if (pending[moduleId]) scoredBatch[moduleId] = pending[moduleId];
+    if (moduleId in toEnter) toEnter[moduleId] = scores[moduleId];
+  }
   delete pending[moduleId];
-  return { ...agent, scores, pending };
+  return {
+    ...agent,
+    scores,
+    pending,
+    ...(Object.keys(scoredBatch).length ? { scoredBatch } : { scoredBatch: undefined }),
+    ...(Object.keys(toEnter).length ? { toEnter } : { toEnter: undefined })
+  };
+}
+
+/** Nilai hasil Tracking: tandai oranye sampai diinput ke web resmi Brighton. */
+export function markToEnter(agent: TrainingAgent, moduleIds: string[]): TrainingAgent {
+  const toEnter = { ...(agent.toEnter ?? {}) };
+  for (const id of moduleIds) if (agent.scores[id] !== undefined) toEnter[id] = agent.scores[id];
+  return { ...agent, toEnter };
+}
+
+/** Sudah diinput ke web resmi: hilangkan tanda oranye (satu sesi, atau semua bila moduleId kosong). */
+export function clearToEnter(agent: TrainingAgent, moduleId?: string): TrainingAgent {
+  if (!moduleId) return { ...agent, toEnter: undefined };
+  const toEnter = { ...(agent.toEnter ?? {}) };
+  delete toEnter[moduleId];
+  return { ...agent, toEnter: Object.keys(toEnter).length ? toEnter : undefined };
 }
 
 export function cancelPending(agent: TrainingAgent, moduleId: string): TrainingAgent {
@@ -193,6 +228,20 @@ export function formatBatchRange(start: string, end: string): string {
   return `${left} – ${day(y2, m2, d2)}, ${d2} ${MONTHS[m2 - 1]} ${y2}`;
 }
 
+/**
+ * Label sesi untuk BC: "Hari ke-1 (Senin, 30 Nov) · Bisnis Bersama Brighton".
+ * Hari ke-N mengikuti tahap sesi (3 sesi per hari, batch 4 hari Senin–Kamis); tanggal hanya
+ * ditulis bila batch-nya memang 4 hari.
+ */
+export function sessionLabel(module: TrainingModule, batchStart?: string, batchEndDate?: string): string {
+  let when = '';
+  if (batchStart && batchEndDate && addDays(batchStart, 3) === batchEndDate) {
+    const [y, m, d] = addDays(batchStart, module.stage - 1).split('-').map(Number);
+    when = ` (${DAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}, ${d} ${MONTHS[m - 1].slice(0, 3)})`;
+  }
+  return `Hari ke-${module.stage}${when} · ${module.title}`;
+}
+
 /** Sapaan sesuai jenis kelamin agen. */
 export function salutation(agent: Pick<TrainingAgent, 'gender'>): string {
   return agent.gender === 'L' ? 'Bapak' : agent.gender === 'P' ? 'Ibu' : 'Bapak/Ibu';
@@ -235,14 +284,14 @@ export function buildAgentTrainingBc(agent: TrainingAgent, opts: TrainingBcOptio
   if (modules.length === 0) return '';
   const dates = [...new Set(modules.map((m) => agent.pending[m.id]).filter(Boolean))].sort();
   const sapa = salutation(agent);
-  const batch =
-    dates.length === 1 ? ` batch ${formatBatchRange(dates[0], batchEnd(dates[0], opts.nextBatch))}` : '';
+  const end = dates.length === 1 ? batchEnd(dates[0], opts.nextBatch) : undefined;
+  const batch = dates.length === 1 ? ` batch ${formatBatchRange(dates[0], end!)}` : '';
   return [
     `${opts.greeting}, ${sapa} ${agent.name}.`,
     '',
     `Kami informasikan bahwa ${sapa} telah terdaftar sebagai peserta Training Bright On${batch} untuk ${modules.length} sesi berikut:`,
     '',
-    ...modules.map((m, i) => `${i + 1}. ${m.title}`),
+    ...modules.map((m, i) => `${i + 1}. ${sessionLabel(m, dates.length === 1 ? dates[0] : undefined, end)}`),
     '',
     '📌 PENGINGAT',
     '- Pastikan sudah berhasil login ke aplikasi Brighton sebelum pelatihan dimulai.',
@@ -410,4 +459,83 @@ export function buildReminderBc(
 /** "Tidak mengikuti": batalkan seluruh pendaftaran sesi yang masih menunggu nilai. */
 export function cancelAllPending(agent: TrainingAgent): TrainingAgent {
   return { ...agent, pending: {} };
+}
+
+/* ------------------------------------------------------------------ */
+/* BC hasil training per agen (setelah batch selesai)                  */
+/* ------------------------------------------------------------------ */
+
+export interface SessionResult {
+  module: TrainingModule;
+  /** null = belum ada nilai (masih menunggu). */
+  score: number | null;
+}
+
+/** Sesi yang didaftarkan agen pada batch ini: yang sudah bernilai dari batch tsb & yang masih menunggu. */
+export function batchResults(agent: TrainingAgent, batchDate: string): SessionResult[] {
+  return TRAINING_MODULES.filter((m) => agent.pending[m.id] === batchDate || agent.scoredBatch?.[m.id] === batchDate).map((m) => ({
+    module: m,
+    score: agent.pending[m.id] === batchDate ? null : (agent.scores[m.id] ?? null)
+  }));
+}
+
+/** Ada sesi tanpa nilai atau belum lulus → perlu BC konfirmasi. */
+export const needsResultBc = (results: SessionResult[]) =>
+  results.length > 0 && results.some((r) => r.score === null || r.score < PASS_SCORE);
+
+/** Tanggal batch yang punya pendaftaran/nilai (terbaru dulu). */
+export function resultBatches(agents: TrainingAgent[]): string[] {
+  const set = new Set<string>();
+  for (const a of agents) {
+    for (const d of Object.values(a.pending)) if (d) set.add(d);
+    for (const d of Object.values(a.scoredBatch ?? {})) if (d) set.add(d);
+  }
+  return [...set].sort((a, b) => b.localeCompare(a));
+}
+
+/** Agen di batch ini yang perlu BC hasil (urut nama). */
+export function resultAgents(agents: TrainingAgent[], batchDate: string): { agent: TrainingAgent; results: SessionResult[] }[] {
+  return agents
+    .map((agent) => ({ agent, results: batchResults(agent, batchDate) }))
+    .filter((r) => needsResultBc(r.results))
+    .sort((a, b) => a.agent.name.localeCompare(b.agent.name));
+}
+
+/** BC pribadi ke agen: sesi yang tidak ada nilainya & yang belum lulus, minta konfirmasi. */
+export function buildResultBc(
+  agent: TrainingAgent,
+  results: SessionResult[],
+  opts: { greeting: string; batchStart: string; batchEnd: string; nextBatch?: TrainingBatch | null }
+): string {
+  if (!needsResultBc(results)) return '';
+  const sapa = salutation(agent);
+  const label = (r: SessionResult) => sessionLabel(r.module, opts.batchStart, opts.batchEnd);
+  const missing = results.filter((r) => r.score === null);
+  const failed = results.filter((r) => r.score !== null && r.score < PASS_SCORE);
+  const passed = results.filter((r) => r.score !== null && r.score >= PASS_SCORE);
+  const next = opts.nextBatch?.start
+    ? `batch berikutnya (${formatBatchRange(opts.nextBatch.start, opts.nextBatch.end)})`
+    : 'batch berikutnya';
+  const lines = [`${opts.greeting}, ${sapa} ${agent.name}.`, ''];
+  if (missing.length === results.length) {
+    lines.push(
+      `Terkait Training Bright On batch ${formatBatchRange(opts.batchStart, opts.batchEnd)}, kami belum menerima nilai ${sapa} untuk seluruh sesi yang didaftarkan:`,
+      '',
+      ...missing.map((r) => `- ${label(r)}`),
+      '',
+      `Mohon konfirmasinya, apakah ${sapa} tidak mengikuti training pada batch ini? Bila sudah mengikuti, kemungkinan Nama atau Kode Agen saat mengisi absensi/kuis tidak sesuai sehingga nilainya tidak terekam.`
+    );
+  } else {
+    lines.push(`Berikut hasil Training Bright On ${sapa} pada batch ${formatBatchRange(opts.batchStart, opts.batchEnd)}:`);
+    if (passed.length) lines.push('', '✅ Lulus', ...passed.map((r) => `- ${label(r)} (nilai ${r.score})`));
+    if (failed.length) lines.push('', `❌ Belum lulus (nilai minimal ${PASS_SCORE})`, ...failed.map((r) => `- ${label(r)} (nilai ${r.score})`));
+    if (missing.length) lines.push('', '⚠️ Belum ada nilai', ...missing.map((r) => `- ${label(r)}`));
+    if (missing.length)
+      lines.push(
+        '',
+        `Mohon konfirmasinya untuk sesi yang belum ada nilai: apakah ${sapa} tidak mengikuti sesi tersebut, atau sudah mengikuti namun Nama/Kode Agen saat absensi/kuis kemungkinan tidak sesuai?`
+      );
+  }
+  lines.push('', `Sesi yang belum lulus atau tidak ada nilainya dapat didaftarkan ulang pada ${next}.`, '', 'Terima kasih.');
+  return lines.join('\n');
 }

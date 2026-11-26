@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Award, CalendarPlus, CalendarX, FileSpreadsheet, Plus, Search, Trash2, X } from 'lucide-react';
+import { Award, CalendarPlus, CheckCircle2, CalendarX, FileSpreadsheet, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useToast } from '../../hooks/useToast';
 import { ConfirmCancelButton } from '../../components/ConfirmCancelButton';
@@ -11,6 +11,10 @@ import {
   TRAINING_MODULES,
   agentStatus,
   buildTrainingBc,
+  buildResultBc,
+  clearToEnter,
+  resultAgents,
+  resultBatches,
   addDays,
   batchEnd,
   buildAgentTrainingBc,
@@ -72,6 +76,8 @@ const CELL_STYLE: Record<ModuleStatus, string> = {
   'tidak-lulus': 'bg-slate-200 text-slate-700',
   belum: 'bg-white text-slate-300'
 };
+/** Nilai dari Tracking yang belum diinput ke web resmi Brighton. */
+const TO_ENTER_STYLE = 'bg-orange-100 text-orange-900 ring-2 ring-inset ring-orange-400';
 
 type Filter = 'semua' | AgentStatus;
 
@@ -108,12 +114,16 @@ export const TrainingPage: React.FC = () => {
     }
   };
   const [filter, setFilter] = useState<Filter>('semua');
+  /** Hanya agen yang punya nilai oranye (belum diinput ke web resmi Brighton). */
+  const [onlyNotEntered, setOnlyNotEntered] = useState(false);
   const [search, setSearch] = useState<string>('');
   const [editing, setEditing] = useState<{ agentId: string; moduleId: string } | null>(null);
   const [batchOpen, setBatchOpen] = useState<boolean>(false);
   const [newName, setNewName] = useState<string>('');
   const [bcBatch, setBcBatch] = useState<string>('__all');
-  const [bcMode, setBcMode] = useState<'grup' | 'pengingat' | 'konfirmasi'>('grup');
+  const [bcMode, setBcMode] = useState<'grup' | 'pengingat' | 'konfirmasi' | 'hasil'>('grup');
+  const [resultBatch, setResultBatch] = useState<string>('');
+  const [resultId, setResultId] = useState<string>('');
   const [bcAgentId, setBcAgentId] = useState<string>('');
   const [deadline, setDeadline] = useState<string>('');
   const [deadlineTime, setDeadlineTime] = useState<string>('17.00');
@@ -152,8 +162,11 @@ export const TrainingPage: React.FC = () => {
   }, [list]);
 
   const needle = search.trim().toUpperCase();
+  const hasNotEntered = (a: TrainingAgent) => Object.keys(a.toEnter ?? {}).some((id) => !(id in a.pending));
+  const notEnteredCount = list.filter(hasNotEntered).length;
   const visible = list
     .filter((a) => filter === 'semua' || agentStatus(a) === filter)
+    .filter((a) => !onlyNotEntered || notEnteredCount === 0 || hasNotEntered(a))
     .filter((a) => !needle || a.name.includes(needle));
 
   const batches = pendingBatches(list);
@@ -168,14 +181,28 @@ export const TrainingPage: React.FC = () => {
   const bcRegistered = registeredAgents(list, bcBatchDate);
   const reminders = reminderAgents(list);
   const bcAgent = bcRegistered.find((r) => r.agent.id === bcAgentId)?.agent ?? bcRegistered[0]?.agent;
+  // BC hasil training: agen di batch terpilih yang punya sesi tanpa nilai / belum lulus.
+  const resBatches = resultBatches(list);
+  const resBatch = resBatches.includes(resultBatch) ? resultBatch : (resBatches[0] ?? '');
+  const resRows = resBatch ? resultAgents(list, resBatch) : [];
+  const resRow = resRows.find((r) => r.agent.id === resultId) ?? resRows[0];
   const bcText =
     bcMode === 'grup'
       ? buildTrainingBc(list, bcOpts)
       : bcMode === 'pengingat'
         ? buildReminderBc(list, bcOpts, reminderId || undefined)
-        : bcAgent
-          ? buildAgentTrainingBc(bcAgent, bcOpts)
-          : '';
+        : bcMode === 'hasil'
+          ? resRow
+            ? buildResultBc(resRow.agent, resRow.results, {
+                greeting: bcOpts.greeting,
+                batchStart: resBatch,
+                batchEnd: batchEnd(resBatch, nextBatch),
+                nextBatch: nextBatch && nextBatch.start > resBatch ? nextBatch : null
+              })
+            : ''
+          : bcAgent
+            ? buildAgentTrainingBc(bcAgent, bcOpts)
+            : '';
   const editAgent = editing ? list.find((a) => a.id === editing.agentId) : undefined;
   const editModule = editing ? TRAINING_MODULES.find((m) => m.id === editing.moduleId) : undefined;
 
@@ -303,6 +330,20 @@ export const TrainingPage: React.FC = () => {
                   <span className="tabular-nums opacity-80">{counts[f]}</span>
                 </button>
               ))}
+              {notEnteredCount > 0 && (
+                <button
+                  type="button"
+                  aria-pressed={onlyNotEntered}
+                  onClick={() => setOnlyNotEntered((v) => !v)}
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 cursor-pointer ${
+                    onlyNotEntered ? 'bg-orange-500 text-white ring-orange-500' : 'bg-orange-50 text-orange-900 ring-orange-300'
+                  }`}
+                >
+                  <span className={`h-2 w-2 rounded-full ${onlyNotEntered ? 'bg-white' : 'bg-orange-500'}`} />
+                  Belum input
+                  <span className="tabular-nums opacity-80">{notEnteredCount}</span>
+                </button>
+              )}
               <label className="relative ml-auto w-full sm:w-56">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
@@ -388,13 +429,14 @@ export const TrainingPage: React.FC = () => {
                         {TRAINING_MODULES.map((m) => {
                           const st = moduleStatus(a, m.id);
                           const score = a.scores[m.id];
+                          const notEntered = st !== 'menunggu' && a.toEnter?.[m.id] !== undefined;
                           return (
                             <td key={m.id} className="px-[1px] py-0.5">
                               <button
                                 type="button"
                                 onClick={() => setEditing({ agentId: a.id, moduleId: m.id })}
-                                aria-label={`${a.name} · ${m.title}: ${score ?? 'kosong'}${st === 'menunggu' ? ', menunggu nilai' : ''}`}
-                                className={`h-7 w-full rounded-md text-xs font-bold tabular-nums hover:ring-2 hover:ring-amber-400 cursor-pointer ${CELL_STYLE[st]}`}
+                                aria-label={`${a.name} · ${m.title}: ${score ?? 'kosong'}${st === 'menunggu' ? ', menunggu nilai' : ''}${notEntered ? ', belum input' : ''}`}
+                                className={`h-7 w-full rounded-md text-xs font-bold tabular-nums hover:ring-2 hover:ring-amber-400 cursor-pointer ${notEntered ? TO_ENTER_STYLE : CELL_STYLE[st]}`}
                               >
                                 {st === 'menunggu' ? (score !== undefined ? <s className="opacity-60">{score}</s> : 'Daftar') : (score ?? '–')}
                               </button>
@@ -442,20 +484,22 @@ export const TrainingPage: React.FC = () => {
                 <p className="mt-0.5 text-xs text-slate-500">
                   {bcMode === 'pengingat'
                     ? 'Agen dengan sesi yang belum diikuti atau belum lulus.'
-                    : 'Dari agen yang sudah didaftarkan dan nilainya masih kosong.'}
+                    : bcMode === 'hasil'
+                      ? 'Setelah batch selesai: sesi yang tidak ada nilainya atau belum lulus, minta konfirmasi agen.'
+                      : 'Dari agen yang sudah didaftarkan dan nilainya masih kosong.'}
                 </p>
               </div>
-              <div className="grid grid-cols-3 gap-1 rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Jenis BC">
-                {(['grup', 'pengingat', 'konfirmasi'] as const).map((m) => (
+              <div className="grid grid-cols-4 gap-1 rounded-xl bg-stone-100 p-1" role="tablist" aria-label="Jenis BC">
+                {(['grup', 'pengingat', 'konfirmasi', 'hasil'] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
                     role="tab"
                     aria-selected={bcMode === m}
                     onClick={() => setBcMode(m)}
-                    className={`rounded-lg px-2 py-1.5 text-xs font-bold cursor-pointer ${bcMode === m ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}
+                    className={`rounded-lg px-1 py-1.5 text-[11px] font-bold cursor-pointer ${bcMode === m ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600'}`}
                   >
-                    {m === 'grup' ? 'BC Group' : m === 'pengingat' ? 'BC Pengingat' : 'BC Konfirmasi'}
+                    {m === 'grup' ? 'Group' : m === 'pengingat' ? 'Pengingat' : m === 'konfirmasi' ? 'Konfirmasi' : 'Hasil'}
                   </button>
                 ))}
               </div>
@@ -477,7 +521,42 @@ export const TrainingPage: React.FC = () => {
                   </select>
                 </label>
               )}
-              {bcMode !== 'pengingat' && (
+              {bcMode === 'hasil' && (
+                <>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Batch
+                    <select aria-label="Batch untuk BC hasil" value={resBatch} onChange={(e) => setResultBatch(e.target.value)} className={`${input} mt-1`}>
+                      {resBatches.length === 0 && <option value="">Belum ada batch</option>}
+                      {resBatches.map((b) => (
+                        <option key={b} value={b}>
+                          {formatBatchRange(b, batchEnd(b, nextBatch))}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Agen ({resRows.length})
+                    <select
+                      aria-label="Agen untuk BC hasil"
+                      value={resRow?.agent.id ?? ''}
+                      onChange={(e) => setResultId(e.target.value)}
+                      className={`${input} mt-1`}
+                      disabled={resRows.length === 0}
+                    >
+                      {resRows.map((r) => {
+                        const missing = r.results.filter((x) => x.score === null).length;
+                        const failed = r.results.filter((x) => x.score !== null && x.score < PASS_SCORE).length;
+                        return (
+                          <option key={r.agent.id} value={r.agent.id}>
+                            {r.agent.name} · {missing === r.results.length ? 'tidak ada nilai' : [missing && `${missing} tanpa nilai`, failed && `${failed} belum lulus`].filter(Boolean).join(', ')}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </label>
+                </>
+              )}
+              {(bcMode === 'grup' || bcMode === 'konfirmasi') && (
               <label className="block text-xs font-semibold text-slate-700">
                 Batch
                 <select aria-label="Batch untuk BC" value={bcBatch} onChange={(e) => setBcBatch(e.target.value)} className={`${input} mt-1`}>
@@ -508,7 +587,7 @@ export const TrainingPage: React.FC = () => {
                   </select>
                 </label>
               )}
-              {bcMode !== 'pengingat' && (
+              {(bcMode === 'grup' || bcMode === 'konfirmasi') && (
               <div className="grid grid-cols-[minmax(0,1fr)_80px] gap-2">
                 <label className="block text-xs font-semibold text-slate-700">
                   Batas pendaftaran
@@ -540,9 +619,17 @@ export const TrainingPage: React.FC = () => {
                   ? 'Teks BC Group'
                   : bcMode === 'pengingat'
                     ? 'Teks BC Pengingat'
-                    : `Teks BC Konfirmasi ${bcAgent?.name ?? 'agen'}`
+                    : bcMode === 'hasil'
+                      ? `Teks BC Hasil ${resRow?.agent.name ?? 'agen'}`
+                      : `Teks BC Konfirmasi ${bcAgent?.name ?? 'agen'}`
               }
-              emptyText={bcMode === 'pengingat' ? 'Semua agen sudah lulus atau sedang terdaftar.' : 'Belum ada agen yang didaftarkan dan menunggu nilai.'}
+              emptyText={
+                bcMode === 'pengingat'
+                  ? 'Semua agen sudah lulus atau sedang terdaftar.'
+                  : bcMode === 'hasil'
+                    ? 'Semua agen di batch ini sudah punya nilai lulus untuk setiap sesinya.'
+                    : 'Belum ada agen yang didaftarkan dan menunggu nilai.'
+              }
               rows={16}
             />
           </aside>
@@ -779,6 +866,8 @@ const ScoreDialog: React.FC<{
   const mod = TRAINING_MODULES.find((m) => m.id === moduleId)!;
   const current = agent.scores[moduleId];
   const isPending = moduleId in agent.pending;
+  const notEntered = !isPending && agent.toEnter?.[moduleId] !== undefined;
+  const pendingEntries = Object.keys(agent.toEnter ?? {}).filter((id) => !(id in agent.pending)).length;
   const [value, setValue] = useState<string>(current !== undefined && !isPending ? String(current) : '');
   const [batch, setBatch] = useState<string>(agent.pending[moduleId] || todayInJakarta());
   const n = Number(value);
@@ -786,6 +875,29 @@ const ScoreDialog: React.FC<{
 
   return (
     <Dialog title={mod.title} onClose={onClose}>
+      {notEntered && (
+        <div className="mb-4 rounded-xl bg-orange-50 p-3 ring-1 ring-orange-200">
+          <p className="text-sm font-bold text-orange-950">Nilai {current} belum input</p>
+          <div className="mt-2 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => onSave(clearToEnter(agent, moduleId), `${mod.title} ${agent.name} ditandai sudah input.`)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-sm font-bold text-white hover:bg-green-700 cursor-pointer"
+            >
+              <CheckCircle2 className="h-4 w-4" /> Sudah input
+            </button>
+            {pendingEntries > 1 && (
+              <button
+                type="button"
+                onClick={() => onSave(clearToEnter(agent), `${pendingEntries} nilai ${agent.name} ditandai sudah input.`)}
+                className={ghostBtn}
+              >
+                Semua {pendingEntries} sesi {agent.name} sudah input
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <p className="text-sm text-slate-600">
         <b className="text-slate-900">{agent.name}</b>
         {current !== undefined && ` · nilai terakhir ${current}`}

@@ -123,3 +123,22 @@ test('impor rekap: tiap tabel = periode, tabel terakhir = periode berjalan, hija
   assert.equal(r.drops.length, 1);
   assert.deepEqual(r.drops[0], { date: '2026-06-10', office: 'BALI', notaNo: '01K48F', amount: 14850, checked: true, paidOn: '2026-06-12' });
 });
+
+test('rincian nota: cek silang kolom & pesan WA barang tiba', async () => {
+  const { lineMismatch, arrivalMessage } = await import('./medpro');
+  const { categoryOf } = await import('./notaSplit');
+  const items = [
+    { description: 'BANNER MONIKA JUAL', product: 'BANNER', label: 'MONIKA JUAL', size: '0,8 x 0,5 m', price: 16000, qty: 1, total: 16000, category: 'banner' as const },
+    { description: 'STIKER IRMA JUAL', product: 'STIKER', label: 'IRMA JUAL', size: '', price: 51000, qty: 2, total: 102000, category: 'branding' as const }
+  ];
+  assert.equal(lineMismatch({ banner: 16000, branding: 102000, items }), null);
+  assert.match(lineMismatch({ banner: 118000, branding: 0, items }) ?? '', /Banner\/plank 16\.000 ≠ kolom 118\.000/);
+  assert.equal(categoryOf('STIKER IRMA'), 'banner');
+  assert.equal(categoryOf('STICKER logo'), 'banner');
+  assert.equal(categoryOf('ID CARD'), 'branding');
+  assert.equal(
+    arrivalMessage(items[0], 'Selamat pagi'),
+    'Selamat pagi, Bapak/Ibu.\n\nKami informasikan Banner *MONIKA JUAL* ukuran 0,8 x 0,5 m sudah tersedia di kantor Brighton HUB Cibubur dan dapat diambil pada jam operasional.\n\nTerima kasih.'
+  );
+  assert.match(arrivalMessage(items[1], 'Selamat sore'), /Stiker \*IRMA JUAL\* \(2 pcs\)/);
+});

@@ -31,9 +31,9 @@ export interface NotaScan {
   grandTotal: number;
 }
 
-/** Banner, stiker banner & plank → Banner/Plank; selain itu → Alat Branding. */
+/** Banner, stiker (sticker) & plank → Banner/Plank; selain itu → Alat Branding. */
 export function categoryOf(text: string): NotaCategory {
-  return /banner|plank|spanduk/i.test(text) ? 'banner' : 'branding';
+  return /banner|plank|spanduk|sti[c]?ker/i.test(text) ? 'banner' : 'branding';
 }
 
 function num(raw: string): number {

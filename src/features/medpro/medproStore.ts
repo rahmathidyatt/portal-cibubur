@@ -127,6 +127,7 @@ interface NotaRow {
   checked: boolean;
   paid_on: string | null;
   note: string | null;
+  items?: MedproNota['items'] | null;
 }
 
 interface DropRow {
@@ -148,7 +149,8 @@ const toNota = (r: NotaRow): MedproNota => ({
   branding: r.branding,
   checked: r.checked,
   paidOn: r.paid_on,
-  ...(r.note ? { note: r.note } : {})
+  ...(r.note ? { note: r.note } : {}),
+  ...(r.items?.length ? { items: r.items } : {})
 });
 
 function notaRow(n: Partial<Omit<MedproNota, 'id'>>): Partial<Omit<NotaRow, 'id'>> {
@@ -160,6 +162,7 @@ function notaRow(n: Partial<Omit<MedproNota, 'id'>>): Partial<Omit<NotaRow, 'id'
   if (n.checked !== undefined) row.checked = n.checked;
   if (n.paidOn !== undefined) row.paid_on = n.paidOn;
   if (n.note !== undefined) row.note = n.note || null;
+  if (n.items !== undefined) row.items = n.items.length ? n.items : null;
   return row;
 }
 
@@ -232,7 +235,7 @@ function createSupabaseStore(config: SupabaseConfig): MedproStore {
       requireAdmin(auth);
       const res = await supabaseFetch(
         config,
-        'rest/v1/medpro_notas?select=id,nota_date,invoice,banner,branding,checked,paid_on,note&order=nota_date.asc,created_at.asc',
+        'rest/v1/medpro_notas?select=id,nota_date,invoice,banner,branding,checked,paid_on,note,items&order=nota_date.asc,created_at.asc',
         { accessToken: auth.accessToken }
       );
       return ((await res.json()) as NotaRow[]).map(toNota);
