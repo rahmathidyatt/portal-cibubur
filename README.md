@@ -1,7 +1,7 @@
 # Portal Brighton HUB Cibubur
   
 Portal operasional kantor Brighton HUB Cibubur untuk property advisor dan staf.
-
+   
 Fitur:
 
 - **Beranda (dashboard "Hari ini")**: sapaan, pengingat ulang tahun agen (hari ini & besok) tepat di bawahnya, status kantor, lalu kartu Floor Time hari ini (shift berjalan ditandai + jadwal saya berikutnya) dan pengumuman.
